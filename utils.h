@@ -32,9 +32,9 @@ clang::DiagnosticBuilder reportDiagnostic(
 
 llvm::raw_ostream& debugs() {
 #ifndef NDEBUG
-    return llvm::outs();
-#else
     return llvm::errs();
+#else
+    return llvm::nulls();
 #endif
 }
 
