@@ -29,4 +29,13 @@ clang::DiagnosticBuilder reportDiagnostic(
   report.AddSourceRange({SourceRange, true});
   return report;
 }
+
+llvm::raw_ostream& debugs() {
+#ifndef NDEBUG
+    return llvm::outs();
+#else
+    return llvm::errs();
+#endif
+}
+
 }
