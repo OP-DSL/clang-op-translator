@@ -1,5 +1,7 @@
+#pragma once
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/Expr.h"
+#include "clang/ASTMatchers/ASTMatchFinder.h"
 
 namespace OP2 {
 
@@ -21,7 +23,7 @@ template <unsigned N>
 clang::DiagnosticBuilder reportDiagnostic(
     const clang::ASTContext &Context, const clang::Expr *expr,
     const char (&FormatString)[N],
-    clang::DiagnosticsEngine::Level level = clang::DiagnosticsEngine::Warning) {
+    clang::DiagnosticsEngine::Level level = clang::DiagnosticsEngine::Error) {
   clang::DiagnosticsEngine &DiagEngine = Context.getDiagnostics();
   auto DiagID = DiagEngine.getCustomDiagID(level, FormatString);
   auto SourceRange = expr->getSourceRange();
@@ -36,6 +38,26 @@ llvm::raw_ostream& debugs() {
 #else
     return llvm::nulls();
 #endif
+
 }
+
+template <typename F> class MatchMaker : public clang::ast_matchers::MatchFinder::MatchCallback {
+private:
+  F matchFunction;
+public:
+  MatchMaker(F f) : matchFunction{f} {}
+  virtual void run(const clang::ast_matchers::MatchFinder::MatchResult &Result) override {
+    matchFunction(Result);
+  }
+};
+
+template <typename F>
+MatchMaker<F> make_matcher(F matchFunction) {
+  return MatchMaker<F>{matchFunction};
+}
+
+enum ACCESS_LABELS {
+  READ=1, WRITE=2, RW=3, INC=4, MAX=5, MIN=6
+};
 
 }
