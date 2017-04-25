@@ -56,8 +56,23 @@ MatchMaker<F> make_matcher(F matchFunction) {
   return MatchMaker<F>{matchFunction};
 }
 
-enum ACCESS_LABELS {
-  READ=1, WRITE=2, RW=3, INC=4, MAX=5, MIN=6
-};
+template <typename T>
+const T *findParent(const clang::Stmt &stmt,
+                                  clang::ASTContext &context) {
+  auto vec = context.getParents(stmt);
 
+  if (vec.empty())
+    return nullptr;
+
+  if (const T *t = vec[0].get<T>()) {
+    return t;
+  }
+
+  const clang::Stmt *pStmt = vec[0].get<clang::Stmt>();
+  if (pStmt) {
+    return findParent<T>(*pStmt, context);
+  }
+
+  return nullptr;
+}
 }

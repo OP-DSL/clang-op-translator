@@ -2,6 +2,7 @@
 #include "utils.h"
 #include "clang/ASTMatchers/ASTMatchFinder.h"
 #include <llvm/Support/Debug.h>
+#include <sstream>
 
 namespace OP2 {
 
@@ -24,7 +25,12 @@ void ParLoopHandler::run(const matchers::MatchFinder::MatchResult &Result) {
   debugs() << "processing kernel " << name->getString() << " with "
            << function->getNumArgs() << " arguments\n";
 
-  // const clang::Expr* set_arg = function->getArg(2);
+  const clang::FunctionDecl *parent =
+      findParent<clang::FunctionDecl>(*function, *Result.Context);
+  std::stringstream ss;
+  ss << "// op_par_loop kernel " << name->getString().str()
+     << " definition here\n\n";
+  Rewriter.InsertTextBefore(parent->getLocStart(), ss.str());
 
   // Iterate over arguments
   for (auto *arg :
@@ -39,11 +45,13 @@ void ParLoopHandler::run(const matchers::MatchFinder::MatchResult &Result) {
           hasDescendant(callExpr(callee(functionDecl(hasName(s)))).bind(s)));
     };
 
-    using namespace clang::ast_matchers;
     clang::ast_matchers::MatchFinder Matcher;
     // arg->dump();
-    auto arg_dat_match_processor = make_matcher(ParLoopHandler::arg_dat_processor);
-    auto arg_gbl_match_processor = make_matcher(ParLoopHandler::arg_gbl_processor);
+    using namespace std::placeholders;
+    auto arg_dat_match_processor =
+        make_matcher(std::bind(&ParLoopHandler::arg_dat_processor, this, _1));
+    auto arg_gbl_match_processor =
+        make_matcher(std::bind(&ParLoopHandler::arg_gbl_processor, this, _1));
     Matcher.addMatcher(find_function_call("op_arg_dat"), &arg_dat_match_processor);
 
     Matcher.addMatcher(find_function_call("op_arg_gbl"), &arg_gbl_match_processor);
@@ -56,6 +64,7 @@ void ParLoopHandler::run(const matchers::MatchFinder::MatchResult &Result) {
     });
 
     // Error if the argument isn't a call to op_arg_dat or op_arg_gbl.
+    using namespace clang::ast_matchers;
     Matcher.addMatcher(
         stmt(unless(hasDescendant(callExpr(callee(functionDecl(
             anyOf(hasName("op_arg_dat"), hasName("op_arg_gbl")))))))),
@@ -67,11 +76,8 @@ void ParLoopHandler::run(const matchers::MatchFinder::MatchResult &Result) {
 void ParLoopHandler::arg_dat_processor(const matchers::MatchFinder::MatchResult &Result) {
   const clang::CallExpr *call =
     Result.Nodes.getNodeAs<clang::CallExpr>("op_arg_dat");
-  auto var = call->getArg(0);
-  var->IgnoreCasts()->dump();
 }
 
-void ParLoopHandler::arg_gbl_processor(const matchers::MatchFinder::MatchResult &Result)
-{}
-
+void ParLoopHandler::arg_gbl_processor(
+    const matchers::MatchFinder::MatchResult &Result) {}
 }
