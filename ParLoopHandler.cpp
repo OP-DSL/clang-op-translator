@@ -1,6 +1,10 @@
 #include "ParLoopHandler.h"
 #include "utils.h"
 #include "clang/ASTMatchers/ASTMatchFinder.h"
+#include "clang/Frontend/ASTUnit.h"
+#include "clang/Frontend/CompilerInstance.h"
+#include "clang/Frontend/CompilerInvocation.h"
+#include "clang/Lex/Preprocessor.h"
 #include <llvm/Support/Debug.h>
 #include <sstream>
 
@@ -15,6 +19,18 @@ void ParLoopHandler::run(const matchers::MatchFinder::MatchResult &Result) {
   }
   const clang::Expr *str_arg = function->getArg(1);
   const clang::StringLiteral *name = getAsStringLiteral(str_arg);
+  const auto *fExpr =
+      llvm::dyn_cast<clang::DeclRefExpr>(function->getArg(0)->IgnoreCasts());
+  const auto *fDecl =
+      llvm::dyn_cast<clang::FunctionDecl>(fExpr->getFoundDecl());
+  if (!fDecl) {
+    reportDiagnostic(*Result.Context, function->getArg(0), "Must be a function pointer");
+    return;
+  } else if (!fDecl->hasBody()) {
+    reportDiagnostic(
+        *Result.Context, function->getArg(0),
+        "body must be available at the point of an op_par_loop call");
+  }
 
   // If the second argument isn't a string literal, issue an error
   if (!name) {
@@ -22,62 +38,52 @@ void ParLoopHandler::run(const matchers::MatchFinder::MatchResult &Result) {
                      "op_par_loop called with non-string literal kernel name",
                      clang::DiagnosticsEngine::Warning);
   }
-  debugs() << "processing kernel " << name->getString() << " with "
-           << function->getNumArgs() << " arguments\n";
 
   const clang::FunctionDecl *parent =
       findParent<clang::FunctionDecl>(*function, *Result.Context);
   std::stringstream ss;
-  ss << "// op_par_loop kernel " << name->getString().str()
-     << " definition here\n\n";
+  ss << "void op_par_loop_" << name->getString().str()
+     << "(const char*, op_set";
+  for (unsigned i = 0; i < function->getNumArgs() - 3; ++i) {
+    ss << ", op_dat";
+  }
+  ss << ");\n\n";
   Rewriter.InsertTextBefore(parent->getLocStart(), ss.str());
 
-  // Iterate over arguments
-  for (auto *arg :
-       llvm::make_range(function->arg_begin() + 3, function->arg_end())) {
+  // Reset the stringstream;
+  ss.str({});
+  ss << "_" << name->getString().str();
+  Rewriter.InsertTextAfter(function->getLocStart().getLocWithOffset(11),
+                           ss.str());
+  Rewriter.RemoveText(
+      {function->getArg(0)->getLocStart(), function->getArg(1)->getLocStart()});
 
-    auto arg_gbl_processor =
-        make_matcher([](const matchers::MatchFinder::MatchResult &Result) {});
+  ss.str({});
+  ss << "op_par_loop_" << name->getString().str();
 
-    auto find_function_call = [](llvm::StringRef s) {
-      using namespace clang::ast_matchers;
-      return stmt(
-          hasDescendant(callExpr(callee(functionDecl(hasName(s)))).bind(s)));
-    };
-
-    clang::ast_matchers::MatchFinder Matcher;
-    // arg->dump();
-    using namespace std::placeholders;
-    auto arg_dat_match_processor =
-        make_matcher(std::bind(&ParLoopHandler::arg_dat_processor, this, _1));
-    auto arg_gbl_match_processor =
-        make_matcher(std::bind(&ParLoopHandler::arg_gbl_processor, this, _1));
-    Matcher.addMatcher(find_function_call("op_arg_dat"), &arg_dat_match_processor);
-
-    Matcher.addMatcher(find_function_call("op_arg_gbl"), &arg_gbl_match_processor);
-
-    auto errorMatcher = make_matcher([arg](
-        const matchers::MatchFinder::MatchResult &Result) {
-      reportDiagnostic(
-          *Result.Context, arg,
-          "argument to op_par_loop must be a call to op_arg_dat or op_arg_gbl");
-    });
-
-    // Error if the argument isn't a call to op_arg_dat or op_arg_gbl.
-    using namespace clang::ast_matchers;
-    Matcher.addMatcher(
-        stmt(unless(hasDescendant(callExpr(callee(functionDecl(
-            anyOf(hasName("op_arg_dat"), hasName("op_arg_gbl")))))))),
-        &errorMatcher);
-    Matcher.match(*arg, *Result.Context);
-  }
+  auto newFile = createCompilerInstance();
+  auto TU = newFile->getASTContext().getTranslationUnitDecl();
+  clang::QualType FTy = newFile->getASTContext().getFunctionType(
+      newFile->getASTContext().IntTy, {},
+      clang::FunctionProtoType::ExtProtoInfo());
+  clang::FunctionDecl *FD = clang::FunctionDecl::Create(
+      newFile->getASTContext(), TU, {}, {},
+      clang::DeclarationName(
+          &newFile->getPreprocessor().getIdentifierTable().get(ss.str())),
+      FTy, nullptr, clang::SC_None, false);
+  clang::FunctionDecl *oldFun = clang::FunctionDecl::Create(
+      newFile->getASTContext(), TU, {}, {},
+      clang::DeclarationName(
+          &newFile->getPreprocessor().getIdentifierTable().get(fDecl->getName())),
+      function->getType(), nullptr, clang::SC_None, false);
+  oldFun->setBody(fDecl->getBody());
+  ss << ".cpp";
+  TU->addDecl(oldFun);
+  TU->addDecl(FD);
+  std::error_code ec;
+  llvm::raw_fd_ostream outfile{ss.str(), ec,
+                               llvm::sys::fs::F_Text | llvm::sys::fs::F_RW};
+  TU->print(outfile);
 }
 
-void ParLoopHandler::arg_dat_processor(const matchers::MatchFinder::MatchResult &Result) {
-  const clang::CallExpr *call =
-    Result.Nodes.getNodeAs<clang::CallExpr>("op_arg_dat");
-}
-
-void ParLoopHandler::arg_gbl_processor(
-    const matchers::MatchFinder::MatchResult &Result) {}
 }

@@ -1,11 +1,12 @@
 #pragma once
-#include "clang/AST/ASTContext.h"
-#include "clang/AST/Expr.h"
-#include "clang/ASTMatchers/ASTMatchFinder.h"
+#include <clang/AST/ASTContext.h>
+#include <clang/AST/Expr.h>
+#include <clang/ASTMatchers/ASTMatchFinder.h>
+#include <clang/Frontend/CompilerInstance.h>
 
 namespace OP2 {
 
-const clang::StringLiteral *getAsStringLiteral(const clang::Expr *expr) {
+inline const clang::StringLiteral *getAsStringLiteral(const clang::Expr *expr) {
   if (auto str = llvm::dyn_cast<clang::StringLiteral>(expr))
     return str;
 
@@ -15,7 +16,7 @@ const clang::StringLiteral *getAsStringLiteral(const clang::Expr *expr) {
   return llvm::dyn_cast<clang::StringLiteral>(cast->getSubExpr());
 }
 
-bool isStringLiteral(const clang::Expr &expr) {
+inline bool isStringLiteral(const clang::Expr &expr) {
   return getAsStringLiteral(&expr);
 }
 
@@ -32,7 +33,7 @@ clang::DiagnosticBuilder reportDiagnostic(
   return report;
 }
 
-llvm::raw_ostream& debugs() {
+inline llvm::raw_ostream& debugs() {
 #ifndef NDEBUG
     return llvm::errs();
 #else
@@ -75,4 +76,7 @@ const T *findParent(const clang::Stmt &stmt,
 
   return nullptr;
 }
+
+std::unique_ptr<clang::CompilerInstance> createCompilerInstance();
+
 }
