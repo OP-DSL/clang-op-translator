@@ -15,7 +15,7 @@ class ParLoopHandler : public clang::ast_matchers::MatchFinder::MatchCallback {
   clang::Rewriter &Rewriter;
 
 public:
-  ParLoopHandler(clang::Rewriter &Rewriter) : Rewriter{Rewriter} {}
+  ParLoopHandler(clang::Rewriter &Rewriter) : Rewriter(Rewriter) {}
 
   virtual void run(const matchers::MatchFinder::MatchResult &Result) override;
 

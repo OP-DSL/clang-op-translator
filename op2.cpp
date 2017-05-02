@@ -65,17 +65,7 @@ int main(int argc, const char **argv) {
 
   ClangTool Tool(OptionsParser.getCompilations(),
                  OptionsParser.getSourcePathList());
-  Tool.appendArgumentsAdjuster(
-      [](const clang::tooling::CommandLineArguments &args,
-         llvm::StringRef filename) {
-        std::string s = std::string("-I")
-                            .append(std::getenv("OP2_INSTALL_PATH"))
-                            .append("/c/include");
-        auto new_args = args;
-        new_args.push_back(s);
-        return new_args;
-      });
-
+ 
   return Tool.run(
       clang::tooling::newFrontendActionFactory<OP2::FrontendAction>().get());
 }
