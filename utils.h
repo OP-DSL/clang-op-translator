@@ -6,6 +6,45 @@
 
 namespace OP2 {
 
+//Just for parsing integers inside op_arg_dat()
+inline int getIntValFromExpr(const clang::Expr *expr){
+  //check for - in case of direct Kernels
+  if(const clang::UnaryOperator * idxOp =
+      llvm::dyn_cast<clang::UnaryOperator>(expr)){
+    if(idxOp->getOpcode() == clang::UO_Minus){
+      if(const clang::IntegerLiteral *operand = 
+          llvm::dyn_cast<clang::IntegerLiteral>(idxOp->getSubExpr())){
+        int val = operand->getValue().getLimitedValue(INT_MAX); 
+        return -1*val; 
+      } else {
+        llvm::errs() << "Minus applied to Non-IntegerLiteral\n";   
+      }
+    } else {
+      llvm::errs() << "Unexpected Unary OP";
+    }
+        
+  } else if(const clang::IntegerLiteral *intLit = 
+          llvm::dyn_cast<clang::IntegerLiteral>(expr)){
+    int val = intLit->getValue().getLimitedValue(INT_MAX); 
+    if(val != INT_MAX){
+      llvm::errs() << "IntegerLiteral exceeds INT_MAX"; 
+    }
+    return val;
+
+  } else {
+    llvm::errs() << "Expression is not an IntegerLiteral\n";
+  }
+  return INT_MAX;
+}
+
+inline const clang::VarDecl *getExprAsVarDecl(const clang::Expr *expr) {
+  if(const clang::DeclRefExpr *declRefExpr =
+      llvm::dyn_cast<clang::DeclRefExpr>(expr->IgnoreCasts()))
+    return llvm::dyn_cast<clang::VarDecl>(declRefExpr->getFoundDecl());
+  else
+    return nullptr;
+}
+
 inline const clang::StringLiteral *getAsStringLiteral(const clang::Expr *expr) {
   if (auto str = llvm::dyn_cast<clang::StringLiteral>(expr))
     return str;
