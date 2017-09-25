@@ -51,6 +51,11 @@ void ParLoopHandler::parseFunctionDecl(const clang::CallExpr *parloopExpr,
     const clang::CallExpr *argCallExpr =
         llvm::dyn_cast<clang::CallExpr>(argStmt);
     argCallExpr->dump();
+    std::string fname = llvm::dyn_cast<clang::NamedDecl>(argCallExpr->getCalleeDecl())->getName().str();
+    if(fname == "op_arg_gbl"){ //TODO
+      parLoopDataSS << fname << "\n";
+      continue;
+    }
 
     parLoopDataSS << argCallExpr->getType().getAsString() << "\n";
     const clang::VarDecl *opDat = getExprAsVarDecl(argCallExpr->getArg(0));
