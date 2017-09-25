@@ -26,7 +26,7 @@ inline int getIntValFromExpr(const clang::Expr *expr){
   } else if(const clang::IntegerLiteral *intLit = 
           llvm::dyn_cast<clang::IntegerLiteral>(expr)){
     int val = intLit->getValue().getLimitedValue(INT_MAX); 
-    if(val != INT_MAX){
+    if(val == INT_MAX){
       llvm::errs() << "IntegerLiteral exceeds INT_MAX"; 
     }
     return val;
