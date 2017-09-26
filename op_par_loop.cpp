@@ -8,6 +8,17 @@ llvm::raw_ostream &operator<<(llvm::raw_ostream &os, const OP_accs_type &accs) {
   return os << OP_accs_labels[accs];
 }
 
+// OPArg
+DummyOPArg::DummyOPArg(const clang::VarDecl *dat, int _idx,
+                       const clang::VarDecl *_map, size_t _dim,
+                       std::string _type, OP_accs_type _accs)
+    : op_dat(dat), idx(_idx), map(_map), dim(_dim), type(_type), accs(_accs),
+      isGBL(false) {}
+DummyOPArg::DummyOPArg(const clang::VarDecl *dat, size_t _dim,
+                       std::string _type, OP_accs_type _accs)
+    : op_dat(dat), idx(0), map(nullptr), dim(_dim), type(_type), accs(_accs),
+      isGBL(true) {}
+
 llvm::raw_ostream &operator<<(llvm::raw_ostream &os, const DummyOPArg &arg) {
   os << "op_arg" << (arg.isGBL ? "_gbl" : "") << ":\n\t"
      << "op_dat: " << arg.op_dat->getType().getAsString() << " "
@@ -29,20 +40,26 @@ llvm::raw_ostream &operator<<(llvm::raw_ostream &os, const DummyOPArg &arg) {
             << "\n\taccess: " << arg.accs << "\n";
 }
 
-// OPArg
-DummyOPArg::DummyOPArg(const clang::VarDecl *dat, int _idx,
-                       const clang::VarDecl *_map, size_t _dim,
-                       std::string _type, OP_accs_type _accs)
-    : op_dat(dat), idx(_idx), map(_map), dim(_dim), type(_type), accs(_accs),
-      isGBL(false) {}
-DummyOPArg::DummyOPArg(const clang::VarDecl *dat, size_t _dim,
-                       std::string _type, OP_accs_type _accs)
-    : op_dat(dat), idx(0), map(nullptr), dim(_dim), type(_type), accs(_accs),
-      isGBL(true) {}
+bool DummyOPArg::isDirect() const { return map == nullptr; }
 
 // ParLoop functions
 DummyParLoop::DummyParLoop(const clang::FunctionDecl *_function,
                            std::string _name, std::vector<OPArg> _args)
     : function(_function), name(_name), args(_args) {}
+
+bool DummyParLoop::isDirect() const {
+  return std::all_of(args.begin(), args.end(),
+                     [](const OPArg &a) { return a.isDirect(); });
+}
+
+std::string DummyParLoop::getName() const { return name; }
+
+const clang::FunctionDecl *DummyParLoop::getFunctionDecl() const {
+  return function;
+}
+
+std::vector<OPArg>::iterator DummyParLoop::arg_begin() { return args.begin(); }
+
+std::vector<OPArg>::iterator DummyParLoop::arg_end() { return args.end(); }
 
 } // namespace OP2
