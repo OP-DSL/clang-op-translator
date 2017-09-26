@@ -10,35 +10,9 @@
 
 namespace OP2 {
 
-void ParLoopHandler::parseFunctionDecl(const clang::CallExpr *parloopExpr,
-                                       const clang::SourceManager *SM) {
-  std::stringstream parLoopDataSS;
-  parLoopDataSS << "------------------------------\n";
-  const clang::StringLiteral *name = getAsStringLiteral(parloopExpr->getArg(1));
-  parLoopDataSS << "name: " << name->getString().str() << "\n";
-  
-  parLoopDataSS << "function def: \n";
-  const clang::DeclRefExpr *expr =
-      llvm::dyn_cast<clang::DeclRefExpr>(parloopExpr->getArg(0)->IgnoreCasts());
-  const clang::FunctionDecl *fDecl =
-      llvm::dyn_cast<clang::FunctionDecl>(expr->getFoundDecl());
-  clang::SourceRange fDeclSR = fDecl->getSourceRange();
-  parLoopDataSS << "  starts at: " << fDeclSR.getBegin().printToString(*SM)
-             << "\n";
-  parLoopDataSS << "  ends at: " << fDeclSR.getEnd().printToString(*SM) << "\n";
-  
-  const clang::DeclRefExpr *setDeclRef =
-      llvm::dyn_cast<clang::DeclRefExpr>(parloopExpr->getArg(2)->IgnoreCasts());
-  const clang::VarDecl *setDecl =
-      llvm::dyn_cast<clang::VarDecl>(setDeclRef->getFoundDecl());
-  parLoopDataSS << "iteration set: " << setDecl->getNameAsString() << "\n";
-
-  for (unsigned arg_ind = 3; arg_ind < parloopExpr->getNumArgs(); ++arg_ind) {
-    parLoopDataSS << "arg" << arg_ind - 3 << ":\n";
-
-    const clang::Expr *argExpr = parloopExpr->getArg(arg_ind);
+void addOPArgToVector(const clang::Expr *argExpr, std::vector<OPArg> &args){
     const clang::Stmt *argStmt = llvm::dyn_cast<clang::Stmt>(argExpr);
-    //ugly solution to get the op_arg_dat callExpr from from AST..
+    // ugly solution to get the op_arg_dat callExpr from from AST..
     while (!llvm::isa<clang::CallExpr>(argStmt)) {
       unsigned num_childs = 0;
       const clang::Stmt *parentStmt = argStmt;
@@ -50,49 +24,67 @@ void ParLoopHandler::parseFunctionDecl(const clang::CallExpr *parloopExpr,
     }
     const clang::CallExpr *argCallExpr =
         llvm::dyn_cast<clang::CallExpr>(argStmt);
-    argCallExpr->dump();
-    std::string fname = llvm::dyn_cast<clang::NamedDecl>(argCallExpr->getCalleeDecl())->getName().str();
-    if(fname == "op_arg_gbl"){ //TODO
-      parLoopDataSS << fname << "\n";
-      continue;
+    //argCallExpr->dump();
+    std::string fname =
+        llvm::dyn_cast<clang::NamedDecl>(argCallExpr->getCalleeDecl())
+            ->getName()
+            .str();
+    bool isGBL = fname == "op_arg_gbl";
+    if(!isGBL && fname != "op_arg_dat"){
+      llvm::errs() << "Unknown arg declaration: " << fname << "\n";
+      return;
     }
-
-    parLoopDataSS << argCallExpr->getType().getAsString() << "\n";
-    const clang::VarDecl *opDat = getExprAsVarDecl(argCallExpr->getArg(0));
-    parLoopDataSS << "  op_dat: " << opDat->getType().getAsString() << " "
-               << opDat->getName().str() << " "
-               << opDat->getDefinition(opDat->getASTContext())
-                      ->getLocation()
-                      .printToString(*SM)
-               << "\n";
-
-    const clang::Expr *idxExpr = argCallExpr->getArg(1)->IgnoreCasts(); 
-    parLoopDataSS << "  idx: " << getIntValFromExpr(idxExpr)
-               << "\n";
-
-    const clang::VarDecl *opMap = getExprAsVarDecl(argCallExpr->getArg(2));
-
-    parLoopDataSS << "  map: ";
-    if(opMap){
-      parLoopDataSS  << opMap->getType().getAsString() << " "
-                 << opMap->getName().str() << " "
-                 << opMap->getDefinition(opDat->getASTContext())
-                        ->getLocation()
-                        .printToString(*SM);
+    const clang::VarDecl *opDat = getExprAsDecl<clang::VarDecl>(argCallExpr->getArg(0));
+    int idx = -2;
+    const clang::VarDecl *opMap = nullptr;
+    if(!isGBL){
+      idx = getIntValFromExpr(argCallExpr->getArg(1)->IgnoreCasts());
+      opMap = getExprAsDecl<clang::VarDecl>(argCallExpr->getArg(2));
     } else {
-      parLoopDataSS << "OP_ID";
+      llvm::outs() << opDat << "\n";
     }
-    parLoopDataSS << "\n";
+    size_t dim = getIntValFromExpr(argCallExpr->getArg(3 - (isGBL?2:0))->IgnoreCasts());
+    std::string type = getAsStringLiteral(argCallExpr->getArg(4 - (isGBL?2:0)))->getString().str();
+    OP_accs_type accs = OP_accs_type(getIntValFromExpr(argCallExpr->getArg(5 - (isGBL?2:0))->IgnoreCasts()));
 
-    parLoopDataSS << "  dim:" << getIntValFromExpr(argCallExpr->getArg(3)->IgnoreCasts())
-               << "\n";
-    parLoopDataSS << "  type:" 
-               << getAsStringLiteral(argCallExpr->getArg(4))->getString().str()
-               << "\n";
-    parLoopDataSS << "  access:" << getIntValFromExpr(argCallExpr->getArg(5)->IgnoreCasts()) //TODO map back values.
-               << "\n";
+  if(!isGBL){
+    args.push_back(OPArg(opDat, idx, opMap, dim, type, accs));
+  } else {
+    args.push_back(OPArg(opDat, dim, type, accs));
   }
+}
 
+void ParLoopHandler::parseFunctionDecl(const clang::CallExpr *parloopExpr,
+                                       const clang::SourceManager *SM) {
+  std::vector<OPArg> args;
+  std::string data; 
+  llvm::raw_string_ostream parLoopDataSS(data);
+  parLoopDataSS << "------------------------------\n";
+  std::string name = 
+    getAsStringLiteral(parloopExpr->getArg(1))->getString().str();
+  parLoopDataSS << "name: " << name << "\n";
+
+  parLoopDataSS << "function def: \n";
+  const clang::FunctionDecl *fDecl = 
+    getExprAsDecl<clang::FunctionDecl>(parloopExpr->getArg(0)->IgnoreCasts());
+
+  clang::SourceRange fDeclSR = fDecl->getSourceRange();
+  parLoopDataSS << "  starts at: " << fDeclSR.getBegin().printToString(*SM)
+                << "\n";
+  parLoopDataSS << "  ends at: " << fDeclSR.getEnd().printToString(*SM) << "\n";
+
+  const clang::VarDecl *setDecl =
+      getExprAsDecl<clang::VarDecl>(parloopExpr->getArg(2)->IgnoreCasts());
+      
+  parLoopDataSS << "iteration set: " << setDecl->getNameAsString() << "\n";
+
+  for (unsigned arg_ind = 3; arg_ind < parloopExpr->getNumArgs(); ++arg_ind) {
+    parLoopDataSS << "arg" << arg_ind - 3 << ":\n";
+
+    const clang::Expr *argExpr = parloopExpr->getArg(arg_ind);
+    addOPArgToVector(argExpr, args);
+    parLoopDataSS << args.back();
+  }
   llvm::outs() << parLoopDataSS.str();
 }
 
@@ -154,8 +146,8 @@ void ParLoopHandler::run(const matchers::MatchFinder::MatchResult &Result) {
                                   func_signature);
 
   (*Replace)[fname] = Rpls.merge(clang::tooling::Replacements(Rep));
-    // Add replacement for func call
-    // TODO try with SourceRange instead of length
+  // Add replacement for func call
+  // TODO try with SourceRange instead of length
   unsigned length =
       sourceManager->getFileOffset(function->getArg(1)->getLocStart()) -
       sourceManager->getFileOffset(
@@ -175,4 +167,4 @@ void ParLoopHandler::run(const matchers::MatchFinder::MatchResult &Result) {
   parseFunctionDecl(function, Result.SourceManager);
 }
 
-}
+} // namespace OP2

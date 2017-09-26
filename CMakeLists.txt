@@ -8,6 +8,8 @@ add_clang_executable(op2
   ParLoopHandler.h
   utils.cpp
   utils.h
+  op_par_loop.cpp
+  op_par_loop.h
   )
 
 target_link_libraries(op2

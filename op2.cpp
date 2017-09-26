@@ -10,6 +10,7 @@
 #include "llvm/Support/CommandLine.h"
 #include <memory>
 #include <sstream>
+#include "op_par_loop.h"
 
 static llvm::cl::OptionCategory Op2Category("OP2 Options");
 static llvm::cl::extrahelp
@@ -19,6 +20,7 @@ namespace OP2 {
 //Subclass Refactoringtool (or ClangTool? RefactoringTool has a map for Replacements)
 class OP2RefactoringTool : public clang::tooling::RefactoringTool {
   // We can collect all data about kernels
+  std::vector<ParLoop> loops;
 public:
   OP2RefactoringTool(
       const clang::tooling::CompilationDatabase &Compilations,
@@ -27,6 +29,9 @@ public:
           std::make_shared<clang::PCHContainerOperations>())
       : clang::tooling::RefactoringTool(Compilations, SourcePaths,
                                         PCHContainerOps) {}
+  std::vector<ParLoop>& getParLoops(){
+    return loops;
+  }
 };
 
 //write the modifications to output files
@@ -80,7 +85,8 @@ int main(int argc, const char **argv) {
   OP2::OP2RefactoringTool Tool(OptionsParser.getCompilations(),
                               OptionsParser.getSourcePathList());
 
-  OP2::ParLoopHandler parLoopHandlerCallback(&Tool.getReplacements());
+  OP2::ParLoopHandler parLoopHandlerCallback(&Tool.getReplacements(), 
+                                             Tool.getParLoops());
  
   clang::ast_matchers::MatchFinder Finder;
   Finder.addMatcher(
