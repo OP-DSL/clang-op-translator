@@ -10,6 +10,8 @@ add_clang_executable(op2
   utils.h
   op_par_loop.cpp
   op_par_loop.h
+  generators/SeqRefactoringTool.h
+  generators/SeqRefactoringTool.cpp
   )
 
 target_link_libraries(op2

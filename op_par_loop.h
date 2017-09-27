@@ -41,6 +41,8 @@ public:
   bool isDirect() const;
   std::string getName() const;
   const clang::FunctionDecl * getFunctionDecl() const;
+  std::string getUserFuncInc(/*TODO const clang::SourceManager& SM*/) const;
+  std::string getParLoopDef() const;
   std::vector<OPArg>::iterator arg_begin();
   std::vector<OPArg>::iterator arg_end();
 };

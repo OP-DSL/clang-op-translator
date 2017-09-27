@@ -58,6 +58,21 @@ const clang::FunctionDecl *DummyParLoop::getFunctionDecl() const {
   return function;
 }
 
+std::string DummyParLoop::getUserFuncInc(/*const clang::SourceManager& SM*/) const {
+  //TODO get proper include with SourceManager instead oh hardcoded version
+  return "#include \"" + name + ".h\"";
+}
+
+std::string DummyParLoop::getParLoopDef() const {
+  std::string param = "void par_loop_"+name+"(const char *name, op_set set";
+  llvm::raw_string_ostream os(param);
+  for(size_t i = 2; i < args.size(); ++i){
+    os << ", op_arg arg" << i - 2;
+  }
+  os << ")";
+  return os.str();
+}
+
 std::vector<OPArg>::iterator DummyParLoop::arg_begin() { return args.begin(); }
 
 std::vector<OPArg>::iterator DummyParLoop::arg_end() { return args.end(); }

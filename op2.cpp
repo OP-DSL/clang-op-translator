@@ -11,6 +11,7 @@
 #include <memory>
 #include <sstream>
 #include "op_par_loop.h"
+#include "generators/SeqRefactoringTool.h"
 
 static llvm::cl::OptionCategory Op2Category("OP2 Options");
 static llvm::cl::extrahelp
@@ -31,6 +32,20 @@ public:
                                         PCHContainerOps) {}
   std::vector<ParLoop>& getParLoops(){
     return loops;
+  }
+  void generateKernelFiles(/*FIXME*/clang::tooling::CompilationDatabase&C){
+    std::vector<std::string> kernelFileNames;
+    llvm::outs() << "asd"<< "\n";
+    for(ParLoop& loop:loops){
+      std::string name = loop.getName();
+      kernelFileNames.push_back(name+"_seqkernel.cpp");
+      SeqRefactoringTool tool(C,loop);
+      tool.generateKernelFile();
+      llvm::outs() << name << "\n";
+      // Make new refactoring tool which writes the kernel based on the skeleton.
+      // Refactoring dir vs indir could be template? 
+      // Or a simple refacoring for seq..
+    } 
   }
 };
 
@@ -97,6 +112,7 @@ int main(int argc, const char **argv) {
     return Result;
   }
 
+  Tool.generateKernelFiles(OptionsParser.getCompilations());
   OP2::writeOutReplacements(Tool);
 
   return 0;
