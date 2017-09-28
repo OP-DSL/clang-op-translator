@@ -10,7 +10,11 @@ namespace OP2 {
 ///
 ///
 class SeqRefactoringTool : public clang::tooling::RefactoringTool {
-  //TODO maybe subclass of OP2RefactoringTool?
+  static constexpr const char *skeletons[1] = {
+      "/home/dbalogh/clang-llvm/llvm/tools/clang/tools/extra/op2/skeletons/"
+      "skeleton_seqdirkernel.cpp"};
+
+  // TODO maybe subclass of OP2RefactoringTool?
   const ParLoop &loop;
 
 public:
@@ -21,7 +25,7 @@ public:
   /// @param loop The ParLoop containing informations about the op_par_loop.
   /// @param PCHContainerOps The PCHContainerOperation for loading and creating
   /// clang modules
-  //TODO: Modify to get right skeletons... and Database..
+  // TODO: Modify to get right skeletons... and Database..
   SeqRefactoringTool(
       const clang::tooling::CompilationDatabase &Compilations,
       const ParLoop &loop,

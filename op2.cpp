@@ -1,55 +1,60 @@
 #include "ParLoopHandler.h"
+#include "generators/SeqRefactoringTool.h"
+#include "op_par_loop.h"
 #include "clang/ASTMatchers/ASTMatchFinder.h"
 #include "clang/Basic/Diagnostic.h"
-#include "clang/Frontend/TextDiagnosticPrinter.h"
 #include "clang/Frontend/CompilerInstance.h"
 #include "clang/Frontend/FrontendActions.h"
+#include "clang/Frontend/TextDiagnosticPrinter.h"
 #include "clang/Tooling/CommonOptionsParser.h"
 #include "clang/Tooling/Refactoring.h"
 #include "clang/Tooling/Tooling.h"
 #include "llvm/Support/CommandLine.h"
 #include <memory>
 #include <sstream>
-#include "op_par_loop.h"
-#include "generators/SeqRefactoringTool.h"
 
 static llvm::cl::OptionCategory Op2Category("OP2 Options");
 static llvm::cl::extrahelp
-CommonHelp(clang::tooling::CommonOptionsParser::HelpMessage);
+    CommonHelp(clang::tooling::CommonOptionsParser::HelpMessage);
 
 namespace OP2 {
-//Subclass Refactoringtool (or ClangTool? RefactoringTool has a map for Replacements)
+// Subclass Refactoringtool (or ClangTool? RefactoringTool has a map for
+// Replacements)
 class OP2RefactoringTool : public clang::tooling::RefactoringTool {
+  clang::tooling::CommonOptionsParser &optionsParser;
   // We can collect all data about kernels
   std::vector<ParLoop> loops;
+
 public:
   OP2RefactoringTool(
-      const clang::tooling::CompilationDatabase &Compilations,
-      llvm::ArrayRef<std::string> SourcePaths,
+      clang::tooling::CommonOptionsParser &optionsParser,
       std::shared_ptr<clang::PCHContainerOperations> PCHContainerOps =
           std::make_shared<clang::PCHContainerOperations>())
-      : clang::tooling::RefactoringTool(Compilations, SourcePaths,
-                                        PCHContainerOps) {}
-  std::vector<ParLoop>& getParLoops(){
-    return loops;
-  }
-  void generateKernelFiles(/*FIXME*/clang::tooling::CompilationDatabase&C){
+      : clang::tooling::RefactoringTool(optionsParser.getCompilations(),
+                                        optionsParser.getSourcePathList(),
+                                        PCHContainerOps),
+        optionsParser(optionsParser) {}
+  std::vector<ParLoop> &getParLoops() { return loops; }
+  void generateKernelFiles() {
     std::vector<std::string> kernelFileNames;
-    llvm::outs() << "asd"<< "\n";
-    for(ParLoop& loop:loops){
+    llvm::outs() << "asd"
+                 << "\n";
+    for (ParLoop &loop : loops) {
       std::string name = loop.getName();
-      kernelFileNames.push_back(name+"_seqkernel.cpp");
-      SeqRefactoringTool tool(C,loop);
-      tool.generateKernelFile();
+      kernelFileNames.push_back(name + "_seqkernel.cpp");
+      SeqRefactoringTool tool(optionsParser.getCompilations(), loop);
+      if (tool.generateKernelFile()) {
+        llvm::outs() << "Error ";
+      }
       llvm::outs() << name << "\n";
-      // Make new refactoring tool which writes the kernel based on the skeleton.
-      // Refactoring dir vs indir could be template? 
-      // Or a simple refacoring for seq..
-    } 
+      // Make new refactoring tool which writes the kernel based on the
+      // skeleton. Refactoring dir vs indir could be template? Or a simple
+      // refacoring for seq..
+    }
   }
 };
 
-//write the modifications to output files
+// write the modifications to output files
 void writeOutReplacements(clang::tooling::RefactoringTool &Tool) {
   // Set up the Rewriter (For this we need a SourceManager)
   llvm::IntrusiveRefCntPtr<clang::DiagnosticOptions> DiagOpts =
@@ -97,12 +102,11 @@ int main(int argc, const char **argv) {
   using namespace clang::ast_matchers;
   CommonOptionsParser OptionsParser(argc, argv, Op2Category);
 
-  OP2::OP2RefactoringTool Tool(OptionsParser.getCompilations(),
-                              OptionsParser.getSourcePathList());
+  OP2::OP2RefactoringTool Tool(OptionsParser);
 
-  OP2::ParLoopHandler parLoopHandlerCallback(&Tool.getReplacements(), 
+  OP2::ParLoopHandler parLoopHandlerCallback(&Tool.getReplacements(),
                                              Tool.getParLoops());
- 
+
   clang::ast_matchers::MatchFinder Finder;
   Finder.addMatcher(
       callExpr(callee(functionDecl(hasName("op_par_loop")))).bind("par_loop"),
@@ -112,7 +116,7 @@ int main(int argc, const char **argv) {
     return Result;
   }
 
-  Tool.generateKernelFiles(OptionsParser.getCompilations());
+  Tool.generateKernelFiles();
   OP2::writeOutReplacements(Tool);
 
   return 0;

@@ -1,9 +1,10 @@
 #include "SeqRefactoringTool.h"
+#include "BaseKernelHandler.h"
 #include "clang/ASTMatchers/ASTMatchFinder.h"
 //-------------------
 #include "clang/Basic/Diagnostic.h"
-#include "clang/Frontend/TextDiagnosticPrinter.h"
 #include "clang/Frontend/CompilerInstance.h"
+#include "clang/Frontend/TextDiagnosticPrinter.h"
 #include "clang/Rewrite/Core/Rewriter.h"
 //-------------------
 
@@ -13,28 +14,27 @@ SeqRefactoringTool::SeqRefactoringTool(
     const clang::tooling::CompilationDatabase &Compilations,
     const ParLoop &loop,
     std::shared_ptr<clang::PCHContainerOperations> PCHContainerOps)
-    : RefactoringTool(Compilations, {"/home/dbalogh/clang-llvm/llvm/tools/clang/tools/extra/op2/skeletons/skeleton_seqdirkernel.cpp"}, PCHContainerOps), loop(loop) {}
+    : RefactoringTool(Compilations, {skeletons[loop.getKernelType()]},
+                      PCHContainerOps),
+      loop(loop) {}
 
 int SeqRefactoringTool::generateKernelFile() {
-  using namespace clang::ast_matchers; 
-  
-  //TODO determine the skeleton and modify everithing under this line
-  // SourcePaths.push_back("~/clang-llvm/llvm/tools/clang/tools/extra/op2/skeletons/skeleton_seqdirkernel.cpp");
+  using namespace clang::ast_matchers;
+  llvm::outs() << "Started\n";
 
   // Create Callbacks
-  //  OP2::ParLoopHandler parLoopHandlerCallback(&Tool.getReplacements(), 
-  //                                             Tool.getParLoops());
+  BaseKernelHandler baseKernelHandler(&getReplacements(), loop);
   clang::ast_matchers::MatchFinder Finder;
-  // Finder.addMatcher(
-  //     callExpr(callee(functionDecl(hasName("op_par_loop")))).bind("par_loop"),
-  //     &parLoopHandlerCallback);
+  Finder.addMatcher(BaseKernelHandler::parLoopDeclMatcher, &baseKernelHandler);
 
-  if (int Result = run(clang::tooling::newFrontendActionFactory(&Finder).get())) {
+  if (int Result =
+          run(clang::tooling::newFrontendActionFactory(&Finder).get())) {
+    llvm::outs() << "Error " << Result << "\n";
     return Result;
   }
 
-  //TODO modify everithing under this line:
-  //OP2::writeOutReplacements(Tool);
+  // TODO modify everithing under this line:
+  // OP2::writeOutReplacements(Tool);
   // Set up the Rewriter (For this we need a SourceManager)
   llvm::IntrusiveRefCntPtr<clang::DiagnosticOptions> DiagOpts =
       new clang::DiagnosticOptions();
@@ -60,12 +60,12 @@ int SeqRefactoringTool::generateKernelFile() {
     std::error_code ec;
     std::string filename = loop.getName() + "_seqkernel.cpp";
 
+    llvm::outs() << filename << "\n";
     llvm::raw_fd_ostream outfile{llvm::StringRef(filename), ec,
                                  llvm::sys::fs::F_Text | llvm::sys::fs::F_RW};
     I->second.write(outfile);
   }
-  
-  return 0;  
+  return 0;
 }
 
 } // namespace OP2

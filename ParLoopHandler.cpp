@@ -10,44 +10,49 @@
 
 namespace OP2 {
 
-void addOPArgToVector(const clang::Expr *argExpr, std::vector<OPArg> &args){
-    const clang::Stmt *argStmt = llvm::dyn_cast<clang::Stmt>(argExpr);
-    // ugly solution to get the op_arg_dat callExpr from from AST..
-    while (!llvm::isa<clang::CallExpr>(argStmt)) {
-      unsigned num_childs = 0;
-      const clang::Stmt *parentStmt = argStmt;
-      for (const clang::Stmt *child : parentStmt->children()) {
-        num_childs++;
-        argStmt = child;
-      }
-      assert(num_childs == 1);
+void addOPArgToVector(const clang::Expr *argExpr, std::vector<OPArg> &args) {
+  const clang::Stmt *argStmt = llvm::dyn_cast<clang::Stmt>(argExpr);
+  // ugly solution to get the op_arg_dat callExpr from from AST..
+  while (!llvm::isa<clang::CallExpr>(argStmt)) {
+    unsigned num_childs = 0;
+    const clang::Stmt *parentStmt = argStmt;
+    for (const clang::Stmt *child : parentStmt->children()) {
+      num_childs++;
+      argStmt = child;
     }
-    const clang::CallExpr *argCallExpr =
-        llvm::dyn_cast<clang::CallExpr>(argStmt);
-    //argCallExpr->dump();
-    std::string fname =
-        llvm::dyn_cast<clang::NamedDecl>(argCallExpr->getCalleeDecl())
-            ->getName()
-            .str();
-    bool isGBL = fname == "op_arg_gbl";
-    if(!isGBL && fname != "op_arg_dat"){
-      llvm::errs() << "Unknown arg declaration: " << fname << "\n";
-      return;
-    }
-    const clang::VarDecl *opDat = getExprAsDecl<clang::VarDecl>(argCallExpr->getArg(0));
-    int idx = -2;
-    const clang::VarDecl *opMap = nullptr;
-    if(!isGBL){
-      idx = getIntValFromExpr(argCallExpr->getArg(1)->IgnoreCasts());
-      opMap = getExprAsDecl<clang::VarDecl>(argCallExpr->getArg(2));
-    } else {
-      llvm::outs() << opDat << "\n";
-    }
-    size_t dim = getIntValFromExpr(argCallExpr->getArg(3 - (isGBL?2:0))->IgnoreCasts());
-    std::string type = getAsStringLiteral(argCallExpr->getArg(4 - (isGBL?2:0)))->getString().str();
-    OP_accs_type accs = OP_accs_type(getIntValFromExpr(argCallExpr->getArg(5 - (isGBL?2:0))->IgnoreCasts()));
+    assert(num_childs == 1);
+  }
+  const clang::CallExpr *argCallExpr = llvm::dyn_cast<clang::CallExpr>(argStmt);
+  // argCallExpr->dump();
+  std::string fname =
+      llvm::dyn_cast<clang::NamedDecl>(argCallExpr->getCalleeDecl())
+          ->getName()
+          .str();
+  bool isGBL = fname == "op_arg_gbl";
+  if (!isGBL && fname != "op_arg_dat") {
+    llvm::errs() << "Unknown arg declaration: " << fname << "\n";
+    return;
+  }
+  const clang::VarDecl *opDat =
+      getExprAsDecl<clang::VarDecl>(argCallExpr->getArg(0));
+  int idx = -2;
+  const clang::VarDecl *opMap = nullptr;
+  if (!isGBL) {
+    idx = getIntValFromExpr(argCallExpr->getArg(1)->IgnoreCasts());
+    opMap = getExprAsDecl<clang::VarDecl>(argCallExpr->getArg(2));
+  } else {
+    llvm::outs() << opDat << "\n";
+  }
+  size_t dim = getIntValFromExpr(
+      argCallExpr->getArg(3 - (isGBL ? 2 : 0))->IgnoreCasts());
+  std::string type =
+      getAsStringLiteral(argCallExpr->getArg(4 - (isGBL ? 2 : 0)))
+          ->getString()
+          .str();
+  OP_accs_type accs = OP_accs_type(getIntValFromExpr(
+      argCallExpr->getArg(5 - (isGBL ? 2 : 0))->IgnoreCasts()));
 
-  if(!isGBL){
+  if (!isGBL) {
     args.push_back(OPArg(opDat, idx, opMap, dim, type, accs));
   } else {
     args.push_back(OPArg(opDat, dim, type, accs));
@@ -57,16 +62,16 @@ void addOPArgToVector(const clang::Expr *argExpr, std::vector<OPArg> &args){
 void ParLoopHandler::parseFunctionDecl(const clang::CallExpr *parloopExpr,
                                        const clang::SourceManager *SM) {
   std::vector<OPArg> args;
-  std::string data; 
+  std::string data;
   llvm::raw_string_ostream parLoopDataSS(data);
   parLoopDataSS << "------------------------------\n";
-  std::string name = 
-    getAsStringLiteral(parloopExpr->getArg(1))->getString().str();
+  std::string name =
+      getAsStringLiteral(parloopExpr->getArg(1))->getString().str();
   parLoopDataSS << "name: " << name << "\n";
 
   parLoopDataSS << "function def: \n";
-  const clang::FunctionDecl *fDecl = 
-    getExprAsDecl<clang::FunctionDecl>(parloopExpr->getArg(0)->IgnoreCasts());
+  const clang::FunctionDecl *fDecl =
+      getExprAsDecl<clang::FunctionDecl>(parloopExpr->getArg(0)->IgnoreCasts());
 
   clang::SourceRange fDeclSR = fDecl->getSourceRange();
   parLoopDataSS << "  starts at: " << fDeclSR.getBegin().printToString(*SM)
@@ -75,7 +80,7 @@ void ParLoopHandler::parseFunctionDecl(const clang::CallExpr *parloopExpr,
 
   const clang::VarDecl *setDecl =
       getExprAsDecl<clang::VarDecl>(parloopExpr->getArg(2)->IgnoreCasts());
-      
+
   parLoopDataSS << "iteration set: " << setDecl->getNameAsString() << "\n";
 
   for (unsigned arg_ind = 3; arg_ind < parloopExpr->getNumArgs(); ++arg_ind) {
