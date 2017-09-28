@@ -4,8 +4,10 @@
 namespace OP2 {
 using namespace clang::ast_matchers;
 
-const matchers::DeclarationMatcher BaseKernelHandler::parLoopDeclMatcher =
+const DeclarationMatcher BaseKernelHandler::parLoopDeclMatcher =
     functionDecl(hasName("op_par_loop_skeleton")).bind("par_loop_decl");
+const DeclarationMatcher BaseKernelHandler::nargsMatcher =
+    varDecl(hasType(isInteger()), hasName("nargs")).bind("nargs_decl");
 
 BaseKernelHandler::BaseKernelHandler(
     std::map<std::string, clang::tooling::Replacements> *Replace,
@@ -15,6 +17,8 @@ BaseKernelHandler::BaseKernelHandler(
 void BaseKernelHandler::run(const MatchFinder::MatchResult &Result) {
   if (!handleParLoopDecl(Result))
     return; // if successfully handled return
+  if (!handleNargsDecl(Result))
+    return;
 }
 
 int BaseKernelHandler::handleParLoopDecl(
@@ -55,6 +59,30 @@ int BaseKernelHandler::handleParLoopDecl(
       llvm::errs() << "Function arg addition failed in: " << filename << "\n";
     }
   }
+  return 0;
+}
+
+int BaseKernelHandler::handleNargsDecl(const MatchFinder::MatchResult &Result) {
+  const clang::VarDecl *nargsDecl =
+      Result.Nodes.getNodeAs<clang::VarDecl>("nargs_decl");
+  if (!nargsDecl)
+    return 1; // We shouldn't handle this match
+  clang::SourceManager *sm = Result.SourceManager;
+  if (!sm->isWrittenInMainFile(nargsDecl->getLocStart()))
+    return 0;
+  std::string filename = getFileNameFromSourceLoc(nargsDecl->getLocStart(), sm);
+
+  // change value of nargs
+  if (loop.getNumArgs() <= 1)
+    return 0; // there is no need to change
+  clang::tooling::Replacement repl(*sm, nargsDecl->getLocEnd(),
+                                   1 /*len of 1..*/,
+                                   std::to_string(loop.getNumArgs()));
+  if (llvm::Error err = (*Replace)[filename].add(repl)) {
+    // TODO diagnostics..
+    llvm::errs() << "Set value of nargs failed in: " << filename << "\n";
+  }
+
   return 0;
 }
 

@@ -9,7 +9,7 @@ void skeleton(double* a){}
 // host stub function
 void op_par_loop_skeleton(char const *name, op_set set, op_arg arg0) {
 
-  int nargs = 2;
+  int nargs = 1;
   op_arg args[1];
 
   args[0] = arg0;

@@ -26,6 +26,7 @@ int SeqRefactoringTool::generateKernelFile() {
   BaseKernelHandler baseKernelHandler(&getReplacements(), loop);
   clang::ast_matchers::MatchFinder Finder;
   Finder.addMatcher(BaseKernelHandler::parLoopDeclMatcher, &baseKernelHandler);
+  Finder.addMatcher(BaseKernelHandler::nargsMatcher, &baseKernelHandler);
 
   if (int Result =
           run(clang::tooling::newFrontendActionFactory(&Finder).get())) {

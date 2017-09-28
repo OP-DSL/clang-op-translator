@@ -17,6 +17,7 @@ protected:
   std::map<std::string, clang::tooling::Replacements> *Replace;
   const ParLoop &loop;
   int handleParLoopDecl(const matchers::MatchFinder::MatchResult &Result);
+  int handleNargsDecl(const matchers::MatchFinder::MatchResult &Result);
 
 public:
   /// @brief Construct a BaseKernelHandler
@@ -31,6 +32,8 @@ public:
   // Static matchers handled by this class
   /// @brief Matcher for the op_par_loop_skeleton declaration
   static const matchers::DeclarationMatcher parLoopDeclMatcher;
+  /// @brief Matcher for the declaration of nargs
+  static const matchers::DeclarationMatcher nargsMatcher;
 
   virtual void run(const matchers::MatchFinder::MatchResult &Result) override;
 };
