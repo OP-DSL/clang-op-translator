@@ -37,8 +37,6 @@ public:
   std::vector<ParLoop> &getParLoops() { return loops; }
   void generateKernelFiles() {
     std::vector<std::string> kernelFileNames;
-    llvm::outs() << "asd"
-                 << "\n";
     for (ParLoop &loop : loops) {
       std::string name = loop.getName();
       kernelFileNames.push_back(name + "_seqkernel.cpp");

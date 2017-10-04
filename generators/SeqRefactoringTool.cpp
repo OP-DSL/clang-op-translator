@@ -20,13 +20,17 @@ SeqRefactoringTool::SeqRefactoringTool(
 
 int SeqRefactoringTool::generateKernelFile() {
   using namespace clang::ast_matchers;
-  llvm::outs() << "Started\n";
 
   // Create Callbacks
   BaseKernelHandler baseKernelHandler(&getReplacements(), loop);
   clang::ast_matchers::MatchFinder Finder;
   Finder.addMatcher(BaseKernelHandler::parLoopDeclMatcher, &baseKernelHandler);
   Finder.addMatcher(BaseKernelHandler::nargsMatcher, &baseKernelHandler);
+  Finder.addMatcher(BaseKernelHandler::argsArrMatcher, &baseKernelHandler);
+  Finder.addMatcher(BaseKernelHandler::argsArrSetterMatcher,
+                    &baseKernelHandler);
+  Finder.addMatcher(BaseKernelHandler::opTimingReallocMatcher,
+                    &baseKernelHandler);
 
   if (int Result =
           run(clang::tooling::newFrontendActionFactory(&Finder).get())) {

@@ -18,6 +18,9 @@ protected:
   const ParLoop &loop;
   int handleParLoopDecl(const matchers::MatchFinder::MatchResult &Result);
   int handleNargsDecl(const matchers::MatchFinder::MatchResult &Result);
+  int handleArgsArrDecl(const matchers::MatchFinder::MatchResult &Result);
+  int handleArgsArrSetter(const matchers::MatchFinder::MatchResult &Result);
+  int handleOPTimingRealloc(const matchers::MatchFinder::MatchResult &Result);
 
 public:
   /// @brief Construct a BaseKernelHandler
@@ -34,6 +37,12 @@ public:
   static const matchers::DeclarationMatcher parLoopDeclMatcher;
   /// @brief Matcher for the declaration of nargs
   static const matchers::DeclarationMatcher nargsMatcher;
+  /// @brief Matcher for the declaration of args array
+  static const matchers::DeclarationMatcher argsArrMatcher;
+  /// @brief Matcher for filling args array with op_args
+  static const matchers::StatementMatcher argsArrSetterMatcher;
+  /// @brief Matcher for op_timing_realloc call to change kernel id
+  static const matchers::StatementMatcher opTimingReallocMatcher;
 
   virtual void run(const matchers::MatchFinder::MatchResult &Result) override;
 };
