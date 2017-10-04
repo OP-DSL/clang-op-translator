@@ -3,7 +3,7 @@
 
 namespace OP2 {
 using namespace clang::ast_matchers;
-auto x = hasName("asd");
+
 const DeclarationMatcher BaseKernelHandler::parLoopDeclMatcher =
     functionDecl(hasName("op_par_loop_skeleton")).bind("par_loop_decl");
 const DeclarationMatcher BaseKernelHandler::nargsMatcher =
