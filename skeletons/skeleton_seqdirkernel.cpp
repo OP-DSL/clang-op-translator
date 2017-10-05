@@ -20,7 +20,7 @@ void op_par_loop_skeleton(char const *name, op_set set, op_arg arg0) {
   op_timers_core(&cpu_t1, &wall_t1);
 
   if (OP_diags > 2) {
-    printf(" kernel routine w/o indirection:  skeleton");
+    printf("");
   }
 
   int set_size = op_mpi_halo_exchanges(set, nargs, args);

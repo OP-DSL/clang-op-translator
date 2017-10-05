@@ -1,5 +1,6 @@
 #include "SeqRefactoringTool.h"
 #include "BaseKernelHandler.h"
+#include "SeqKernelHandler.h"
 #include "clang/ASTMatchers/ASTMatchFinder.h"
 //-------------------
 #include "clang/Basic/Diagnostic.h"
@@ -22,6 +23,7 @@ int SeqRefactoringTool::generateKernelFile() {
   using namespace clang::ast_matchers;
 
   // Create Callbacks
+  // TODO Finder to Refactoring tool?
   BaseKernelHandler baseKernelHandler(&getReplacements(), loop);
   clang::ast_matchers::MatchFinder Finder;
   Finder.addMatcher(BaseKernelHandler::parLoopDeclMatcher, &baseKernelHandler);
@@ -35,6 +37,12 @@ int SeqRefactoringTool::generateKernelFile() {
                     &baseKernelHandler);
   Finder.addMatcher(BaseKernelHandler::opKernelsSubscriptMatcher,
                     &baseKernelHandler);
+  ///end of Base modifications
+  SeqKernelHandler seqKernelHandler(&getReplacements(), loop);
+  Finder.addMatcher(SeqKernelHandler::userFuncMatcher, &seqKernelHandler);
+  Finder.addMatcher(SeqKernelHandler::funcCallMatcher, &seqKernelHandler);
+
+  //end of seqKernel specific callbacks
 
   if (int Result =
           run(clang::tooling::newFrontendActionFactory(&Finder).get())) {

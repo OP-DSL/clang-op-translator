@@ -10,6 +10,7 @@ enum OP_accs_type { OP_READ = 0, OP_WRITE, OP_RW, OP_INC, OP_MAX, OP_MIN };
 llvm::raw_ostream &operator<<(llvm::raw_ostream &, const OP_accs_type &);
 
 class DummyOPArg {
+public:
   const clang::VarDecl *op_dat;
   int idx;
   const clang::VarDecl *map;
@@ -18,7 +19,6 @@ class DummyOPArg {
   OP_accs_type accs;
   const bool isGBL;
 
-public:
   DummyOPArg(const clang::VarDecl *dat, int _idx, const clang::VarDecl *_map,
              size_t _dim, std::string _type, OP_accs_type _accs);
   DummyOPArg(const clang::VarDecl *dat, size_t _dim, std::string _type,
@@ -41,6 +41,7 @@ public:
   bool isDirect() const;
   std::string getName() const;
   const clang::FunctionDecl *getFunctionDecl() const;
+  std::string getFuncCall() const;
   std::string getUserFuncInc(/*TODO const clang::SourceManager& SM*/) const;
   std::string getParLoopDef() const;
   std::vector<OPArg>::iterator arg_begin();

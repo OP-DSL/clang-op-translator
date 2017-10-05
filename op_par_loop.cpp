@@ -88,4 +88,17 @@ unsigned DummyParLoop::getKernelType() const {
 
 size_t DummyParLoop::getNumArgs() const { return args.size(); }
 
+std::string DummyParLoop::getFuncCall() const{
+  std::string funcCall = "" ;
+  llvm::raw_string_ostream ss(funcCall);
+  ss << name << "("; // TODO fix repr to store correct function data.
+  for(size_t i =0; i<args.size(); ++i){
+    ss << "&(("+args[i].type+"*)arg" << i << ".data)[" 
+       << args[i].dim << "*n]";  
+    ss << ",\n";
+  }
+  ss << ");"; 
+  return ss.str();
+}
+
 } // namespace OP2

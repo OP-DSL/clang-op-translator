@@ -234,12 +234,13 @@ int BaseKernelHandler::handleOPDiagPrintf(
       getFileNameFromSourceLoc(printfCallExpr->getLocStart(), sm);
 
   clang::SourceRange replRange(
+      printfCallExpr->getArg(0)->getLocEnd(),
       printfCallExpr->getArg(0)->getLocEnd().getLocWithOffset(
-          35 /*FIXME hardcoded*/),
-      printfCallExpr->getArg(0)->getLocEnd().getLocWithOffset(
-          43 /*FIXME hardcoded*/));
+          2 /*FIXME hardcoded*/));
+  std::string replString = std::string("\" kernel routine ") + 
+    (loop.isDirect()?"w/o":"with") + " indirection: " + loop.getName() + "\\n\"";
   clang::tooling::Replacement repl(
-      *sm, clang::CharSourceRange(replRange, false), loop.getName());
+      *sm, clang::CharSourceRange(replRange, false), replString);
   if (llvm::Error err = (*Replace)[filename].add(repl)) {
     // TODO diagnostics..
     llvm::errs() << "Set value of nargs failed in: " << filename << "\n";
