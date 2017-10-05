@@ -1,5 +1,5 @@
-#ifndef __UTILS_H_INCLUDED__
-#define __UTILS_H_INCLUDED__
+#ifndef UTILS_H_INCLUDED
+#define UTILS_H_INCLUDED
 #include <clang/AST/ASTContext.h>
 #include <clang/AST/Expr.h>
 #include <clang/ASTMatchers/ASTMatchFinder.h>

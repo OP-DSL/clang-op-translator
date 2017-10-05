@@ -6,6 +6,7 @@ add_clang_executable(op2
   op2.cpp
   ParLoopHandler.cpp
   ParLoopHandler.h
+  OP2RefactoringTool.hpp
   utils.cpp
   utils.h
   op_par_loop.cpp
