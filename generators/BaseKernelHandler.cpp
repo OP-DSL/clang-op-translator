@@ -1,6 +1,12 @@
 #include "BaseKernelHandler.h"
 #include "../utils.h"
 
+namespace {
+using namespace clang::ast_matchers;
+const auto parLoopSkeletonCompStmtMatcher =
+    compoundStmt(hasParent(functionDecl(hasName("op_par_loop_skeleton"))));
+} // namespace
+
 namespace OP2 {
 using namespace clang::ast_matchers;
 
@@ -11,20 +17,30 @@ const DeclarationMatcher BaseKernelHandler::nargsMatcher =
 
 const DeclarationMatcher BaseKernelHandler::argsArrMatcher =
     varDecl(hasName("args"),
-            hasParent(declStmt(hasParent(compoundStmt(
-                hasParent(functionDecl(hasName("op_par_loop_skeleton"))))))))
+            hasParent(declStmt(hasParent(parLoopSkeletonCompStmtMatcher))))
         .bind("args_arr_decl");
 const StatementMatcher BaseKernelHandler::argsArrSetterMatcher =
     cxxOperatorCallExpr(/*hasType(cxxRecordDecl(hasName("op_arg"))),FIXME more
                            specific matcher*/
-                        hasParent(compoundStmt(hasParent(
-                            functionDecl(hasName("op_par_loop_skeleton"))))))
+                        hasParent(parLoopSkeletonCompStmtMatcher))
         .bind("args_element_setter");
 const StatementMatcher BaseKernelHandler::opTimingReallocMatcher =
-    callExpr(callee((functionDecl(hasName("op_timing_realloc")))),
-             hasParent(compoundStmt(
-                 hasParent(functionDecl(hasName("op_par_loop_skeleton"))))))
+    callExpr(callee(functionDecl(hasName("op_timing_realloc"))),
+             hasParent(parLoopSkeletonCompStmtMatcher))
         .bind("op_timing_realloc");
+const StatementMatcher BaseKernelHandler::printfKernelNameMatcher =
+    callExpr(callee(functionDecl(hasName("printf"))),
+             hasParent(compoundStmt(
+                 hasParent(ifStmt(hasParent(parLoopSkeletonCompStmtMatcher))))))
+        .bind("printfName"); // More spec needed
+const StatementMatcher BaseKernelHandler::opKernelsSubscriptMatcher =
+    arraySubscriptExpr(hasBase(implicitCastExpr(hasSourceExpression(
+                           declRefExpr(to(varDecl(hasName("OP_kernels"))))))),
+                       hasIndex(integerLiteral(equals(0))),
+                       hasParent(memberExpr(hasParent(binaryOperator().bind(
+                                                "op_kernels_assignment")))
+                                     .bind("opk_member_expr")))
+        .bind("op_kernels_index");
 
 BaseKernelHandler::BaseKernelHandler(
     std::map<std::string, clang::tooling::Replacements> *Replace,
@@ -41,6 +57,10 @@ void BaseKernelHandler::run(const MatchFinder::MatchResult &Result) {
   if (!handleArgsArrSetter(Result))
     return;
   if (!handleOPTimingRealloc(Result))
+    return;
+  if (!handleOPDiagPrintf(Result))
+    return;
+  if (!handleOPKernels(Result))
     return;
 }
 
@@ -172,7 +192,7 @@ int BaseKernelHandler::handleArgsArrSetter(
 }
 
 int BaseKernelHandler::handleOPTimingRealloc(
-    const matchers::MatchFinder::MatchResult &Result) {
+    const MatchFinder::MatchResult &Result) {
   const clang::CallExpr *opTimingReallocCallExpr =
       Result.Nodes.getNodeAs<clang::CallExpr>("op_timing_realloc");
   if (!opTimingReallocCallExpr)
@@ -200,4 +220,73 @@ int BaseKernelHandler::handleOPTimingRealloc(
   return 0;
 }
 
+int BaseKernelHandler::handleOPDiagPrintf(
+    const MatchFinder::MatchResult &Result) {
+  const clang::CallExpr *printfCallExpr =
+      Result.Nodes.getNodeAs<clang::CallExpr>("printfName");
+  if (!printfCallExpr)
+    return 1; // We shouldn't handle this match
+
+  clang::SourceManager *sm = Result.SourceManager;
+  if (!sm->isWrittenInMainFile(printfCallExpr->getLocStart()))
+    return 0;
+  std::string filename =
+      getFileNameFromSourceLoc(printfCallExpr->getLocStart(), sm);
+
+  clang::SourceRange replRange(
+      printfCallExpr->getArg(0)->getLocEnd().getLocWithOffset(
+          35 /*FIXME hardcoded*/),
+      printfCallExpr->getArg(0)->getLocEnd().getLocWithOffset(
+          43 /*FIXME hardcoded*/));
+  clang::tooling::Replacement repl(
+      *sm, clang::CharSourceRange(replRange, false), loop.getName());
+  if (llvm::Error err = (*Replace)[filename].add(repl)) {
+    // TODO diagnostics..
+    llvm::errs() << "Set value of nargs failed in: " << filename << "\n";
+  }
+
+  return 0;
+}
+
+int BaseKernelHandler::handleOPKernels(const MatchFinder::MatchResult &Result) {
+  const clang::ArraySubscriptExpr *kernelsSubscriptExpr =
+      Result.Nodes.getNodeAs<clang::ArraySubscriptExpr>("op_kernels_index");
+  if (!kernelsSubscriptExpr)
+    return 1; // We shouldn't handle this match
+
+  clang::SourceManager *sm = Result.SourceManager;
+  if (!sm->isWrittenInMainFile(kernelsSubscriptExpr->getLocStart()))
+    return 0;
+  std::string filename =
+      getFileNameFromSourceLoc(kernelsSubscriptExpr->getLocStart(), sm);
+
+  if (Result.Nodes.getNodeAs<clang::MemberExpr>("opk_member_expr")
+          ->getMemberDecl()
+          ->getNameAsString() == "transfer") {
+    const clang::BinaryOperator *bop =
+        Result.Nodes.getNodeAs<clang::BinaryOperator>("op_kernels_assignment");
+    /*TODO generate proper transfer data*/
+    clang::SourceRange replRange(bop->getLocStart(),
+                                 bop->getLocEnd().getLocWithOffset(4));
+    // clang::arcmt::trans::findSemiAfterLocation(bop->getLocEnd(),
+    // *Result.Context));
+    clang::tooling::Replacement repl(
+        *sm, clang::CharSourceRange(replRange, false),
+        "OP_kernels[0].transfer += 1;/*changed*/" /*FIXME*/);
+    if (llvm::Error err = (*Replace)[filename].add(repl)) {
+      // TODO diagnostics..
+      llvm::errs() << "Set value of nargs failed in: " << filename << "\n";
+    }
+    return 0;
+  }
+  clang::tooling::Replacement repl(
+      *sm, kernelsSubscriptExpr->getIdx()->getLocStart(), 1,
+      "0/*changed*/" /*FIXME hardcoded loopID*/);
+  if (llvm::Error err = (*Replace)[filename].add(repl)) {
+    // TODO diagnostics..
+    llvm::errs() << "Set value of nargs failed in: " << filename << "\n";
+  }
+
+  return 0;
+}
 } // end of namespace OP2

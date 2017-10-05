@@ -21,6 +21,8 @@ protected:
   int handleArgsArrDecl(const matchers::MatchFinder::MatchResult &Result);
   int handleArgsArrSetter(const matchers::MatchFinder::MatchResult &Result);
   int handleOPTimingRealloc(const matchers::MatchFinder::MatchResult &Result);
+  int handleOPDiagPrintf(const matchers::MatchFinder::MatchResult &Result);
+  int handleOPKernels(const matchers::MatchFinder::MatchResult &Result);
 
 public:
   /// @brief Construct a BaseKernelHandler
@@ -28,7 +30,7 @@ public:
   /// @param Replace Replacements map from the RefactoringTool where
   /// Replacements should added.
   ///
-  /// @param loop The ParLoop that the file is currentlz generated.
+  /// @param loop The ParLoop that the file is currently generated.
   BaseKernelHandler(
       std::map<std::string, clang::tooling::Replacements> *Replace,
       const ParLoop &loop);
@@ -43,6 +45,10 @@ public:
   static const matchers::StatementMatcher argsArrSetterMatcher;
   /// @brief Matcher for op_timing_realloc call to change kernel id
   static const matchers::StatementMatcher opTimingReallocMatcher;
+  /// @brief Matcher for the printf call in if(OPDiags > 2)
+  static const matchers::StatementMatcher printfKernelNameMatcher;
+  /// @brief Matcher for OP_kernels changes at the end of the kernel.
+  static const matchers::StatementMatcher opKernelsSubscriptMatcher;
 
   virtual void run(const matchers::MatchFinder::MatchResult &Result) override;
 };

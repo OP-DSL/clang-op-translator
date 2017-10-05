@@ -31,6 +31,10 @@ int SeqRefactoringTool::generateKernelFile() {
                     &baseKernelHandler);
   Finder.addMatcher(BaseKernelHandler::opTimingReallocMatcher,
                     &baseKernelHandler);
+  Finder.addMatcher(BaseKernelHandler::printfKernelNameMatcher,
+                    &baseKernelHandler);
+  Finder.addMatcher(BaseKernelHandler::opKernelsSubscriptMatcher,
+                    &baseKernelHandler);
 
   if (int Result =
           run(clang::tooling::newFrontendActionFactory(&Finder).get())) {
