@@ -1,11 +1,11 @@
-#ifndef __PARLOOPHANDLER_H_INCLUDED__
-#define __PARLOOPHANDLER_H_INCLUDED__
-#include "op_par_loop.h"
+#ifndef PARLOOPHANDLER_H_INCLUDED
+#define PARLOOPHANDLER_H_INCLUDED
+#include "OPParLoopData.h"
 #include "clang/Tooling/Refactoring.h"
 // TODO check includes
 #include "clang/ASTMatchers/ASTMatchFinder.h"
-#include "clang/ASTMatchers/ASTMatchers.h"
-#include "clang/Rewrite/Core/Rewriter.h"
+//#include "clang/ASTMatchers/ASTMatchers.h"
+//#include "clang/Rewrite/Core/Rewriter.h"
 
 namespace clang {
 class CompilerInstance;
@@ -29,4 +29,4 @@ public:
   virtual void run(const matchers::MatchFinder::MatchResult &Result) override;
 };
 } // namespace OP2
-#endif // end of __PARLOOPHANDLER_H_INCLUDED__ guard
+#endif // end of PARLOOPHANDLER_H_INCLUDED guard

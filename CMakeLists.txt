@@ -9,8 +9,8 @@ add_clang_executable(op2
   OP2RefactoringTool.hpp
   utils.cpp
   utils.h
-  op_par_loop.cpp
-  op_par_loop.h
+  OPParLoopData.h
+  OPParLoopData.cpp
   generators/SeqRefactoringTool.h
   generators/SeqRefactoringTool.cpp
   generators/BaseKernelHandler.h

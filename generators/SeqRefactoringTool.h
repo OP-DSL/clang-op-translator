@@ -1,9 +1,8 @@
 #ifndef SEQREFACTORINGTOOL_H
 #define SEQREFACTORINGTOOL_H
 
-#include "../op_par_loop.h"
+#include "../OPParLoopData.h"
 #include "clang/Tooling/Refactoring.h"
-#include "clang/Tooling/Tooling.h"
 
 namespace OP2 {
 /// \brief Utility of generate sequential kernel based on ParLoop information.

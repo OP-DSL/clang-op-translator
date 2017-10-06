@@ -9,7 +9,7 @@ const auto parLoopSkeletonCompStmtMatcher =
 
 namespace OP2 {
 using namespace clang::ast_matchers;
-
+// Static Matchers of BaseKernelHandler
 const DeclarationMatcher BaseKernelHandler::parLoopDeclMatcher =
     functionDecl(hasName("op_par_loop_skeleton")).bind("par_loop_decl");
 const DeclarationMatcher BaseKernelHandler::nargsMatcher =
@@ -68,7 +68,6 @@ int BaseKernelHandler::handleParLoopDecl(
     const MatchFinder::MatchResult &Result) {
   const clang::FunctionDecl *function =
       Result.Nodes.getNodeAs<clang::FunctionDecl>("par_loop_decl");
-
   if (!function)
     return 1; // We shouldn't handle this match
   clang::SourceManager *sm = Result.SourceManager;
@@ -153,7 +152,7 @@ int BaseKernelHandler::handleArgsArrDecl(
                                    std::to_string(loop.getNumArgs()));
   if (llvm::Error err = (*Replace)[filename].add(repl)) {
     // TODO diagnostics..
-    llvm::errs() << "Set value of nargs failed in: " << filename << "\n";
+    llvm::errs() << "Set size for args array failed in: " << filename << "\n";
   }
 
   return 0;
@@ -185,7 +184,7 @@ int BaseKernelHandler::handleArgsArrSetter(
       *sm, clang::CharSourceRange(replRange, false), os.str());
   if (llvm::Error err = (*Replace)[filename].add(repl)) {
     // TODO diagnostics..
-    llvm::errs() << "Set value of nargs failed in: " << filename << "\n";
+    llvm::errs() << "Set args array failed in: " << filename << "\n";
   }
 
   return 0;
@@ -211,10 +210,11 @@ int BaseKernelHandler::handleOPTimingRealloc(
           1 /*FIXME hardcoded len 0*/));
   clang::tooling::Replacement repl(*sm,
                                    clang::CharSourceRange(replRange, false),
-                                   "0/*changed*/" /*FIXME hardcoded loopID*/);
+                                   std::to_string(loop.getLoopID()));
   if (llvm::Error err = (*Replace)[filename].add(repl)) {
     // TODO diagnostics..
-    llvm::errs() << "Set value of nargs failed in: " << filename << "\n";
+    llvm::errs() << "Set loopID for timing_realloc failed at: " << filename
+                 << "\n";
   }
 
   return 0;
@@ -237,13 +237,14 @@ int BaseKernelHandler::handleOPDiagPrintf(
       printfCallExpr->getArg(0)->getLocEnd(),
       printfCallExpr->getArg(0)->getLocEnd().getLocWithOffset(
           2 /*FIXME hardcoded*/));
-  std::string replString = std::string("\" kernel routine ") + 
-    (loop.isDirect()?"w/o":"with") + " indirection: " + loop.getName() + "\\n\"";
+  std::string replString = std::string("\" kernel routine ") +
+                           (loop.isDirect() ? "w/o" : "with") +
+                           " indirection: " + loop.getName() + "\\n\"";
   clang::tooling::Replacement repl(
       *sm, clang::CharSourceRange(replRange, false), replString);
   if (llvm::Error err = (*Replace)[filename].add(repl)) {
     // TODO diagnostics..
-    llvm::errs() << "Set value of nargs failed in: " << filename << "\n";
+    llvm::errs() << "Set printf failed in: " << filename << "\n";
   }
 
   return 0;
@@ -276,16 +277,17 @@ int BaseKernelHandler::handleOPKernels(const MatchFinder::MatchResult &Result) {
         "OP_kernels[0].transfer += 1;/*changed*/" /*FIXME*/);
     if (llvm::Error err = (*Replace)[filename].add(repl)) {
       // TODO diagnostics..
-      llvm::errs() << "Set value of nargs failed in: " << filename << "\n";
+      llvm::errs() << "Set transfer failed in: " << filename << "\n";
     }
     return 0;
   }
   clang::tooling::Replacement repl(
       *sm, kernelsSubscriptExpr->getIdx()->getLocStart(), 1,
-      "0/*changed*/" /*FIXME hardcoded loopID*/);
+      std::to_string(loop.getLoopID()));
   if (llvm::Error err = (*Replace)[filename].add(repl)) {
     // TODO diagnostics..
-    llvm::errs() << "Set value of nargs failed in: " << filename << "\n";
+    llvm::errs() << "Set looID in for index OP_kernels failed in: " << filename
+                 << "\n";
   }
 
   return 0;

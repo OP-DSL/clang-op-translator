@@ -1,6 +1,7 @@
 #ifndef OPPARLOOP_H
 #define OPPARLOOP_H
-#include "llvm/Support/raw_ostream.h"
+#include "clang/AST/Decl.h"
+#include <vector>
 
 namespace OP2 {
 
@@ -14,22 +15,47 @@ inline llvm::raw_ostream &operator<<(llvm::raw_ostream &os,
 }
 
 struct DummyOPArgv2 {
-  const clang::VarDecl *op_dat;
+  std::string opDat;
   int idx;
-  const clang::VarDecl *map;
+  bool opMap;
   size_t dim;
   std::string type;
   OP_accs_type accs;
   const bool isGBL;
 
-  DummyOPArg(const clang::VarDecl *dat, int _idx, const clang::VarDecl *_map,
-             size_t _dim, std::string _type, OP_accs_type _accs);
-  DummyOPArg(const clang::VarDecl *dat, size_t _dim, std::string _type,
-             OP_accs_type _accs);
+  DummyOPArgv2(const clang::VarDecl *, int, const clang::VarDecl *, size_t,
+               std::string, OP_accs_type);
+  DummyOPArgv2(const clang::VarDecl *, size_t, std::string, OP_accs_type);
   bool isDirect() const;
-  friend llvm::raw_ostream &operator<<(llvm::raw_ostream &, const DummyOPArg &);
+  std::string getArgCall(int, std::string) const;
+  friend llvm::raw_ostream &operator<<(llvm::raw_ostream &,
+                                       const DummyOPArgv2 &);
 };
+
 typedef DummyOPArgv2 OPArg;
+
+class DummyParLoop {
+  static size_t numLoops;
+  int loopId;
+  std::string function;
+  const std::string name;
+  std::vector<OPArg> args;
+
+public:
+  DummyParLoop(const clang::FunctionDecl *_function, std::string _name,
+               std::vector<OPArg> _args);
+
+  bool isDirect() const;
+  std::string getName() const;
+  std::string getFuncCall() const;
+  std::string getUserFuncInc() const;
+  std::string getParLoopDef() const;
+  size_t getNumArgs() const;
+  size_t getLoopID() const;
+  unsigned getKernelType() const;
+};
+
+typedef DummyParLoop ParLoop;
 
 } // namespace OP2
 

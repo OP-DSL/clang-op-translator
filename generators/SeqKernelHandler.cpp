@@ -12,7 +12,6 @@ const StatementMatcher SeqKernelHandler::funcCallMatcher =
     callExpr(callee(functionDecl(hasName("skeleton"), parameterCountIs(1))))
         .bind("func_call");
 
-
 SeqKernelHandler::SeqKernelHandler(
     std::map<std::string, clang::tooling::Replacements> *Replace,
     const ParLoop &loop)
@@ -47,20 +46,20 @@ int SeqKernelHandler::handleUserFuncDecl(
 
 int SeqKernelHandler::handleUserFuncCall(
     const MatchFinder::MatchResult &Result) {
-  const CallExpr *funcCall =
-      Result.Nodes.getNodeAs<CallExpr>("func_call");
+  const CallExpr *funcCall = Result.Nodes.getNodeAs<CallExpr>("func_call");
   if (!funcCall)
     return 1;
   SourceManager *sm = Result.SourceManager;
   std::string filename = getFileNameFromSourceLoc(funcCall->getLocStart(), sm);
   SourceRange replRange(funcCall->getLocStart(),
-                        funcCall->getLocEnd().getLocWithOffset(2)); /*FIXME magic number for semicolon pos*/
-  std::string funcCallText = loop.getFuncCall();
+                        funcCall->getLocEnd().getLocWithOffset(2));
+  /*FIXME magic number for semicolon pos*/
+
   tooling::Replacement repl(*sm, CharSourceRange(replRange, false),
-                            funcCallText);
+                            loop.getFuncCall());
   if (llvm::Error err = (*Replace)[filename].add(repl)) {
     // TODO diagnostics..
-    llvm::errs() << "Replacement of user function failed in: " << filename
+    llvm::errs() << "Replacement of user function call in: " << filename
                  << "\n";
   }
   return 0;

@@ -2,12 +2,8 @@
 #include "BaseKernelHandler.h"
 #include "SeqKernelHandler.h"
 #include "clang/ASTMatchers/ASTMatchFinder.h"
-//-------------------
-#include "clang/Basic/Diagnostic.h"
-#include "clang/Frontend/CompilerInstance.h"
 #include "clang/Frontend/TextDiagnosticPrinter.h"
 #include "clang/Rewrite/Core/Rewriter.h"
-//-------------------
 
 namespace OP2 {
 
@@ -51,7 +47,7 @@ int SeqRefactoringTool::generateKernelFile() {
   }
 
   // TODO modify everithing under this line:
-  // OP2::writeOutReplacements(Tool);
+  // OP2RefactoringTool::writeOutReplacements();
   // Set up the Rewriter (For this we need a SourceManager)
   llvm::IntrusiveRefCntPtr<clang::DiagnosticOptions> DiagOpts =
       new clang::DiagnosticOptions();

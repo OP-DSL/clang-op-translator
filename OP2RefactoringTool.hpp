@@ -1,14 +1,15 @@
 #ifndef OP2REFACTORINGTOOL_HPP
-#define OP2REFACTORINGTOOL_HPP 
+#define OP2REFACTORINGTOOL_HPP
 // clang Tooling includes
-#include "clang/Tooling/Refactoring.h"
-#include "clang/Tooling/CommonOptionsParser.h"
 #include "clang/Frontend/TextDiagnosticPrinter.h"
+#include "clang/Rewrite/Core/Rewriter.h"
+#include "clang/Tooling/CommonOptionsParser.h"
+#include "clang/Tooling/Refactoring.h"
 
-//OP2 includes
+// OP2 includes
 #include "ParLoopHandler.h"
 #include "generators/SeqRefactoringTool.h"
-//Parloops.
+// Parloops.
 
 namespace OP2 {
 
@@ -43,7 +44,7 @@ public:
   }
 
   /// @brief Create the output files based on the replacements.
-  void writeOutReplacements(){
+  void writeOutReplacements() {
     // Set up the Rewriter (For this we need a SourceManager)
     llvm::IntrusiveRefCntPtr<clang::DiagnosticOptions> DiagOpts =
         new clang::DiagnosticOptions();
@@ -53,7 +54,7 @@ public:
         &*DiagOpts, new clang::TextDiagnosticPrinter(llvm::errs(), &*DiagOpts),
         true);
     clang::SourceManager Sources(Diagnostics, getFiles());
- 
+
     // Apply all replacements to a rewriter.
     clang::Rewriter Rewrite(Sources, clang::LangOptions());
     applyAllReplacements(Rewrite);
@@ -63,8 +64,9 @@ public:
     for (clang::Rewriter::buffer_iterator I = Rewrite.buffer_begin(),
                                           E = Rewrite.buffer_end();
          I != E; ++I) {
-  
-      std::string filename = getOutputFileName(Sources.getFileEntryForID(I->first));
+
+      std::string filename =
+          getOutputFileName(Sources.getFileEntryForID(I->first));
       std::error_code ec;
       llvm::raw_fd_ostream outfile{llvm::StringRef(filename), ec,
                                    llvm::sys::fs::F_Text | llvm::sys::fs::F_RW};
@@ -72,13 +74,13 @@ public:
       I->second.write(outfile);
     }
   }
-  
+
   /// @brief Generate output filename.
   ///
   /// @param Entry The input file that processed.
   ///
   /// @return output filename (xxx_op.cpp)
-  virtual std::string getOutputFileName(const clang::FileEntry *Entry ) const {
+  virtual std::string getOutputFileName(const clang::FileEntry *Entry) const {
     llvm::outs() << "Rewrite buffer for file: " << Entry->getName() << "\n";
 
     std::string filename = Entry->getName().str();
@@ -92,7 +94,6 @@ public:
                "_op.cpp";
     return filename;
   }
-  
 };
 
 } // namespace OP2

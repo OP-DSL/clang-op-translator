@@ -1,11 +1,5 @@
 #include "ParLoopHandler.h"
 #include "utils.h"
-#include "clang/ASTMatchers/ASTMatchFinder.h"
-#include "clang/Frontend/ASTUnit.h"
-#include "clang/Frontend/CompilerInstance.h"
-#include "clang/Frontend/CompilerInvocation.h"
-#include "clang/Lex/Preprocessor.h"
-#include <llvm/Support/Debug.h>
 #include <sstream>
 
 namespace OP2 {
@@ -62,32 +56,25 @@ void addOPArgToVector(const clang::Expr *argExpr, std::vector<OPArg> &args) {
 void ParLoopHandler::parseFunctionDecl(const clang::CallExpr *parloopExpr,
                                        const clang::SourceManager *SM) {
   std::vector<OPArg> args;
+  const clang::FunctionDecl *fDecl =
+      getExprAsDecl<clang::FunctionDecl>(parloopExpr->getArg(0)->IgnoreCasts());
+  const clang::VarDecl *setDecl =
+      getExprAsDecl<clang::VarDecl>(parloopExpr->getArg(2)->IgnoreCasts());
   std::string data;
   llvm::raw_string_ostream parLoopDataSS(data);
   parLoopDataSS << "------------------------------\n";
   std::string name =
       getAsStringLiteral(parloopExpr->getArg(1))->getString().str();
-  parLoopDataSS << "name: " << name << "\n";
-
-  parLoopDataSS << "function def: \n";
-  const clang::FunctionDecl *fDecl =
-      getExprAsDecl<clang::FunctionDecl>(parloopExpr->getArg(0)->IgnoreCasts());
-
+  parLoopDataSS << "name: " << name << "\nfunction def: \n";
   clang::SourceRange fDeclSR = fDecl->getSourceRange();
   parLoopDataSS << "  starts at: " << fDeclSR.getBegin().printToString(*SM)
                 << "\n";
   parLoopDataSS << "  ends at: " << fDeclSR.getEnd().printToString(*SM) << "\n";
-
-  const clang::VarDecl *setDecl =
-      getExprAsDecl<clang::VarDecl>(parloopExpr->getArg(2)->IgnoreCasts());
-
   parLoopDataSS << "iteration set: " << setDecl->getNameAsString() << "\n";
 
   for (unsigned arg_ind = 3; arg_ind < parloopExpr->getNumArgs(); ++arg_ind) {
     parLoopDataSS << "arg" << arg_ind - 3 << ":\n";
-
-    const clang::Expr *argExpr = parloopExpr->getArg(arg_ind);
-    addOPArgToVector(argExpr, args);
+    addOPArgToVector(parloopExpr->getArg(arg_ind), args);
     parLoopDataSS << args.back();
   }
   parLoops.push_back(ParLoop(fDecl, name, args));
@@ -104,10 +91,9 @@ void ParLoopHandler::run(const matchers::MatchFinder::MatchResult &Result) {
   }
   const clang::Expr *str_arg = function->getArg(1);
   const clang::StringLiteral *name = getAsStringLiteral(str_arg);
-  const auto *fExpr =
-      llvm::dyn_cast<clang::DeclRefExpr>(function->getArg(0)->IgnoreCasts());
-  const auto *fDecl =
-      llvm::dyn_cast<clang::FunctionDecl>(fExpr->getFoundDecl());
+  const clang::FunctionDecl *fDecl =
+      getExprAsDecl<clang::FunctionDecl>(function->getArg(0));
+
   if (!fDecl) {
     reportDiagnostic(*Result.Context, function->getArg(0),
                      "Must be a function pointer");
@@ -142,10 +128,8 @@ void ParLoopHandler::run(const matchers::MatchFinder::MatchResult &Result) {
 
   // get the current filename
   clang::SourceManager *sourceManager = Result.SourceManager;
-  clang::SourceLocation sLoc = function->getLocStart();
-  clang::FileID fileID = sourceManager->getFileID(sLoc);
-  const clang::FileEntry *fileEntry = sourceManager->getFileEntryForID(fileID);
-  const std::string fname = fileEntry->getName();
+  const std::string fname =
+      getFileNameFromSourceLoc(function->getLocStart(), sourceManager);
 
   clang::tooling::Replacements &Rpls = (*Replace)[fname];
   clang::tooling::Replacement Rep(*sourceManager, parent->getLocStart(), 0,

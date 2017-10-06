@@ -1,6 +1,6 @@
 #ifndef SEQEKERNELHANDLER_H
 #define SEQEKERNELHANDLER_H
-#include "../op_par_loop.h"
+#include "../OPParLoopData.h"
 #include "clang/ASTMatchers/ASTMatchFinder.h"
 #include "clang/Tooling/Refactoring.h"
 
