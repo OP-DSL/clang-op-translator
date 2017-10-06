@@ -10,7 +10,7 @@ DummyOPArgv2::DummyOPArgv2(const clang::VarDecl *dat, int _idx,
 
 DummyOPArgv2::DummyOPArgv2(const clang::VarDecl *dat, size_t _dim,
                            std::string _type, OP_accs_type _accs)
-    : opDat(dat->getNameAsString()), idx(0), opMap(false), dim(_dim),
+    : opDat(dat->getNameAsString()), idx(0), opMap(true), dim(_dim),
       type(_type), accs(_accs), isGBL(true) {}
 
 llvm::raw_ostream &operator<<(llvm::raw_ostream &os, const DummyOPArgv2 &arg) {
@@ -31,6 +31,10 @@ bool DummyOPArgv2::isDirect() const { return opMap; }
 std::string DummyOPArgv2::getArgCall(int argIdx, std::string mapStr) const {
   return "&((" + type + "*)arg" + std::to_string(argIdx) + ".data)[" +
          std::to_string(dim) + "*" + mapStr + "]";
+}
+
+bool DummyOPArgv2::isReduction() const {
+  return isGBL && (accs == OP_INC || accs == OP_MAX || accs == OP_MIN);
 }
 
 // ParLoop functions
@@ -85,6 +89,35 @@ std::string DummyParLoop::getFuncCall() const {
   }
   ss << args[args.size() - 1].getArgCall(args.size() - 1, "n") << "\n";
   ss << ");";
+  return ss.str();
+}
+
+std::string DummyParLoop::getMPIReduceCall() const {
+  std::string reduceCall = "";
+  llvm::raw_string_ostream ss(reduceCall);
+  for (size_t i = 0; i < args.size(); ++i) {
+    if (args[i].isReduction()) {
+      ss << "op_mpi_reduce(&arg" << i << ", (" << args[i].type << " *)arg" << i
+         << ".data);\n";
+    }
+  }
+  return ss.str();
+}
+
+std::string DummyParLoop::getTransferData() const {
+  std::string transfer = "";
+  llvm::raw_string_ostream ss(transfer);
+  for (size_t i = 0; i < args.size(); ++i) {
+    if(args[i].isGBL) {
+      continue;
+    }
+    ss << "OP_kernels[" << loopId << "].transfer += (float)set->size * arg" << i
+       << ".size";
+    if (args[i].accs != OP_READ) {
+      ss << " * 2.0f";
+    }
+    ss << ";\n";
+  }
   return ss.str();
 }
 

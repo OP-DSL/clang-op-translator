@@ -1,6 +1,12 @@
 #include "SeqKernelHandler.h"
 #include "../utils.h"
 
+namespace {
+using namespace clang::ast_matchers;
+const auto parLoopSkeletonCompStmtMatcher =
+    compoundStmt(hasParent(functionDecl(hasName("op_par_loop_skeleton"))));
+} // namespace
+
 namespace OP2 {
 using namespace clang::ast_matchers;
 using namespace clang;
@@ -11,6 +17,11 @@ const DeclarationMatcher SeqKernelHandler::userFuncMatcher =
 const StatementMatcher SeqKernelHandler::funcCallMatcher =
     callExpr(callee(functionDecl(hasName("skeleton"), parameterCountIs(1))))
         .bind("func_call");
+const StatementMatcher SeqKernelHandler::opMPIReduceMatcher =
+    callExpr(
+        callee(functionDecl(hasName("op_mpi_reduce"), parameterCountIs(2))),
+        hasParent(parLoopSkeletonCompStmtMatcher))
+        .bind("reduce_func_call");
 
 SeqKernelHandler::SeqKernelHandler(
     std::map<std::string, clang::tooling::Replacements> *Replace,
@@ -21,6 +32,8 @@ void SeqKernelHandler::run(const MatchFinder::MatchResult &Result) {
   if (!handleUserFuncDecl(Result))
     return; // if successfully handled return
   if (!handleUserFuncCall(Result))
+    return; // if successfully handled return
+  if (!handleMPIReduceCall(Result))
     return; // if successfully handled return
 }
 
@@ -57,6 +70,29 @@ int SeqKernelHandler::handleUserFuncCall(
 
   tooling::Replacement repl(*sm, CharSourceRange(replRange, false),
                             loop.getFuncCall());
+  if (llvm::Error err = (*Replace)[filename].add(repl)) {
+    // TODO diagnostics..
+    llvm::errs() << "Replacement of user function call in: " << filename
+                 << "\n";
+  }
+  return 0;
+}
+
+int SeqKernelHandler::handleMPIReduceCall(
+    const MatchFinder::MatchResult &Result) {
+  const CallExpr *funcCall =
+      Result.Nodes.getNodeAs<CallExpr>("reduce_func_call");
+  if (!funcCall)
+    return 1;
+  SourceManager *sm = Result.SourceManager;
+  std::string filename = getFileNameFromSourceLoc(funcCall->getLocStart(), sm);
+  SourceRange replRange(funcCall->getLocStart(),
+                        funcCall->getLocEnd().getLocWithOffset(2));
+  /*FIXME magic number for semicolon pos*/
+
+  tooling::Replacement repl(*sm, CharSourceRange(replRange, false),
+                            loop.getMPIReduceCall());
+
   if (llvm::Error err = (*Replace)[filename].add(repl)) {
     // TODO diagnostics..
     llvm::errs() << "Replacement of user function call in: " << filename

@@ -37,6 +37,7 @@ int SeqRefactoringTool::generateKernelFile() {
   SeqKernelHandler seqKernelHandler(&getReplacements(), loop);
   Finder.addMatcher(SeqKernelHandler::userFuncMatcher, &seqKernelHandler);
   Finder.addMatcher(SeqKernelHandler::funcCallMatcher, &seqKernelHandler);
+  Finder.addMatcher(SeqKernelHandler::opMPIReduceMatcher, &seqKernelHandler);
 
   //end of seqKernel specific callbacks
 

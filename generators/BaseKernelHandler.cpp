@@ -239,7 +239,7 @@ int BaseKernelHandler::handleOPDiagPrintf(
           2 /*FIXME hardcoded*/));
   std::string replString = std::string("\" kernel routine ") +
                            (loop.isDirect() ? "w/o" : "with") +
-                           " indirection: " + loop.getName() + "\\n\"";
+                           " indirection:  " + loop.getName() + "\"";
   clang::tooling::Replacement repl(
       *sm, clang::CharSourceRange(replRange, false), replString);
   if (llvm::Error err = (*Replace)[filename].add(repl)) {
@@ -273,8 +273,7 @@ int BaseKernelHandler::handleOPKernels(const MatchFinder::MatchResult &Result) {
     // clang::arcmt::trans::findSemiAfterLocation(bop->getLocEnd(),
     // *Result.Context));
     clang::tooling::Replacement repl(
-        *sm, clang::CharSourceRange(replRange, false),
-        "OP_kernels[0].transfer += 1;/*changed*/" /*FIXME*/);
+        *sm, clang::CharSourceRange(replRange, false), loop.getTransferData());
     if (llvm::Error err = (*Replace)[filename].add(repl)) {
       // TODO diagnostics..
       llvm::errs() << "Set transfer failed in: " << filename << "\n";

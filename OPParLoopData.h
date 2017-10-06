@@ -28,6 +28,8 @@ struct DummyOPArgv2 {
   DummyOPArgv2(const clang::VarDecl *, size_t, std::string, OP_accs_type);
   bool isDirect() const;
   std::string getArgCall(int, std::string) const;
+  bool isReduction() const;
+
   friend llvm::raw_ostream &operator<<(llvm::raw_ostream &,
                                        const DummyOPArgv2 &);
 };
@@ -53,6 +55,8 @@ public:
   size_t getNumArgs() const;
   size_t getLoopID() const;
   unsigned getKernelType() const;
+  std::string getMPIReduceCall() const;
+  std::string getTransferData() const;
 };
 
 typedef DummyParLoop ParLoop;

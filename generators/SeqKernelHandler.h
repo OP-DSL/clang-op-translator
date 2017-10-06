@@ -20,6 +20,7 @@ protected:
 
   int handleUserFuncDecl(const matchers::MatchFinder::MatchResult &Result);
   int handleUserFuncCall(const matchers::MatchFinder::MatchResult &Result);
+  int handleMPIReduceCall(const matchers::MatchFinder::MatchResult &Result);
 
 public:
   /// @brief Construct a SeqKernelHandler
@@ -35,6 +36,8 @@ public:
   static const matchers::DeclarationMatcher userFuncMatcher;
   /// @brief Matcher for function kall in kernel
   static const matchers::StatementMatcher funcCallMatcher;
+  /// @brief Matcher for op_mpi_reduce call
+  static const matchers::StatementMatcher opMPIReduceMatcher;
 
   virtual void run(const matchers::MatchFinder::MatchResult &Result) override;
 };
