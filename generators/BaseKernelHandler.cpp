@@ -267,9 +267,9 @@ int BaseKernelHandler::handleOPKernels(const MatchFinder::MatchResult &Result) {
           ->getNameAsString() == "transfer") {
     const clang::BinaryOperator *bop =
         Result.Nodes.getNodeAs<clang::BinaryOperator>("op_kernels_assignment");
-    /*TODO generate proper transfer data*/
-    clang::SourceRange replRange(bop->getLocStart(),
-                                 bop->getLocEnd().getLocWithOffset(4));
+    clang::SourceRange replRange(
+        bop->getLocStart(),
+        bop->getLocEnd().getLocWithOffset(4)); // TODO proper end
     // clang::arcmt::trans::findSemiAfterLocation(bop->getLocEnd(),
     // *Result.Context));
     clang::tooling::Replacement repl(

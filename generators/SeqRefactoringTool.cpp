@@ -33,13 +33,16 @@ int SeqRefactoringTool::generateKernelFile() {
                     &baseKernelHandler);
   Finder.addMatcher(BaseKernelHandler::opKernelsSubscriptMatcher,
                     &baseKernelHandler);
-  ///end of Base modifications
+  /// end of Base modifications
   SeqKernelHandler seqKernelHandler(&getReplacements(), loop);
   Finder.addMatcher(SeqKernelHandler::userFuncMatcher, &seqKernelHandler);
   Finder.addMatcher(SeqKernelHandler::funcCallMatcher, &seqKernelHandler);
   Finder.addMatcher(SeqKernelHandler::opMPIReduceMatcher, &seqKernelHandler);
+  Finder.addMatcher(SeqKernelHandler::opMPIWaitAllIfStmtMatcher,
+                    &seqKernelHandler);
+  Finder.addMatcher(SeqKernelHandler::mapIdxDeclMatcher, &seqKernelHandler);
 
-  //end of seqKernel specific callbacks
+  // end of seqKernel specific callbacks
 
   if (int Result =
           run(clang::tooling::newFrontendActionFactory(&Finder).get())) {

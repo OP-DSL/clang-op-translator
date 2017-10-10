@@ -85,9 +85,16 @@ std::string DummyParLoop::getFuncCall() const {
   llvm::raw_string_ostream ss(funcCall);
   ss << name << "("; // TODO fix repr to store correct function data.
   for (size_t i = 0; i < args.size() - 1; ++i) {
-    ss << args[i].getArgCall(i, "n") << ",\n";
+    ss << args[i].getArgCall(
+              i, args[i].isDirect() ? "n" : ("map" + std::to_string(i) + "idx"))
+       << ",\n";
   }
-  ss << args[args.size() - 1].getArgCall(args.size() - 1, "n") << "\n";
+  ss << args[args.size() - 1].getArgCall(
+            args.size() - 1,
+            args[args.size() - 1].isDirect()
+                ? "n"
+                : ("map" + std::to_string(args.size() - 1) + "idx"))
+     << "\n";
   ss << ");";
   return ss.str();
 }
@@ -108,7 +115,7 @@ std::string DummyParLoop::getTransferData() const {
   std::string transfer = "";
   llvm::raw_string_ostream ss(transfer);
   for (size_t i = 0; i < args.size(); ++i) {
-    if(args[i].isGBL) {
+    if (args[i].isGBL) {
       continue;
     }
     ss << "OP_kernels[" << loopId << "].transfer += (float)set->size * arg" << i
@@ -117,6 +124,19 @@ std::string DummyParLoop::getTransferData() const {
       ss << " * 2.0f";
     }
     ss << ";\n";
+  }
+  return ss.str();
+}
+
+std::string DummyParLoop::getMapVarDecls() const {
+  std::string mapDecls = "";
+  llvm::raw_string_ostream ss(mapDecls);
+  for (size_t i = 0; i < args.size(); ++i) {
+    if (args[i].isDirect() || args[i].isGBL) {
+      continue;
+    }
+    ss << "int map" << i << "idx = arg" << i << ".map_data[n * arg" << i
+       << ".map->dim + " << args[i].idx << "];\n";
   }
   return ss.str();
 }

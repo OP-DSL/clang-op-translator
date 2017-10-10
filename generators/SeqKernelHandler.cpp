@@ -22,6 +22,16 @@ const StatementMatcher SeqKernelHandler::opMPIReduceMatcher =
         callee(functionDecl(hasName("op_mpi_reduce"), parameterCountIs(2))),
         hasParent(parLoopSkeletonCompStmtMatcher))
         .bind("reduce_func_call");
+const StatementMatcher SeqKernelHandler::opMPIWaitAllIfStmtMatcher =
+    ifStmt(hasThen(compoundStmt(statementCountIs(1),
+                                hasAnySubstatement(callExpr(callee(functionDecl(
+                                    hasName("op_mpi_wait_all"))))))))
+        .bind("wait_all_if");
+const DeclarationMatcher SeqKernelHandler::mapIdxDeclMatcher =
+    varDecl(
+        hasName(
+            "map0idx") /*,TODO more specific matcher? hasParent(compoundStmt(hasParent(forStmt(hasParent(compoundStmt(hasParent(ifStmt(hasParent(parLoopSkeletonCompStmtMatcher)))))))))*/)
+        .bind("map_idx_decl");
 
 SeqKernelHandler::SeqKernelHandler(
     std::map<std::string, clang::tooling::Replacements> *Replace,
@@ -34,6 +44,10 @@ void SeqKernelHandler::run(const MatchFinder::MatchResult &Result) {
   if (!handleUserFuncCall(Result))
     return; // if successfully handled return
   if (!handleMPIReduceCall(Result))
+    return; // if successfully handled return
+  if (!handleMPIWaitAllIfStmt(Result))
+    return; // if successfully handled return
+  if (!handleMapIdxDecl(Result))
     return; // if successfully handled return
 }
 
@@ -95,7 +109,54 @@ int SeqKernelHandler::handleMPIReduceCall(
 
   if (llvm::Error err = (*Replace)[filename].add(repl)) {
     // TODO diagnostics..
-    llvm::errs() << "Replacement of user function call in: " << filename
+    llvm::errs() << "Replacement of op_mpi_reduce call in: " << filename
+                 << "\n";
+  }
+  return 0;
+}
+
+int SeqKernelHandler::handleMPIWaitAllIfStmt(
+    const MatchFinder::MatchResult &Result) {
+  const IfStmt *ifStmt = Result.Nodes.getNodeAs<IfStmt>("wait_all_if");
+  if (!ifStmt)
+    return 1;
+  if (!loop.isDirect())
+    return 0;
+
+  SourceManager *sm = Result.SourceManager;
+  std::string filename = getFileNameFromSourceLoc(ifStmt->getLocStart(), sm);
+  SourceRange replRange(ifStmt->getLocStart(),
+                        ifStmt->getLocEnd().getLocWithOffset(1));
+  /*FIXME magic number for semicolon pos*/
+
+  tooling::Replacement repl(*sm, CharSourceRange(replRange, false), "");
+
+  if (llvm::Error err = (*Replace)[filename].add(repl)) {
+    // TODO diagnostics..
+    llvm::errs() << "Replacement of op_mpi_wat_all failed in: " << filename
+                 << "\n";
+  }
+  return 0;
+}
+
+int SeqKernelHandler::handleMapIdxDecl(const MatchFinder::MatchResult &Result) {
+  const VarDecl *mapIdx = Result.Nodes.getNodeAs<VarDecl>("map_idx_decl");
+  if (!mapIdx)
+    return 1;
+  llvm::outs() << "asd\n";
+
+  SourceManager *sm = Result.SourceManager;
+  std::string filename = getFileNameFromSourceLoc(mapIdx->getLocStart(), sm);
+  SourceRange replRange(mapIdx->getLocStart(),
+                        mapIdx->getLocEnd().getLocWithOffset(2));
+  /*FIXME magic number for semicolon pos*/
+
+  tooling::Replacement repl(*sm, CharSourceRange(replRange, false),
+                            loop.getMapVarDecls());
+
+  if (llvm::Error err = (*Replace)[filename].add(repl)) {
+    // TODO diagnostics..
+    llvm::errs() << "Replacement of op_mpi_wat_all failed in: " << filename
                  << "\n";
   }
   return 0;

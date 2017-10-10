@@ -21,6 +21,8 @@ protected:
   int handleUserFuncDecl(const matchers::MatchFinder::MatchResult &Result);
   int handleUserFuncCall(const matchers::MatchFinder::MatchResult &Result);
   int handleMPIReduceCall(const matchers::MatchFinder::MatchResult &Result);
+  int handleMPIWaitAllIfStmt(const matchers::MatchFinder::MatchResult &Result);
+  int handleMapIdxDecl(const matchers::MatchFinder::MatchResult &Result);
 
 public:
   /// @brief Construct a SeqKernelHandler
@@ -38,6 +40,10 @@ public:
   static const matchers::StatementMatcher funcCallMatcher;
   /// @brief Matcher for op_mpi_reduce call
   static const matchers::StatementMatcher opMPIReduceMatcher;
+  /// @brief Matcher for the surrounding if statement of op_mpi_wait_all calls
+  static const matchers::StatementMatcher opMPIWaitAllIfStmtMatcher;
+  /// @brief Matcher for the mapping declarations
+  static const matchers::DeclarationMatcher mapIdxDeclMatcher;
 
   virtual void run(const matchers::MatchFinder::MatchResult &Result) override;
 };

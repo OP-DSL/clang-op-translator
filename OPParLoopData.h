@@ -57,6 +57,7 @@ public:
   unsigned getKernelType() const;
   std::string getMPIReduceCall() const;
   std::string getTransferData() const;
+  std::string getMapVarDecls() const;
 };
 
 typedef DummyParLoop ParLoop;

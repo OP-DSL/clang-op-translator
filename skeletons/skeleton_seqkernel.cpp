@@ -28,10 +28,18 @@ void op_par_loop_skeleton(char const *name, op_set set, op_arg arg0) {
   if (set->size > 0) {
 
     for (int n = 0; n < set_size; n++) {
+      if (n == set->core_size) {
+        op_mpi_wait_all(nargs, args);
+      }
+      int map0idx = arg0.map_data[n * arg0.map->dim + 0];
+      
       skeleton(&((double *)arg0.data)[4 * n]);
     }
   }
 
+  if (set_size == 0 || set_size == set->core_size) {
+    op_mpi_wait_all(nargs, args);
+  }
   // combine reduction data
   op_mpi_reduce(&arg0, (double *)arg0.data);
   op_mpi_set_dirtybit(nargs, args);
