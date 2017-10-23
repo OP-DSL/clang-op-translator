@@ -1,5 +1,5 @@
 //
-// Skeleton for sequential kernels
+// Skeleton for direct kernels using OpenMP
 //
 #include "op_lib_cpp.h"
 
@@ -19,27 +19,26 @@ void op_par_loop_skeleton(char const *name, op_set set, op_arg arg0) {
   op_timing_realloc(0);
   op_timers_core(&cpu_t1, &wall_t1);
 
+  // local variables for reduction 
+  double arg0h = *arg0.data;
+
   if (OP_diags > 2) {
     printf("");
   }
 
-  int set_size = op_mpi_halo_exchanges(set, nargs, args);
+  op_mpi_halo_exchanges(set, nargs, args);
 
   if (set->size > 0) {
 
-    for (int n = 0; n < set_size; n++) {
-      if (n == set->core_size) {
-        op_mpi_wait_all(nargs, args);
-      }
+    #pragma omp parallel for reduction(+:arg0h)
+    for (int n = 0; n < set->size; n++) {
       int map0idx = arg0.map_data[n * arg0.map->dim + 0];
       
       skeleton(&((double *)arg0.data)[4 * n]);
     }
   }
+  *arg0.data = arg0h;
 
-  if (set_size == 0 || set_size == set->core_size) {
-    op_mpi_wait_all(nargs, args);
-  }
   // combine reduction data
   op_mpi_reduce(&arg0, (double *)arg0.data);
   op_mpi_set_dirtybit(nargs, args);

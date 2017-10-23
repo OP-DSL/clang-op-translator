@@ -1,24 +1,24 @@
-#ifndef SEQREFACTORINGTOOL_H
-#define SEQREFACTORINGTOOL_H
+#ifndef OMPREFACTORINGTOOL_H
+#define OMPREFACTORINGTOOL_H
 
 #include "../OPParLoopData.h"
 #include "GeneratorBase.hpp"
-#include "SeqKernelHandler.h"
+#include "OMPKernelHandler.h"
 namespace OP2 {
-/// \brief Utility of generate sequential kernel based on ParLoop information.
+/// \brief Utility of generate OpenMP kernel based on ParLoop information.
 ///
 ///
-class SeqRefactoringTool : public OP2KernelGeneratorBase {
+class OMPRefactoringTool : public OP2KernelGeneratorBase {
   static constexpr const char *skeletons[1] = {
       "/home/dbalogh/clang-llvm/llvm/tools/clang/tools/extra/op2/skeletons/"
-      "skeleton_seqkernel.cpp"};
+      "skeleton_direct_kernel.cpp"};
 
-
-  /// @brief Handler for Sequential kernel specific modifications.
+  /// @brief Handler for OpenMP kernel specific modifications.
   ///
-  SeqKernelHandler seqKernelHandler;
+  OMPKernelHandler ompKernelHandler;
+
 public:
-  /// @brief Construct a refactoring tool to generate the sequential kernel.
+  /// @brief Construct a refactoring tool to generate the OpenMP kernel.
   ///
   /// @param Compilations The CompilationDatabase which contains the copmile
   /// commandlines.
@@ -26,19 +26,19 @@ public:
   /// @param PCHContainerOps The PCHContainerOperation for loading and creating
   /// clang modules
   // TODO: Modify to get right skeletons... and Database..
-  SeqRefactoringTool(
+  OMPRefactoringTool(
       const clang::tooling::CompilationDatabase &Compilations,
       const ParLoop &loop,
       std::shared_ptr<clang::PCHContainerOperations> PCHContainerOps =
           std::make_shared<clang::PCHContainerOperations>());
 
-  /// @brief Adding Sequential specific MAtchers and handlers.
+  /// @brief Adding OpenMP specific Matchers and handlers.
   ///   Called from OP2KernelGeneratorBase::GenerateKernelFile()
   ///
   /// @param MatchFinder used by the RefactoringTool
   virtual void addGeneratorSpecificMatchers(clang::ast_matchers::MatchFinder &);
 
-  virtual ~SeqRefactoringTool() = default;
+  virtual ~OMPRefactoringTool() = default;
 };
 
 } // namespace OP2

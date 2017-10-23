@@ -143,7 +143,6 @@ int SeqKernelHandler::handleMapIdxDecl(const MatchFinder::MatchResult &Result) {
   const VarDecl *mapIdx = Result.Nodes.getNodeAs<VarDecl>("map_idx_decl");
   if (!mapIdx)
     return 1;
-  llvm::outs() << "asd\n";
 
   SourceManager *sm = Result.SourceManager;
   std::string filename = getFileNameFromSourceLoc(mapIdx->getLocStart(), sm);

@@ -7,16 +7,22 @@ add_clang_executable(op2
   ParLoopHandler.cpp
   ParLoopHandler.h
   OP2RefactoringTool.hpp
+  OP2WriteableRefactoringTool.hpp
   utils.cpp
   utils.h
   OPParLoopData.h
   OPParLoopData.cpp
+  generators/GeneratorBase.hpp
+  generators/OMPRefactoringTool.h
+  generators/OMPRefactoringTool.cpp
   generators/SeqRefactoringTool.h
   generators/SeqRefactoringTool.cpp
   generators/BaseKernelHandler.h
   generators/BaseKernelHandler.cpp
   generators/SeqKernelHandler.h
   generators/SeqKernelHandler.cpp
+  generators/OMPKernelHandler.h
+  generators/OMPKernelHandler.cpp
   )
 
 target_link_libraries(op2
