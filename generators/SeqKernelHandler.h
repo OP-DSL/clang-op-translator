@@ -50,4 +50,4 @@ public:
 
 } // end of namespace OP2
 
-#endif /* ifndef BASEKERNELHANDLER_H  */
+#endif /* ifndef SEQKERNELHANDLER_H  */

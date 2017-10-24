@@ -11,11 +11,17 @@ OMPRefactoringTool::OMPRefactoringTool(
     std::shared_ptr<clang::PCHContainerOperations> PCHContainerOps)
     : OP2KernelGeneratorBase(Compilations, {skeletons[loop.getKernelType()]},
                              loop, "kernel", PCHContainerOps),
-      ompKernelHandler(&getReplacements(), loop) {}
+      ompKernelHandler(&getReplacements(), loop), seqKernelHandler(&getReplacements(), loop) {}
 
 void OMPRefactoringTool::addGeneratorSpecificMatchers(
     clang::ast_matchers::MatchFinder &Finder) {
   Finder.addMatcher(OMPKernelHandler::locRedVarMatcher, &ompKernelHandler);
+  Finder.addMatcher(OMPKernelHandler::locRedToArgMatcher, &ompKernelHandler);
+  Finder.addMatcher(OMPKernelHandler::ompParForMatcher, &ompKernelHandler);
+  Finder.addMatcher(SeqKernelHandler::userFuncMatcher, &seqKernelHandler);
+  Finder.addMatcher(SeqKernelHandler::funcCallMatcher, &seqKernelHandler);
+  Finder.addMatcher(SeqKernelHandler::opMPIReduceMatcher, &seqKernelHandler);
+  Finder.addMatcher(SeqKernelHandler::mapIdxDeclMatcher, &seqKernelHandler);
 }
 
 } // namespace OP2

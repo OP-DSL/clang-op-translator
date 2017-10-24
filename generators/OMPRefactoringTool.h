@@ -4,6 +4,8 @@
 #include "../OPParLoopData.h"
 #include "GeneratorBase.hpp"
 #include "OMPKernelHandler.h"
+#include "SeqKernelHandler.h"
+
 namespace OP2 {
 /// \brief Utility of generate OpenMP kernel based on ParLoop information.
 ///
@@ -16,6 +18,10 @@ class OMPRefactoringTool : public OP2KernelGeneratorBase {
   /// @brief Handler for OpenMP kernel specific modifications.
   ///
   OMPKernelHandler ompKernelHandler;
+  /// @brief Handler for modifications same as sequential case.
+  ///
+  SeqKernelHandler seqKernelHandler;
+
 
 public:
   /// @brief Construct a refactoring tool to generate the OpenMP kernel.

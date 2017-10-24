@@ -72,6 +72,8 @@ std::string DummyParLoop::getParLoopDef() const {
 
 size_t DummyParLoop::getNumArgs() const { return args.size(); }
 
+const OPArg& DummyParLoop::getArg(size_t ind) const { return args[ind]; }
+
 unsigned DummyParLoop::getKernelType() const {
   if (isDirect()) {
     return 0;

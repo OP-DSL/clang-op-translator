@@ -1,5 +1,5 @@
-#ifndef SEQEKERNELHANDLER_H
-#define SEQEKERNELHANDLER_H
+#ifndef OMPKERNELHANDLER_H
+#define OMPKERNELHANDLER_H
 #include "../OPParLoopData.h"
 #include "clang/ASTMatchers/ASTMatchFinder.h"
 #include "clang/Tooling/Refactoring.h"
@@ -19,6 +19,9 @@ protected:
   const ParLoop &loop;
 
   int handleRedLocalVarDecl(const matchers::MatchFinder::MatchResult &Result);
+  int handlelocRedToArgAssignment(
+      const matchers::MatchFinder::MatchResult &Result);
+  int handleOMPParLoop(const matchers::MatchFinder::MatchResult &Result);
 
 public:
   /// @brief Construct a OMPKernelHandler
@@ -31,12 +34,17 @@ public:
                    const ParLoop &loop);
 
   // Static matchers handled by this class
-  /// @brief Matcher for the placeholder of the user funciton
+  /// @brief Matcher for the declaration of local variables for OpenMP reduction
   static const matchers::StatementMatcher locRedVarMatcher;
+  /// @brief Matcher that matches the assignment of  local reduction result to
+  /// op_arg
+  static const matchers::StatementMatcher locRedToArgMatcher;
+  /// @brief Matcher that matches the omp parallel for pragma
+  static const matchers::StatementMatcher ompParForMatcher;
 
   virtual void run(const matchers::MatchFinder::MatchResult &Result) override;
 };
 
 } // end of namespace OP2
 
-#endif /* ifndef BASEKERNELHANDLER_H  */
+#endif /* ifndef OMPKERNELHANDLER_H  */

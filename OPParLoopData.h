@@ -53,6 +53,7 @@ public:
   std::string getUserFuncInc() const;
   std::string getParLoopDef() const;
   size_t getNumArgs() const;
+  const OPArg& getArg(size_t) const;
   size_t getLoopID() const;
   unsigned getKernelType() const;
   std::string getMPIReduceCall() const;
