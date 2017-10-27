@@ -1,5 +1,6 @@
 #include "OMPKernelHandler.h"
 #include "../utils.h"
+#include "handler.hpp"
 #include "clang/AST/StmtOpenMP.h"
 
 namespace {
@@ -39,9 +40,23 @@ OMPKernelHandler::OMPKernelHandler(
 void OMPKernelHandler::run(const MatchFinder::MatchResult &Result) {
   if (!handleRedLocalVarDecl(Result))
     return; // if successfully handled return
-  if (!handlelocRedToArgAssignment(Result))
-    return; // if successfully handled return
+            /*  if (!handlelocRedToArgAssignment(Result))
+                return; // if successfully handled return*/
   if (!handleOMPParLoop(Result))
+    return; // if successfully handled return
+  if (!handler<BinaryOperator>(Result, Replace, loop, "loc_red_to_arg_assignment",
+               [](const BinaryOperator *, const ParLoop &loop) {
+                  std::string s;
+                  llvm::raw_string_ostream os(s);
+                  for (size_t ind = 0; ind < loop.getNumArgs(); ++ind) {
+                    const OPArg &arg = loop.getArg(ind);
+                    if (arg.isReduction()) {
+                      os << "*arg" << ind << ".data = arg" << ind << "h;\n";
+                    }
+                  }
+
+                 return os.str();
+               }))
     return; // if successfully handled return
 }
 ///__________________________________HANDLERS__________________________________

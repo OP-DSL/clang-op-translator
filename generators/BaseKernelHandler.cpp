@@ -3,8 +3,8 @@
 
 namespace {
 using namespace clang::ast_matchers;
-const auto parLoopSkeletonCompStmtMatcher =
-    compoundStmt(hasParent(functionDecl(hasName("op_par_loop_skeleton"))));
+const DeclarationMatcher parLoopSkeletonMatcher =
+    functionDecl(hasName("op_par_loop_skeleton"));
 } // namespace
 
 namespace OP2 {
@@ -16,30 +16,29 @@ const DeclarationMatcher BaseKernelHandler::nargsMatcher =
     varDecl(hasType(isInteger()), hasName("nargs")).bind("nargs_decl");
 
 const DeclarationMatcher BaseKernelHandler::argsArrMatcher =
-    varDecl(hasName("args"),
-            hasParent(declStmt(hasParent(parLoopSkeletonCompStmtMatcher))))
+    varDecl(hasName("args"), hasAncestor(parLoopSkeletonMatcher))
         .bind("args_arr_decl");
 const StatementMatcher BaseKernelHandler::argsArrSetterMatcher =
     cxxOperatorCallExpr(/*hasType(cxxRecordDecl(hasName("op_arg"))),FIXME more
                            specific matcher*/
-                        hasParent(parLoopSkeletonCompStmtMatcher))
+                        hasAncestor(parLoopSkeletonMatcher))
         .bind("args_element_setter");
 const StatementMatcher BaseKernelHandler::opTimingReallocMatcher =
     callExpr(callee(functionDecl(hasName("op_timing_realloc"))),
-             hasParent(parLoopSkeletonCompStmtMatcher))
+             hasAncestor(parLoopSkeletonMatcher))
         .bind("op_timing_realloc");
 const StatementMatcher BaseKernelHandler::printfKernelNameMatcher =
-    callExpr(callee(functionDecl(hasName("printf"))),
-             hasParent(compoundStmt(
-                 hasParent(ifStmt(hasParent(parLoopSkeletonCompStmtMatcher))))))
-        .bind("printfName"); // More spec needed
+    callExpr(callee(functionDecl(hasName("printf"))), hasAncestor(ifStmt()),
+             hasAncestor(parLoopSkeletonMatcher))
+        .bind("printfName"); // FIXME More spec needed
 const StatementMatcher BaseKernelHandler::opKernelsSubscriptMatcher =
     arraySubscriptExpr(hasBase(implicitCastExpr(hasSourceExpression(
                            declRefExpr(to(varDecl(hasName("OP_kernels"))))))),
                        hasIndex(integerLiteral(equals(0))),
                        hasParent(memberExpr(hasParent(binaryOperator().bind(
                                                 "op_kernels_assignment")))
-                                     .bind("opk_member_expr")))
+                                     .bind("opk_member_expr")),
+                       hasAncestor(parLoopSkeletonMatcher))
         .bind("op_kernels_index");
 
 BaseKernelHandler::BaseKernelHandler(

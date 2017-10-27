@@ -28,9 +28,7 @@ const StatementMatcher SeqKernelHandler::opMPIWaitAllIfStmtMatcher =
                                     hasName("op_mpi_wait_all"))))))))
         .bind("wait_all_if");
 const DeclarationMatcher SeqKernelHandler::mapIdxDeclMatcher =
-    varDecl(
-        hasName(
-            "map0idx") /*,TODO more specific matcher? hasParent(compoundStmt(hasParent(forStmt(hasParent(compoundStmt(hasParent(ifStmt(hasParent(parLoopSkeletonCompStmtMatcher)))))))))*/)
+    varDecl(hasName("map0idx"), hasAncestor(parLoopSkeletonCompStmtMatcher))
         .bind("map_idx_decl");
 
 SeqKernelHandler::SeqKernelHandler(
