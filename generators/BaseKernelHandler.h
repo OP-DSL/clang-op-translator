@@ -17,11 +17,9 @@ protected:
   std::map<std::string, clang::tooling::Replacements> *Replace;
   const ParLoop &loop;
   int handleParLoopDecl(const matchers::MatchFinder::MatchResult &Result);
-  int handleNargsDecl(const matchers::MatchFinder::MatchResult &Result);
-  int handleArgsArrDecl(const matchers::MatchFinder::MatchResult &Result);
-  int handleArgsArrSetter(const matchers::MatchFinder::MatchResult &Result);
-  int handleOPTimingRealloc(const matchers::MatchFinder::MatchResult &Result);
-  int handleOPDiagPrintf(const matchers::MatchFinder::MatchResult &Result);
+  std::string handleArgsArrSetter();
+  std::string handleOPTimingRealloc();
+  std::string handleOPDiagPrintf();
   int handleOPKernels(const matchers::MatchFinder::MatchResult &Result);
 
 public:

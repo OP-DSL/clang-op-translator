@@ -18,11 +18,7 @@ protected:
   std::map<std::string, clang::tooling::Replacements> *Replace;
   const ParLoop &loop;
 
-  int handleUserFuncDecl(const matchers::MatchFinder::MatchResult &Result);
-  int handleUserFuncCall(const matchers::MatchFinder::MatchResult &Result);
-  int handleMPIReduceCall(const matchers::MatchFinder::MatchResult &Result);
   int handleMPIWaitAllIfStmt(const matchers::MatchFinder::MatchResult &Result);
-  int handleMapIdxDecl(const matchers::MatchFinder::MatchResult &Result);
 
 public:
   /// @brief Construct a SeqKernelHandler

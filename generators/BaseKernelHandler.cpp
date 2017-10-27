@@ -1,5 +1,6 @@
 #include "BaseKernelHandler.h"
 #include "../utils.h"
+#include "handler.hpp"
 
 namespace {
 using namespace clang::ast_matchers;
@@ -9,11 +10,14 @@ const DeclarationMatcher parLoopSkeletonMatcher =
 
 namespace OP2 {
 using namespace clang::ast_matchers;
+///__________________________________MATCHERS__________________________________
 // Static Matchers of BaseKernelHandler
 const DeclarationMatcher BaseKernelHandler::parLoopDeclMatcher =
     functionDecl(hasName("op_par_loop_skeleton")).bind("par_loop_decl");
 const DeclarationMatcher BaseKernelHandler::nargsMatcher =
-    varDecl(hasType(isInteger()), hasName("nargs")).bind("nargs_decl");
+    varDecl(hasType(isInteger()), hasName("nargs"),
+            hasAncestor(parLoopSkeletonMatcher))
+        .bind("nargs_decl");
 
 const DeclarationMatcher BaseKernelHandler::argsArrMatcher =
     varDecl(hasName("args"), hasAncestor(parLoopSkeletonMatcher))
@@ -30,7 +34,7 @@ const StatementMatcher BaseKernelHandler::opTimingReallocMatcher =
 const StatementMatcher BaseKernelHandler::printfKernelNameMatcher =
     callExpr(callee(functionDecl(hasName("printf"))), hasAncestor(ifStmt()),
              hasAncestor(parLoopSkeletonMatcher))
-        .bind("printfName"); // FIXME More spec needed
+        .bind("printfName");
 const StatementMatcher BaseKernelHandler::opKernelsSubscriptMatcher =
     arraySubscriptExpr(hasBase(implicitCastExpr(hasSourceExpression(
                            declRefExpr(to(varDecl(hasName("OP_kernels"))))))),
@@ -41,28 +45,42 @@ const StatementMatcher BaseKernelHandler::opKernelsSubscriptMatcher =
                        hasAncestor(parLoopSkeletonMatcher))
         .bind("op_kernels_index");
 
+///________________________________CONSTRUCTORS________________________________
 BaseKernelHandler::BaseKernelHandler(
     std::map<std::string, clang::tooling::Replacements> *Replace,
     const ParLoop &loop)
     : Replace(Replace), loop(loop) {}
 
+///_______________________________GLOBAL_HANDLER_______________________________
 void BaseKernelHandler::run(const MatchFinder::MatchResult &Result) {
   if (!handleParLoopDecl(Result))
     return; // if successfully handled return
-  if (!handleNargsDecl(Result))
+  if (!lineReplHandler<clang::VarDecl, 1>(
+          Result, Replace, "nargs_decl", [this]() {
+            return "int nargs = " + std::to_string(this->loop.getNumArgs());
+          })) //handleNargsDecl
     return;
-  if (!handleArgsArrDecl(Result))
+  if (!lineReplHandler<clang::VarDecl>(
+          Result, Replace, "args_arr_decl", [this]() {
+            return "op_arg args[" + std::to_string(this->loop.getNumArgs());
+          })) // handleArgsArrDecl
     return;
-  if (!handleArgsArrSetter(Result))
+  if (!lineReplHandler<clang::CXXOperatorCallExpr, 5>(
+          Result, Replace, "args_element_setter",
+          std::bind(&BaseKernelHandler::handleArgsArrSetter,
+                    this))) // handleArgsArrSetter
     return;
-  if (!handleOPTimingRealloc(Result))
+  if (!HANDLER(clang::CallExpr, 3, "op_timing_realloc",
+               BaseKernelHandler::handleOPTimingRealloc))
     return;
-  if (!handleOPDiagPrintf(Result))
+  if (!HANDLER(clang::CallExpr, 3, "printfName",
+               BaseKernelHandler::handleOPDiagPrintf))
     return;
   if (!handleOPKernels(Result))
     return;
 }
 
+///__________________________________HANDLERS__________________________________
 int BaseKernelHandler::handleParLoopDecl(
     const MatchFinder::MatchResult &Result) {
   const clang::FunctionDecl *function =
@@ -103,150 +121,24 @@ int BaseKernelHandler::handleParLoopDecl(
   return 0;
 }
 
-int BaseKernelHandler::handleNargsDecl(const MatchFinder::MatchResult &Result) {
-  const clang::VarDecl *nargsDecl =
-      Result.Nodes.getNodeAs<clang::VarDecl>("nargs_decl");
-  if (!nargsDecl)
-    return 1; // We shouldn't handle this match
-  clang::SourceManager *sm = Result.SourceManager;
-  if (!sm->isWrittenInMainFile(nargsDecl->getLocStart()))
-    return 0;
-  std::string filename = getFileNameFromSourceLoc(nargsDecl->getLocStart(), sm);
-
-  // change value of nargs
-  if (loop.getNumArgs() <= 1)
-    return 0; // there is no need to change
-  clang::tooling::Replacement repl(*sm, nargsDecl->getLocEnd(),
-                                   1 /*FIXME hardcoded len of 1..*/,
-                                   std::to_string(loop.getNumArgs()));
-  if (llvm::Error err = (*Replace)[filename].add(repl)) {
-    // TODO diagnostics..
-    llvm::errs() << "Set value of nargs failed in: " << filename << "\n";
-  }
-
-  return 0;
-}
-
-int BaseKernelHandler::handleArgsArrDecl(
-    const MatchFinder::MatchResult &Result) {
-  const clang::VarDecl *argsArrDecl =
-      Result.Nodes.getNodeAs<clang::VarDecl>("args_arr_decl");
-
-  if (!argsArrDecl)
-    return 1; // We shouldn't handle this match
-  clang::SourceManager *sm = Result.SourceManager;
-  if (!sm->isWrittenInMainFile(argsArrDecl->getLocStart()))
-    return 0;
-  std::string filename =
-      getFileNameFromSourceLoc(argsArrDecl->getLocStart(), sm);
-
-  // change value of array size
-  if (loop.getNumArgs() <= 1)
-    return 0; // there is no need to change
-
-  clang::tooling::Replacement repl(*sm,
-                                   argsArrDecl->getLocEnd().getLocWithOffset(
-                                       -1) /*FIXME hardcoded len of 1..*/,
-                                   1 /*FIXME hardcoded len of 1..*/,
-                                   std::to_string(loop.getNumArgs()));
-  if (llvm::Error err = (*Replace)[filename].add(repl)) {
-    // TODO diagnostics..
-    llvm::errs() << "Set size for args array failed in: " << filename << "\n";
-  }
-
-  return 0;
-}
-
-int BaseKernelHandler::handleArgsArrSetter(
-    const MatchFinder::MatchResult &Result) {
-  const clang::CXXOperatorCallExpr *argsElementSetterExpr =
-      Result.Nodes.getNodeAs<clang::CXXOperatorCallExpr>("args_element_setter");
-  if (!argsElementSetterExpr)
-    return 1; // We shouldn't handle this match
-  clang::SourceManager *sm = Result.SourceManager;
-
-  if (!sm->isWrittenInMainFile(argsElementSetterExpr->getLocStart()))
-    return 0;
-  std::string filename =
-      getFileNameFromSourceLoc(argsElementSetterExpr->getLocStart(), sm);
-
+std::string BaseKernelHandler::handleArgsArrSetter() {
   std::string replacement = "";
   llvm::raw_string_ostream os(replacement);
   for (unsigned i = 0; i < loop.getNumArgs(); ++i) {
     os << "args[" << i << "] = arg" << i << ";\n";
   }
-  clang::SourceRange replRange(
-      argsElementSetterExpr->getLocStart(),
-      argsElementSetterExpr->getLocEnd().getLocWithOffset(
-          5 /*FIXME hardcoded len 'arg0;'*/));
-  clang::tooling::Replacement repl(
-      *sm, clang::CharSourceRange(replRange, false), os.str());
-  if (llvm::Error err = (*Replace)[filename].add(repl)) {
-    // TODO diagnostics..
-    llvm::errs() << "Set args array failed in: " << filename << "\n";
-  }
-
-  return 0;
+  return os.str();
 }
 
-int BaseKernelHandler::handleOPTimingRealloc(
-    const MatchFinder::MatchResult &Result) {
-  const clang::CallExpr *opTimingReallocCallExpr =
-      Result.Nodes.getNodeAs<clang::CallExpr>("op_timing_realloc");
-  if (!opTimingReallocCallExpr)
-    return 1; // We shouldn't handle this match
-
-  clang::SourceManager *sm = Result.SourceManager;
-
-  if (!sm->isWrittenInMainFile(opTimingReallocCallExpr->getLocStart()))
-    return 0;
-  std::string filename =
-      getFileNameFromSourceLoc(opTimingReallocCallExpr->getLocStart(), sm);
-
-  clang::SourceRange replRange(
-      opTimingReallocCallExpr->getArg(0)->getLocStart(),
-      opTimingReallocCallExpr->getArg(0)->getLocEnd().getLocWithOffset(
-          1 /*FIXME hardcoded len 0*/));
-  clang::tooling::Replacement repl(*sm,
-                                   clang::CharSourceRange(replRange, false),
-                                   std::to_string(loop.getLoopID()));
-  if (llvm::Error err = (*Replace)[filename].add(repl)) {
-    // TODO diagnostics..
-    llvm::errs() << "Set loopID for timing_realloc failed at: " << filename
-                 << "\n";
-  }
-
-  return 0;
+std::string BaseKernelHandler::handleOPTimingRealloc() {
+  return "op_timing_realloc(" + std::to_string(loop.getLoopID()) + ");";
 }
 
-int BaseKernelHandler::handleOPDiagPrintf(
-    const MatchFinder::MatchResult &Result) {
-  const clang::CallExpr *printfCallExpr =
-      Result.Nodes.getNodeAs<clang::CallExpr>("printfName");
-  if (!printfCallExpr)
-    return 1; // We shouldn't handle this match
-
-  clang::SourceManager *sm = Result.SourceManager;
-  if (!sm->isWrittenInMainFile(printfCallExpr->getLocStart()))
-    return 0;
-  std::string filename =
-      getFileNameFromSourceLoc(printfCallExpr->getLocStart(), sm);
-
-  clang::SourceRange replRange(
-      printfCallExpr->getArg(0)->getLocEnd(),
-      printfCallExpr->getArg(0)->getLocEnd().getLocWithOffset(
-          2 /*FIXME hardcoded*/));
+std::string BaseKernelHandler::handleOPDiagPrintf() {
   std::string replString = std::string("\" kernel routine ") +
                            (loop.isDirect() ? "w/o" : "with") +
                            " indirection:  " + loop.getName() + "\"";
-  clang::tooling::Replacement repl(
-      *sm, clang::CharSourceRange(replRange, false), replString);
-  if (llvm::Error err = (*Replace)[filename].add(repl)) {
-    // TODO diagnostics..
-    llvm::errs() << "Set printf failed in: " << filename << "\n";
-  }
-
-  return 0;
+  return "printf(" + replString + ");";
 }
 
 int BaseKernelHandler::handleOPKernels(const MatchFinder::MatchResult &Result) {
@@ -256,8 +148,6 @@ int BaseKernelHandler::handleOPKernels(const MatchFinder::MatchResult &Result) {
     return 1; // We shouldn't handle this match
 
   clang::SourceManager *sm = Result.SourceManager;
-  if (!sm->isWrittenInMainFile(kernelsSubscriptExpr->getLocStart()))
-    return 0;
   std::string filename =
       getFileNameFromSourceLoc(kernelsSubscriptExpr->getLocStart(), sm);
 
@@ -268,7 +158,7 @@ int BaseKernelHandler::handleOPKernels(const MatchFinder::MatchResult &Result) {
         Result.Nodes.getNodeAs<clang::BinaryOperator>("op_kernels_assignment");
     clang::SourceRange replRange(
         bop->getLocStart(),
-        bop->getLocEnd().getLocWithOffset(4)); // TODO proper end
+        bop->getLocEnd().getLocWithOffset(5)); // TODO proper end
     // clang::arcmt::trans::findSemiAfterLocation(bop->getLocEnd(),
     // *Result.Context));
     clang::tooling::Replacement repl(

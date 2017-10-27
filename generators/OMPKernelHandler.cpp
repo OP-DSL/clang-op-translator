@@ -38,40 +38,20 @@ OMPKernelHandler::OMPKernelHandler(
 
 ///_______________________________GLOBAL_HANDLER_______________________________
 void OMPKernelHandler::run(const MatchFinder::MatchResult &Result) {
-  if (!handleRedLocalVarDecl(Result))
-    return; // if successfully handled return
-            /*  if (!handlelocRedToArgAssignment(Result))
-                return; // if successfully handled return*/
+  if (!lineReplHandler<DeclStmt, 1>(
+          Result, Replace, "local_reduction_variable",
+          std::bind(&OMPKernelHandler::handleRedLocalVarDecl, this)))
+    return;
   if (!handleOMPParLoop(Result))
     return; // if successfully handled return
-  if (!handler<BinaryOperator>(Result, Replace, loop, "loc_red_to_arg_assignment",
-               [](const BinaryOperator *, const ParLoop &loop) {
-                  std::string s;
-                  llvm::raw_string_ostream os(s);
-                  for (size_t ind = 0; ind < loop.getNumArgs(); ++ind) {
-                    const OPArg &arg = loop.getArg(ind);
-                    if (arg.isReduction()) {
-                      os << "*arg" << ind << ".data = arg" << ind << "h;\n";
-                    }
-                  }
-
-                 return os.str();
-               }))
+  if (!lineReplHandler<BinaryOperator, 6>(
+          Result, Replace, "loc_red_to_arg_assignment",
+          std::bind(&OMPKernelHandler::handlelocRedToArgAssignment, this)))
     return; // if successfully handled return
 }
 ///__________________________________HANDLERS__________________________________
 
-int OMPKernelHandler::handleRedLocalVarDecl(
-    const MatchFinder::MatchResult &Result) {
-  const DeclStmt *varDecl =
-      Result.Nodes.getNodeAs<DeclStmt>("local_reduction_variable");
-  if (!varDecl)
-    return 1;
-  SourceManager *sm = Result.SourceManager;
-  std::string filename = getFileNameFromSourceLoc(varDecl->getLocStart(), sm);
-  SourceRange replRange(varDecl->getLocStart(),
-                        varDecl->getLocEnd().getLocWithOffset(1));
-
+std::string OMPKernelHandler::handleRedLocalVarDecl() {
   std::string s;
   llvm::raw_string_ostream os(s);
   for (size_t ind = 0; ind < loop.getNumArgs(); ++ind) {
@@ -80,29 +60,10 @@ int OMPKernelHandler::handleRedLocalVarDecl(
       os << arg.type << " arg" << ind << "h = *arg" << ind << ".data;\n";
     }
   }
-
-  tooling::Replacement repl(*sm, CharSourceRange(replRange, false), os.str());
-  if (llvm::Error err = (*Replace)[filename].add(repl)) {
-    // TODO diagnostics..
-    llvm::errs() << "Replacement of local reduction variables failed in: "
-                 << filename << "\n";
-  }
-  return 0;
+  return os.str();
 }
 
-int OMPKernelHandler::handlelocRedToArgAssignment(
-    const matchers::MatchFinder::MatchResult &Result) {
-  const BinaryOperator *assignment =
-      Result.Nodes.getNodeAs<BinaryOperator>("loc_red_to_arg_assignment");
-  if (!assignment)
-    return 1;
-  SourceManager *sm = Result.SourceManager;
-  std::string filename =
-      getFileNameFromSourceLoc(assignment->getLocStart(), sm);
-  SourceRange replRange(assignment->getLocStart(),
-                        assignment->getLocEnd().getLocWithOffset(6));
-  /*FIXME magic number for semicolon*/
-
+std::string OMPKernelHandler::handlelocRedToArgAssignment() {
   std::string s;
   llvm::raw_string_ostream os(s);
   for (size_t ind = 0; ind < loop.getNumArgs(); ++ind) {
@@ -111,16 +72,9 @@ int OMPKernelHandler::handlelocRedToArgAssignment(
       os << "*arg" << ind << ".data = arg" << ind << "h;\n";
     }
   }
-  tooling::Replacement repl(*sm, CharSourceRange(replRange, false), os.str());
-  if (llvm::Error err = (*Replace)[filename].add(repl)) {
-    // TODO diagnostics..
-    llvm::errs() << "Replacement of assignment of local reduction result to "
-                    "op_arg failed in: "
-                 << filename << "\n";
-  }
-
-  return 0;
+  return os.str();
 }
+
 int OMPKernelHandler::handleOMPParLoop(
     const matchers::MatchFinder::MatchResult &Result) {
   const IfStmt *match = Result.Nodes.getNodeAs<IfStmt>("if_omp_par_loop");
@@ -154,7 +108,6 @@ int OMPKernelHandler::handleOMPParLoop(
     llvm::errs() << "Replacement of omp directive failed in: " << filename
                  << "\n";
   }
-
   return 0;
 }
 } // namespace OP2

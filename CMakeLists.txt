@@ -12,6 +12,7 @@ add_clang_executable(op2
   utils.h
   OPParLoopData.h
   OPParLoopData.cpp
+  generators/handler.hpp
   generators/GeneratorBase.hpp
   generators/OMPRefactoringTool.h
   generators/OMPRefactoringTool.cpp

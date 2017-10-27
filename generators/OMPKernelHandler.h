@@ -18,9 +18,8 @@ protected:
   std::map<std::string, clang::tooling::Replacements> *Replace;
   const ParLoop &loop;
 
-  int handleRedLocalVarDecl(const matchers::MatchFinder::MatchResult &Result);
-  int handlelocRedToArgAssignment(
-      const matchers::MatchFinder::MatchResult &Result);
+  std::string handleRedLocalVarDecl();
+  std::string handlelocRedToArgAssignment();
   int handleOMPParLoop(const matchers::MatchFinder::MatchResult &Result);
 
 public:
