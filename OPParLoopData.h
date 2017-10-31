@@ -5,6 +5,24 @@
 
 namespace OP2 {
 
+struct op_set {
+  const int size;
+  const std::string name;
+  op_set(int, std::string);
+  bool operator==(const op_set &) const;
+};
+llvm::raw_ostream &operator<<(llvm::raw_ostream &, const op_set &);
+
+struct op_map {
+  const op_set &from;
+  const op_set &to;
+  const unsigned dim;
+  const std::string name;
+  op_map(const op_set &, const op_set &, unsigned, std::string);
+  bool operator==(const op_map &) const;
+};
+llvm::raw_ostream &operator<<(llvm::raw_ostream &, const op_map &);
+
 enum OP_accs_type { OP_READ = 0, OP_WRITE, OP_RW, OP_INC, OP_MAX, OP_MIN };
 
 inline llvm::raw_ostream &operator<<(llvm::raw_ostream &os,
@@ -53,7 +71,7 @@ public:
   std::string getUserFuncInc() const;
   std::string getParLoopDef() const;
   size_t getNumArgs() const;
-  const OPArg& getArg(size_t) const;
+  const OPArg &getArg(size_t) const;
   size_t getLoopID() const;
   unsigned getKernelType() const;
   std::string getMPIReduceCall() const;

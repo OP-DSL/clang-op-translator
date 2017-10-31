@@ -14,6 +14,8 @@ protected:
   clang::tooling::CommonOptionsParser &optionsParser;
   // We can collect all data about kernels
   std::vector<ParLoop> loops;
+  std::map<std::string, const op_set> sets;
+  std::map<std::string, const op_map> mappings;
 
 public:
   OP2RefactoringTool(
