@@ -9,6 +9,7 @@ Check out this repository and set OP2_INSTALL_PATH enviroment variable (e.g. wit
 ## Usage Instructions
 Run as follows:
 > op2-clang /path/to/op2/apps/c/airfoil/airfoil_plain/dp/airfoil.cpp -- clang++ -I/path/to/op2/include/
+
 If clang doesn't find omp.h:
 > op2-clang /path/to/op2/apps/c/airfoil/airfoil_plain/dp/airfoil.cpp -- clang++ -I/path/to/op2/include/ -I/path/to/gcc/lib/include/ -fopenmp
 
