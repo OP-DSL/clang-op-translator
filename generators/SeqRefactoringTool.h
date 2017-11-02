@@ -9,9 +9,7 @@ namespace OP2 {
 ///
 ///
 class SeqRefactoringTool : public OP2KernelGeneratorBase {
-  static constexpr const char *skeletons[1] = {
-      "/home/dbalogh/clang-llvm/llvm/tools/clang/tools/extra/op2/skeletons/"
-      "skeleton_seqkernel.cpp"};
+  static constexpr const char *skeletons[1] = {"skeleton_seqkernel.cpp"};
 
   /// @brief Handler for Sequential kernel specific modifications.
   ///

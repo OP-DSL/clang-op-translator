@@ -1,6 +1,7 @@
 #ifndef MATCHHANDLER_FUNC_HPP
 #define MATCHHANDLER_FUNC_HPP
 #include "../OPParLoopData.h"
+#include "../utils.h"
 #include "clang/ASTMatchers/ASTMatchFinder.h"
 #include "clang/Tooling/Refactoring.h"
 #include <functional>

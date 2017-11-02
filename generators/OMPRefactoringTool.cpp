@@ -9,9 +9,10 @@ OMPRefactoringTool::OMPRefactoringTool(
     const clang::tooling::CompilationDatabase &Compilations,
     const ParLoop &loop,
     std::shared_ptr<clang::PCHContainerOperations> PCHContainerOps)
-    : OP2KernelGeneratorBase(Compilations, {std::string(SKELETONS_DIR) + skeletons[loop.getKernelType()]},
-                             loop, OMPRefactoringTool::_postfix,
-                             PCHContainerOps),
+    : OP2KernelGeneratorBase(
+          Compilations,
+          {std::string(SKELETONS_DIR) + skeletons[loop.getKernelType()]}, loop,
+          OMPRefactoringTool::_postfix, PCHContainerOps),
       ompKernelHandler(&getReplacements(), loop),
       seqKernelHandler(&getReplacements(), loop) {}
 

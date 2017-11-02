@@ -1,5 +1,4 @@
 #include "OMPKernelHandler.h"
-#include "../utils.h"
 #include "handler.hpp"
 #include "clang/AST/StmtOpenMP.h"
 
