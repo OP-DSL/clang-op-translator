@@ -30,12 +30,12 @@ if(LLVM_BUILD_MAIN_SRC_DIR)
   include_directories(${LLVM_BUILD_BINARY_DIR}/tools/clang/include)
 endif()
 
-set(OP2_INSTALL_PATH "$ENV{OP2_INSTALL_PATH}")
+set(OP2_CLANG_INSTALL_PATH "$ENV{OP2_CLANG_INSTALL_PATH}")
 
-if(OP2_INSTALL_PATH)
-  set(SKELETONS_DIR \"${OP2_INSTALL_PATH}/skeletons/\")
+if(OP2_CLANG_INSTALL_PATH)
+  set(SKELETONS_DIR \"${OP2_CLANG_INSTALL_PATH}/skeletons/\")
 else()
-  message(STATUS "OP2_INSTALL_PATH not found.")
+  message(STATUS "OP2_CLANG_INSTALL_PATH not found.")
 endif()
 
 link_directories(${LLVM_LIBRARY_DIRS})

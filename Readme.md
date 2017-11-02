@@ -2,8 +2,8 @@
 
 ## Build Instructions
 You will need a checkout of the llvm, clang and clang-tools-extra source code first (see http://clang.llvm.org/get_started.html for instructions)
-Check out this repository and set OP2_INSTALL_PATH enviroment variable (e.g. with `git clone https://github.com/bgd54/OP2-Clang.git;
- export OP2_INSTALL_PATH=/path/to/current/dir/OP2-Clang`) then in the OP2-Clang directory:
+Check out this repository and set OP2_CLANG_INSTALL_PATH enviroment variable (e.g. with `git clone https://github.com/bgd54/OP2-Clang.git;
+ export OP2_CLANG_INSTALL_PATH=/path/to/current/dir/OP2-Clang`) then in the OP2-Clang directory:
 > cmake .
 
 ## Usage Instructions
