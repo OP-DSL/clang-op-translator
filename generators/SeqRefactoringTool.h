@@ -13,10 +13,10 @@ class SeqRefactoringTool : public OP2KernelGeneratorBase {
       "/home/dbalogh/clang-llvm/llvm/tools/clang/tools/extra/op2/skeletons/"
       "skeleton_seqkernel.cpp"};
 
-
   /// @brief Handler for Sequential kernel specific modifications.
   ///
   SeqKernelHandler seqKernelHandler;
+
 public:
   /// @brief Construct a refactoring tool to generate the sequential kernel.
   ///
@@ -37,6 +37,8 @@ public:
   ///
   /// @param MatchFinder used by the RefactoringTool
   virtual void addGeneratorSpecificMatchers(clang::ast_matchers::MatchFinder &);
+
+  static constexpr const char *_postfix = "seqkernel";
 
   virtual ~SeqRefactoringTool() = default;
 };

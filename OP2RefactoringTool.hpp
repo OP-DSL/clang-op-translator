@@ -4,7 +4,7 @@
 // OP2 includes
 #include "OP2WriteableRefactoringTool.hpp"
 #include "ParLoopHandler.h"
-#include "generators/OMPRefactoringTool.h"
+#include "generators/MasterkernelGenerator.hpp"
 // Parloops.
 
 namespace OP2 {
@@ -28,16 +28,9 @@ public:
   std::vector<ParLoop> &getParLoops() { return loops; }
 
   /// @brief Generates kernelfiles for all parLoop
-  /// Currently only seqkernels created.
   void generateKernelFiles() {
-    for (ParLoop &loop : loops) {
-      std::string name = loop.getName();
-      OMPRefactoringTool tool(optionsParser.getCompilations(), loop);
-      if (tool.generateKernelFile()) {
-        llvm::outs() << "Error during processing ";
-      }
-      llvm::outs() << name << "\n";
-    }
+    OpenMPGenerator generator(loops, "airfoil"/*TODO*/, optionsParser); 
+    generator.generateKernelFiles();
   }
 
   /// @brief Generate output filename.

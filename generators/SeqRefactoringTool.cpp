@@ -10,7 +10,8 @@ SeqRefactoringTool::SeqRefactoringTool(
     const ParLoop &loop,
     std::shared_ptr<clang::PCHContainerOperations> PCHContainerOps)
     : OP2KernelGeneratorBase(Compilations, {skeletons[loop.getKernelType()]},
-                             loop, "seqkernel", PCHContainerOps),
+                             loop, SeqRefactoringTool::_postfix,
+                             PCHContainerOps),
       seqKernelHandler(&getReplacements(), loop) {}
 
 void SeqRefactoringTool::addGeneratorSpecificMatchers(

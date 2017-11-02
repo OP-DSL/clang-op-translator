@@ -17,17 +17,7 @@ protected:
   const ParLoop &loop;
   /// @brief Handler for common modifications
   BaseKernelHandler baseKernelHandler;
-
-  /// @brief Generate the name of the output file.
-  ///
-  /// @param Entry The input file that processed
-  ///
-  /// @return output filename (e.g. xxx_op.cpp, xxx_kernel.cpp)
-  ///   Default implementation gives: <loopname>_<postfix>.cpp
-  virtual std::string getOutputFileName(const clang::FileEntry *) const {
-    return loop.getName() + "_" + postfix + ".cpp";
-  }
-
+  
   /// @brief Adding matchers and handlers to the Finder.
   ///   Should be implemented in subclasses.
   ///
@@ -89,6 +79,18 @@ public:
     writeOutReplacements();
     return 0;
   }
+
+  /// @brief Generate the name of the output file.
+  ///
+  /// @param Entry The input file that processed
+  ///
+  /// @return output filename (e.g. xxx_op.cpp, xxx_kernel.cpp)
+  ///   Default implementation gives: <loopname>_<postfix>.cpp
+  virtual std::string getOutputFileName(const clang::FileEntry *f = nullptr) const {
+    return loop.getName() + "_" + postfix + ".cpp";
+  }
+
+
 
   virtual ~OP2KernelGeneratorBase() = default;
 };

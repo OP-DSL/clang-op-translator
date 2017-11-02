@@ -11,7 +11,7 @@ namespace OP2 {
 /// @brief Base class for OP2 RefactoringTools adds utility to write output to
 /// files.
 class OP2WriteableRefactoringTool : public clang::tooling::RefactoringTool {
-protected:
+public:
   /// @brief Generate output filename.
   ///
   /// @param Entry The input file that processed
@@ -20,7 +20,6 @@ protected:
   virtual std::string
   getOutputFileName(const clang::FileEntry *Entry) const = 0;
 
-public:
   OP2WriteableRefactoringTool(
       clang::tooling::CommonOptionsParser &optionsParser,
       std::shared_ptr<clang::PCHContainerOperations> PCHContainerOps =

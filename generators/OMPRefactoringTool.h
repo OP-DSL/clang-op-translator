@@ -11,9 +11,7 @@ namespace OP2 {
 ///
 ///
 class OMPRefactoringTool : public OP2KernelGeneratorBase {
-  static constexpr const char *skeletons[1] = {
-      "/home/dbalogh/clang-llvm/llvm/tools/clang/tools/extra/op2/skeletons/"
-      "skeleton_direct_kernel.cpp"};
+  static constexpr const char *skeletons[1] = {"skeleton_direct_kernel.cpp"};
 
   /// @brief Handler for OpenMP kernel specific modifications.
   ///
@@ -21,7 +19,6 @@ class OMPRefactoringTool : public OP2KernelGeneratorBase {
   /// @brief Handler for modifications same as sequential case.
   ///
   SeqKernelHandler seqKernelHandler;
-
 
 public:
   /// @brief Construct a refactoring tool to generate the OpenMP kernel.
@@ -43,6 +40,8 @@ public:
   ///
   /// @param MatchFinder used by the RefactoringTool
   virtual void addGeneratorSpecificMatchers(clang::ast_matchers::MatchFinder &);
+
+  static constexpr const char *_postfix = "kernel";
 
   virtual ~OMPRefactoringTool() = default;
 };
