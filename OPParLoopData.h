@@ -5,6 +5,14 @@
 
 namespace OP2 {
 
+struct op_global_const {
+  std::string type, name;
+  unsigned size;
+  op_global_const(std::string, std::string, unsigned);
+  bool operator<(const op_global_const&) const;
+};
+llvm::raw_ostream &operator<<(llvm::raw_ostream &, const op_global_const &);
+
 struct op_set {
   const int size;
   const std::string name;

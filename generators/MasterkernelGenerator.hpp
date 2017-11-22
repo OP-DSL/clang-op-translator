@@ -12,19 +12,29 @@ const DeclarationMatcher globVarMatcher =
 
 namespace matchers = clang::ast_matchers;
 class MasterKernelHandler : public matchers::MatchFinder::MatchCallback {
-  std::vector<std::string> &kernels;
+  const std::vector<std::string> &kernels;
+  const std::set<op_global_const> &constants;
+
   std::map<std::string, clang::tooling::Replacements> *Replace;
 
 public:
   MasterKernelHandler(
       std::vector<std::string> &kernels,
-          std::map<std::string, clang::tooling::Replacements> *Replace)
-      : kernels(kernels), Replace(Replace) {}
+      const std::set<op_global_const> &constants,
+      std::map<std::string, clang::tooling::Replacements> *Replace)
+      : kernels(kernels), constants(constants), Replace(Replace) {}
 
   std::string generateFile() {
-    std::string repl = "// user kernel files\n";
+    std::string repl;
     llvm::raw_string_ostream os(repl);
-    for (std::string &kernel : kernels) {
+    for (const op_global_const &c : constants){
+      os << "extern " << c.type << " " << c.name;
+      if(c.size != 1)
+        os << "[" << c.size << "]";
+      os << ";\n"; 
+    }
+    os << "// user kernel files\n";
+    for (const std::string &kernel : kernels) {
       os << "#include \"" << kernel << "\"\n";
     }
     return os.str();
@@ -40,13 +50,15 @@ template <typename KernelGeneratorType>
 class MasterkernelGenerator : public OP2WriteableRefactoringTool {
 protected:
   const std::vector<ParLoop> &loops;
+  const std::set<op_global_const> &constants;
   std::string base_name;
   clang::tooling::CommonOptionsParser &optionsParser;
   std::vector<std::string> generatedFiles;
 
 public:
   MasterkernelGenerator(
-      const std::vector<ParLoop> &loops, std::string base,
+      const std::vector<ParLoop> &loops,
+      const std::set<op_global_const> &consts, std::string base,
       clang::tooling::CommonOptionsParser &optionsParser,
       std::shared_ptr<clang::PCHContainerOperations> PCHContainerOps =
           std::make_shared<clang::PCHContainerOperations>())
@@ -54,7 +66,8 @@ public:
             optionsParser.getCompilations(),
             {std::string(SKELETONS_DIR) + "skeleton_kernels.cpp"},
             PCHContainerOps),
-        loops(loops), base_name(base), optionsParser(optionsParser) {}
+        loops(loops), constants(consts), base_name(base),
+        optionsParser(optionsParser) {}
 
   /// @brief Generates kernelfiles for all parLoop
   void generateKernelFiles() {
@@ -69,7 +82,7 @@ public:
     }
 
     clang::ast_matchers::MatchFinder Finder;
-    MasterKernelHandler handler(generatedFiles, &getReplacements());
+    MasterKernelHandler handler(generatedFiles, constants, &getReplacements());
     Finder.addMatcher(globVarMatcher, &handler);
     if (int Result =
             run(clang::tooling::newFrontendActionFactory(&Finder).get())) {
@@ -79,7 +92,7 @@ public:
     writeOutReplacements();
   }
 
-  std::string getOutputFileName(const clang::FileEntry *Entry) const {
+  std::string getOutputFileName(const clang::FileEntry *) const {
     return base_name + "_" + KernelGeneratorType::_postfix + "s.cpp";
   }
 };

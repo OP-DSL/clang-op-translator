@@ -1,6 +1,17 @@
 #include "OPParLoopData.h"
 
 namespace OP2 {
+//__________________________________OP_CONST__________________________________
+op_global_const::op_global_const(std::string T, std::string name, unsigned S)
+    : type(T), name(name), size(S) {}
+
+bool op_global_const::operator<(const op_global_const &c) const {
+  return name < c.name;
+}
+llvm::raw_ostream &operator<<(llvm::raw_ostream &os, const op_global_const &c) {
+  return os << c.type << " " << c.name << "{" << c.size << "}";
+}
+
 //___________________________________OP_SET___________________________________
 
 op_set::op_set(int s, std::string n) : size(s), name(n) {}

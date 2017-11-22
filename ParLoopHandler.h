@@ -2,14 +2,8 @@
 #define PARLOOPHANDLER_H_INCLUDED
 #include "OPParLoopData.h"
 #include "clang/Tooling/Refactoring.h"
-// TODO check includes
 #include "clang/ASTMatchers/ASTMatchFinder.h"
-//#include "clang/ASTMatchers/ASTMatchers.h"
-//#include "clang/Rewrite/Core/Rewriter.h"
 
-namespace clang {
-class CompilerInstance;
-}
 
 namespace OP2 {
 namespace matchers = clang::ast_matchers;
