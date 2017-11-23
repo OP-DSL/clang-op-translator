@@ -39,7 +39,6 @@ inline int getIntValFromExpr(const clang::Expr *expr) {
       llvm::errs() << "IntegerLiteral exceeds INT_MAX";
     }
     return val;
-
   }
   return INT_MAX;
 }
@@ -51,7 +50,7 @@ template <typename T> inline const T *getExprAsDecl(const clang::Expr *expr) {
   } else {
     llvm::errs() << "Warning getExprAsDecl called with a parameter which is "
                     "not a DeclRefExpr. Try get a DeclRefExpr child.\n";
-    //expr->dumpColor();
+    // expr->dumpColor();
     if (const clang::DeclRefExpr *declRefExpr =
             llvm::dyn_cast<clang::DeclRefExpr>(*(expr->child_begin()))) {
       return llvm::dyn_cast<T>(declRefExpr->getFoundDecl());

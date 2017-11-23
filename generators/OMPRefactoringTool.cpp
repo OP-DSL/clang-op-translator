@@ -23,8 +23,12 @@ void OMPRefactoringTool::addGeneratorSpecificMatchers(
     clang::ast_matchers::MatchFinder &Finder) {
   Finder.addMatcher(OMPKernelHandler::locRedVarMatcher, &ompKernelHandler);
   Finder.addMatcher(OMPKernelHandler::locRedToArgMatcher, &ompKernelHandler);
-  if (!loop.getKernelType())
+  if (!loop.getKernelType()) {
     Finder.addMatcher(OMPKernelHandler::ompParForMatcher, &ompKernelHandler);
+  } else {
+    Finder.addMatcher(OMPKernelHandler::ompParForIndirectMatcher,
+                      &ompKernelHandler);
+  }
   Finder.addMatcher(SeqKernelHandler::userFuncMatcher, &seqKernelHandler);
   Finder.addMatcher(SeqKernelHandler::funcCallMatcher, &ompKernelHandler);
   Finder.addMatcher(SeqKernelHandler::opMPIReduceMatcher, &seqKernelHandler);
