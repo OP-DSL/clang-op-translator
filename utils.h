@@ -40,8 +40,6 @@ inline int getIntValFromExpr(const clang::Expr *expr) {
     }
     return val;
 
-  } else {
-    llvm::errs() << "Expression is not an IntegerLiteral\n";
   }
   return INT_MAX;
 }

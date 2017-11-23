@@ -18,6 +18,7 @@ protected:
   const ParLoop &loop;
   int handleParLoopDecl(const matchers::MatchFinder::MatchResult &Result);
   std::string handleArgsArrSetter();
+  std::string handleIndsArr();
   std::string handleOPTimingRealloc();
   std::string handleOPDiagPrintf();
   int handleOPKernels(const matchers::MatchFinder::MatchResult &Result);
@@ -47,6 +48,10 @@ public:
   static const matchers::StatementMatcher printfKernelNameMatcher;
   /// @brief Matcher for OP_kernels changes at the end of the kernel.
   static const matchers::StatementMatcher opKernelsSubscriptMatcher;
+  /// @brief Matcher for the declaration of ninds
+  static const matchers::DeclarationMatcher nindsMatcher;
+  /// @brief Matcher for the declaration of inds array
+  static const matchers::DeclarationMatcher indsArrMatcher;
 
   virtual void run(const matchers::MatchFinder::MatchResult &Result) override;
 };

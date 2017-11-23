@@ -49,5 +49,5 @@ void op_par_loop_skeleton(char const *name, op_set set, op_arg arg0) {
   OP_kernels[0].name = name;
   OP_kernels[0].count += 1;
   OP_kernels[0].time += wall_t2 - wall_t1;
-  OP_kernels[0].transfer += (float)set->size * arg0.size;
+  OP_kernels[0].transfer += 0;
 }

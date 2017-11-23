@@ -17,7 +17,7 @@ protected:
   const ParLoop &loop;
   /// @brief Handler for common modifications
   BaseKernelHandler baseKernelHandler;
-  
+
   /// @brief Adding matchers and handlers to the Finder.
   ///   Should be implemented in subclasses.
   ///
@@ -43,6 +43,8 @@ protected:
                       &baseKernelHandler);
     Finder.addMatcher(BaseKernelHandler::opKernelsSubscriptMatcher,
                       &baseKernelHandler);
+    Finder.addMatcher(BaseKernelHandler::nindsMatcher, &baseKernelHandler);
+    Finder.addMatcher(BaseKernelHandler::indsArrMatcher, &baseKernelHandler);
   }
 
 public:
@@ -86,11 +88,10 @@ public:
   ///
   /// @return output filename (e.g. xxx_op.cpp, xxx_kernel.cpp)
   ///   Default implementation gives: <loopname>_<postfix>.cpp
-  virtual std::string getOutputFileName(const clang::FileEntry *f = nullptr) const {
+  virtual std::string
+  getOutputFileName(const clang::FileEntry *f = nullptr) const {
     return loop.getName() + "_" + postfix + ".cpp";
   }
-
-
 
   virtual ~OP2KernelGeneratorBase() = default;
 };

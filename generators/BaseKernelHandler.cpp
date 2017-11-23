@@ -44,6 +44,14 @@ const StatementMatcher BaseKernelHandler::opKernelsSubscriptMatcher =
                                      .bind("opk_member_expr")),
                        hasAncestor(parLoopSkeletonMatcher))
         .bind("op_kernels_index");
+const DeclarationMatcher BaseKernelHandler::nindsMatcher =
+    varDecl(hasType(isInteger()), hasName("ninds"),
+            hasAncestor(parLoopSkeletonMatcher))
+        .bind("ninds_decl");
+
+const DeclarationMatcher BaseKernelHandler::indsArrMatcher =
+    varDecl(hasName("inds"), hasAncestor(parLoopSkeletonMatcher))
+        .bind("inds_arr_decl");
 
 ///________________________________CONSTRUCTORS________________________________
 BaseKernelHandler::BaseKernelHandler(
@@ -77,6 +85,14 @@ void BaseKernelHandler::run(const MatchFinder::MatchResult &Result) {
                BaseKernelHandler::handleOPDiagPrintf))
     return;
   if (!handleOPKernels(Result))
+    return;
+  if (!lineReplHandler<clang::VarDecl, 1>(
+          Result, Replace, "ninds_decl", [this]() {
+            return "int ninds = " + std::to_string(this->loop.getNumArgs());
+          })) //handleNindsDecl
+    return;
+  if (!HANDLER(clang::VarDecl, 3, "inds_arr_decl",
+               BaseKernelHandler::handleIndsArr)) // handleIndsArrDecl
     return;
 }
 
@@ -130,6 +146,30 @@ std::string BaseKernelHandler::handleArgsArrSetter() {
   return os.str();
 }
 
+std::string BaseKernelHandler::handleIndsArr() {
+  std::string indarr =
+      "int inds[" + std::to_string(this->loop.getNumArgs()) + "] = {";
+  llvm::raw_string_ostream os(indarr);
+
+  std::map<std::string, int> datToInd;
+  for (unsigned i = 0; i < loop.getNumArgs(); ++i) {
+    if (loop.getArg(i).isDirect()) {
+      os << "-1, ";
+    } else {
+      auto it = datToInd.find(loop.getArg(i).opDat);
+      if (it != datToInd.end()) {
+        os << it->second << ", ";
+      } else {
+        os << datToInd.size() << ", ";
+        datToInd[loop.getArg(i).opDat] = datToInd.size() - 1;
+      }
+    }
+  }
+  os.str();
+
+  return indarr.substr(0, indarr.size() - 2) + "};\n";
+}
+
 std::string BaseKernelHandler::handleOPTimingRealloc() {
   return "op_timing_realloc(" + std::to_string(loop.getLoopID()) + ");";
 }
@@ -156,18 +196,21 @@ int BaseKernelHandler::handleOPKernels(const MatchFinder::MatchResult &Result) {
           ->getNameAsString() == "transfer") {
     const clang::BinaryOperator *bop =
         Result.Nodes.getNodeAs<clang::BinaryOperator>("op_kernels_assignment");
-    clang::SourceRange replRange(
-        bop->getLocStart(),
-        bop->getLocEnd().getLocWithOffset(5)); // TODO proper end
-    // clang::arcmt::trans::findSemiAfterLocation(bop->getLocEnd(),
-    // *Result.Context));
-    clang::tooling::Replacement repl(
-        *sm, clang::CharSourceRange(replRange, false), loop.getTransferData());
-    if (llvm::Error err = (*Replace)[filename].add(repl)) {
-      // TODO diagnostics..
-      llvm::errs() << "Set transfer failed in: " << filename << "\n";
+    if (getIntValFromExpr(bop->getRHS()->IgnoreImpCasts()) == 0) {
+      clang::SourceRange replRange(
+          bop->getLocStart(),
+          bop->getLocEnd().getLocWithOffset(3)); // TODO proper end
+      // clang::arcmt::trans::findSemiAfterLocation(bop->getLocEnd(),
+      // *Result.Context));
+      clang::tooling::Replacement repl(*sm,
+                                       clang::CharSourceRange(replRange, false),
+                                       loop.getTransferData());
+      if (llvm::Error err = (*Replace)[filename].add(repl)) {
+        // TODO diagnostics..
+        llvm::errs() << "Set transfer failed in: " << filename << "\n";
+      }
+      return 0;
     }
-    return 0;
   }
   clang::tooling::Replacement repl(
       *sm, kernelsSubscriptExpr->getIdx()->getLocStart(), 1,
