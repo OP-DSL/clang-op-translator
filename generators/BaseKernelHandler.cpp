@@ -88,7 +88,13 @@ void BaseKernelHandler::run(const MatchFinder::MatchResult &Result) {
     return;
   if (!lineReplHandler<clang::VarDecl, 1>(
           Result, Replace, "ninds_decl", [this]() {
-            return "int ninds = " + std::to_string(this->loop.getNumArgs());
+            std::set<std::string> inds;
+            for (unsigned i = 0; i < this->loop.getNumArgs(); ++i) {
+              if (!this->loop.getArg(i).isDirect()) {
+                inds.insert(this->loop.getArg(i).opDat);
+              }
+            }
+            return "int ninds = " + std::to_string(inds.size());
           })) //handleNindsDecl
     return;
   if (!HANDLER(clang::VarDecl, 3, "inds_arr_decl",

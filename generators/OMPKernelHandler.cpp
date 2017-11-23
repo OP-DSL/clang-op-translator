@@ -80,7 +80,7 @@ std::string OMPKernelHandler::handleFuncCall() {
         n,
         loop.getArg(n).isDirect() ? "n" : ("map" + std::to_string(n) + "idx"));
   } else {
-    ss << "arg" << n << "_l";
+    ss << "&arg" << n << "_l";
   }
   ss << "\n);";
   return ss.str();
