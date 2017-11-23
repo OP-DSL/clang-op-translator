@@ -14,14 +14,14 @@ using namespace clang;
 ///__________________________________MATCHERS__________________________________
 
 const StatementMatcher OMPKernelHandler::locRedVarMatcher =
-    declStmt(containsDeclaration(0, varDecl(hasName("arg0h"))),
+    declStmt(containsDeclaration(0, varDecl(hasName("arg0_l"))),
              hasParent(parLoopSkeletonCompStmtMatcher))
         .bind("local_reduction_variable");
 
 const StatementMatcher OMPKernelHandler::locRedToArgMatcher =
     binaryOperator(
         hasOperatorName("="),
-        hasRHS(ignoringImpCasts(declRefExpr(to(varDecl(hasName("arg0h")))))),
+        hasRHS(ignoringImpCasts(declRefExpr(to(varDecl(hasName("arg0_l")))))),
         hasParent(parLoopSkeletonCompStmtMatcher))
         .bind("loc_red_to_arg_assignment");
 const StatementMatcher OMPKernelHandler::ompParForMatcher =
@@ -43,12 +43,41 @@ void OMPKernelHandler::run(const MatchFinder::MatchResult &Result) {
     return;
   if (!handleOMPParLoop(Result))
     return; // if successfully handled return
-  if (!lineReplHandler<BinaryOperator, 6>(
+  if (!HANDLER(CallExpr, 2, "func_call", OMPKernelHandler::handleFuncCall))
+    return; // if successfully handled return
+  if (!lineReplHandler<BinaryOperator, 7>(
           Result, Replace, "loc_red_to_arg_assignment",
           std::bind(&OMPKernelHandler::handlelocRedToArgAssignment, this)))
     return; // if successfully handled return
 }
 ///__________________________________HANDLERS__________________________________
+
+std::string OMPKernelHandler::handleFuncCall() {
+  std::string funcCall = "";
+  llvm::raw_string_ostream ss(funcCall);
+  ss << loop.getName() << "("; // TODO fix repr to store correct function data.
+  for (size_t i = 0; i < loop.getNumArgs() - 1; ++i) {
+    if (!loop.getArg(i).isReduction()) {
+      ss << loop.getArg(i).getArgCall(i,
+                                      loop.getArg(i).isDirect()
+                                          ? "n"
+                                          : ("map" + std::to_string(i) + "idx"))
+         << ",\n";
+    } else {
+      ss << "&arg" << i << "_l, ";
+    }
+  }
+  size_t n = loop.getNumArgs() - 1;
+  if (!loop.getArg(n).isReduction()) {
+    ss << loop.getArg(n).getArgCall(
+        n,
+        loop.getArg(n).isDirect() ? "n" : ("map" + std::to_string(n) + "idx"));
+  } else {
+    ss << "arg" << n << "_l";
+  }
+  ss << "\n);";
+  return ss.str();
+}
 
 std::string OMPKernelHandler::handleRedLocalVarDecl() {
   std::string s;
@@ -56,7 +85,8 @@ std::string OMPKernelHandler::handleRedLocalVarDecl() {
   for (size_t ind = 0; ind < loop.getNumArgs(); ++ind) {
     const OPArg &arg = loop.getArg(ind);
     if (arg.isReduction()) {
-      os << arg.type << " arg" << ind << "h = *arg" << ind << ".data;\n";
+      os << arg.type << " arg" << ind << "_l = *(" + arg.type + " *)arg" << ind
+         << ".data;\n";
     }
   }
   return os.str();
@@ -68,7 +98,8 @@ std::string OMPKernelHandler::handlelocRedToArgAssignment() {
   for (size_t ind = 0; ind < loop.getNumArgs(); ++ind) {
     const OPArg &arg = loop.getArg(ind);
     if (arg.isReduction()) {
-      os << "*arg" << ind << ".data = arg" << ind << "h;\n";
+      os << "*((" + arg.type + " *)arg" << ind << ".data) = arg" << ind
+         << "_l;\n";
     }
   }
   return os.str();
@@ -94,7 +125,7 @@ int OMPKernelHandler::handleOMPParLoop(
   for (size_t ind = 0; ind < loop.getNumArgs(); ++ind) {
     const OPArg &arg = loop.getArg(ind);
     if (arg.isReduction()) { // FIXME min max reductions
-      os << "arg" << ind << "h, ";
+      os << "arg" << ind << "_l, ";
     }
   }
   if (os.str().length() > 0) {

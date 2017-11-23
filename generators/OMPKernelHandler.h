@@ -20,6 +20,7 @@ protected:
 
   std::string handleRedLocalVarDecl();
   std::string handlelocRedToArgAssignment();
+  std::string handleFuncCall();
   int handleOMPParLoop(const matchers::MatchFinder::MatchResult &Result);
 
 public:

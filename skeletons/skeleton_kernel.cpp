@@ -21,8 +21,9 @@ void op_par_loop_skeleton(char const *name, op_set set, op_arg arg0) {
 
   int ninds = 1;
   int inds[1] = {0};
+  
   // local variables for reduction 
-  double arg0h = *arg0.data;
+  double arg0_l = *(double *)arg0.data;
 
   if (OP_diags > 2) {
     printf("");
@@ -45,7 +46,7 @@ void op_par_loop_skeleton(char const *name, op_set set, op_arg arg0) {
       }
       int nblocks = Plan->ncolblk[col];
 
-#pragma omp parallel for reduction(+:arg0h)
+#pragma omp parallel for reduction(+:arg0_l)
       for (int blockIdx = 0; blockIdx < nblocks; blockIdx++) {
         int blockId = Plan->blkmap[blockIdx + block_offset];
         int nelem = Plan->nelems[blockId];
@@ -62,6 +63,7 @@ void op_par_loop_skeleton(char const *name, op_set set, op_arg arg0) {
     OP_kernels[0].transfer += Plan->transfer;
     OP_kernels[0].transfer2 += Plan->transfer2;
   }
+  *((double *)arg0.data) = arg0_l;
 
   if (set_size == 0 || set_size == set->core_size) {
     op_mpi_wait_all(nargs, args);
