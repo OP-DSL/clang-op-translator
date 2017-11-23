@@ -27,11 +27,11 @@ public:
   std::string generateFile() {
     std::string repl;
     llvm::raw_string_ostream os(repl);
-    for (const op_global_const &c : constants){
+    for (const op_global_const &c : constants) {
       os << "extern " << c.type << " " << c.name;
-      if(c.size != 1)
+      if (c.size != 1)
         os << "[" << c.size << "]";
-      os << ";\n"; 
+      os << ";\n";
     }
     os << "// user kernel files\n";
     for (const std::string &kernel : kernels) {
@@ -68,8 +68,8 @@ public:
             PCHContainerOps),
         loops(loops), constants(consts), base_name(base),
         optionsParser(optionsParser) {}
-
-  /// @brief Generates kernelfiles for all parLoop
+  /// @brief Generates kernelfiles for all parLoop and then the master kernel
+  ///  file
   void generateKernelFiles() {
     for (const ParLoop &loop : loops) {
       std::string name = loop.getName();

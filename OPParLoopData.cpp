@@ -61,8 +61,11 @@ llvm::raw_ostream &operator<<(llvm::raw_ostream &os, const DummyOPArgv2 &arg) {
 bool DummyOPArgv2::isDirect() const { return opMap; }
 
 std::string DummyOPArgv2::getArgCall(int argIdx, std::string mapStr) const {
-  return "&((" + type + "*)arg" + std::to_string(argIdx) + ".data)[" +
-         std::to_string(dim) + "*" + mapStr + "]";
+  std::string data = "(" + type + "*)arg" + std::to_string(argIdx) + ".data";
+  if (isGBL) {
+    return data;
+  }
+  return "&(" + data + ")[" + std::to_string(dim) + "*" + mapStr + "]";
 }
 
 bool DummyOPArgv2::isReduction() const {
@@ -111,7 +114,7 @@ unsigned DummyParLoop::getKernelType() const {
     return 0;
   }
   // TODO other kernel types maybe an enum;
-  return 0;
+  return 1;
 }
 
 std::string DummyParLoop::getFuncCall() const {

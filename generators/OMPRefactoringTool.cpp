@@ -5,6 +5,9 @@
 
 namespace OP2 {
 
+const std::string OMPRefactoringTool::skeletons[2] = {
+    "skeleton_direct_kernel.cpp", "skeleton_kernel.cpp"};
+
 OMPRefactoringTool::OMPRefactoringTool(
     const clang::tooling::CompilationDatabase &Compilations,
     const ParLoop &loop,
@@ -20,7 +23,8 @@ void OMPRefactoringTool::addGeneratorSpecificMatchers(
     clang::ast_matchers::MatchFinder &Finder) {
   Finder.addMatcher(OMPKernelHandler::locRedVarMatcher, &ompKernelHandler);
   Finder.addMatcher(OMPKernelHandler::locRedToArgMatcher, &ompKernelHandler);
-  Finder.addMatcher(OMPKernelHandler::ompParForMatcher, &ompKernelHandler);
+  if (!loop.getKernelType())
+    Finder.addMatcher(OMPKernelHandler::ompParForMatcher, &ompKernelHandler);
   Finder.addMatcher(SeqKernelHandler::userFuncMatcher, &seqKernelHandler);
   Finder.addMatcher(SeqKernelHandler::funcCallMatcher, &seqKernelHandler);
   Finder.addMatcher(SeqKernelHandler::opMPIReduceMatcher, &seqKernelHandler);

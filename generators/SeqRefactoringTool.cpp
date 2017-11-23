@@ -9,10 +9,9 @@ SeqRefactoringTool::SeqRefactoringTool(
     const clang::tooling::CompilationDatabase &Compilations,
     const ParLoop &loop,
     std::shared_ptr<clang::PCHContainerOperations> PCHContainerOps)
-    : OP2KernelGeneratorBase(
-          Compilations,
-          {std::string(SKELETONS_DIR) + skeletons[0]}, loop,
-          SeqRefactoringTool::_postfix, PCHContainerOps),
+    : OP2KernelGeneratorBase(Compilations,
+                             {std::string(SKELETONS_DIR) + skeletons[0]}, loop,
+                             SeqRefactoringTool::_postfix, PCHContainerOps),
       seqKernelHandler(&getReplacements(), loop) {}
 
 void SeqRefactoringTool::addGeneratorSpecificMatchers(

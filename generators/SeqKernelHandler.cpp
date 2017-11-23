@@ -45,19 +45,19 @@ void SeqKernelHandler::run(const MatchFinder::MatchResult &Result) {
         return this->loop.getUserFuncInc();
       }))
     return; // if successfully handled return
-  if (!lineReplHandler<FunctionDecl, 2>(Result, Replace, "func_call", [this]() {
+  if (!lineReplHandler<CallExpr, 2>(Result, Replace, "func_call", [this]() {
         return this->loop.getFuncCall();
       }))
     return; // if successfully handled return
-  if (!lineReplHandler<FunctionDecl, 2>(
+  if (!lineReplHandler<CallExpr, 2>(
           Result, Replace, "reduce_func_call",
           [this]() { return this->loop.getMPIReduceCall(); }))
     return; // if successfully handled return
   if (!handleMPIWaitAllIfStmt(Result))
     return; // if successfully handled return
-  if (!lineReplHandler<FunctionDecl, 2>(
-          Result, Replace, "map_idx_decl",
-          [this]() { return this->loop.getMapVarDecls(); }))
+  if (!lineReplHandler<VarDecl, 2>(Result, Replace, "map_idx_decl", [this]() {
+        return this->loop.getMapVarDecls();
+      }))
     return; // if successfully handled return
 }
 

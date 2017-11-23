@@ -11,7 +11,7 @@ namespace OP2 {
 ///
 ///
 class OMPRefactoringTool : public OP2KernelGeneratorBase {
-  static constexpr const char *skeletons[1] = {"skeleton_direct_kernel.cpp"};
+  static const std::string skeletons[2];
 
   /// @brief Handler for OpenMP kernel specific modifications.
   ///
