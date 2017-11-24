@@ -46,7 +46,7 @@ public:
   }
 };
 
-template <typename KernelGeneratorType>
+template <typename KernelGeneratorType, typename Handler = MasterKernelHandler>
 class MasterkernelGenerator : public OP2WriteableRefactoringTool {
 protected:
   const std::vector<ParLoop> &loops;
@@ -82,7 +82,7 @@ public:
     }
 
     clang::ast_matchers::MatchFinder Finder;
-    MasterKernelHandler handler(generatedFiles, constants, &getReplacements());
+    Handler handler(generatedFiles, constants, &getReplacements());
     Finder.addMatcher(globVarMatcher, &handler);
     if (int Result =
             run(clang::tooling::newFrontendActionFactory(&Finder).get())) {
