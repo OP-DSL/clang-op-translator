@@ -12,16 +12,6 @@ llvm::raw_ostream &operator<<(llvm::raw_ostream &os, const op_global_const &c) {
   return os << c.type << " " << c.name << "{" << c.size << "}";
 }
 
-//___________________________________OP_SET___________________________________
-
-op_set::op_set(int s, std::string n) : size(s), name(n) {}
-bool op_set::operator==(const op_set &_set) const {
-  return size == _set.size && name == _set.name;
-}
-llvm::raw_ostream &operator<<(llvm::raw_ostream &os, const op_set &s) {
-  return os << s.name << "{" << s.size << "}";
-}
-
 //___________________________________OP_MAP___________________________________
 op_map::op_map(const op_set &from, const op_set &to, unsigned d, std::string s)
     : from(from), to(to), dim(d), name(s) {}

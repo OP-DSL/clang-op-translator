@@ -3,17 +3,14 @@
 
 // OP2 includes
 #include "OP2WriteableRefactoringTool.hpp"
-#include "ParLoopHandler.h"
 #include "OPDataRegister.hpp"
+#include "ParLoopHandler.h"
 
-#include "generators/MasterkernelGenerator.hpp"
-
+#include "generator/MasterkernelGenerator.hpp"
 
 namespace OP2 {
 
-enum OP2Targets {
-  all=0, none, seq, openmp
-};
+enum OP2Targets { all = 0, none, seq, openmp };
 
 class OP2RefactoringTool : public OP2WriteableRefactoringTool {
 protected:
@@ -22,7 +19,7 @@ protected:
   // We can collect all data about kernels
   std::vector<ParLoop> loops;
   std::set<op_global_const> constants;
-  std::map<std::string, const op_set> sets;
+  std::map<std::string, std::string> sets;
   std::map<std::string, const op_map> mappings;
   std::string applicationName;
 
@@ -51,31 +48,33 @@ public:
 
   /// @brief Generates kernelfiles for all parLoop
   void generateKernelFiles() {
-    if(opTarget == none) return;
-    if(opTarget == seq || opTarget == all) {
+    if (opTarget == none)
+      return;
+    if (opTarget == seq || opTarget == all) {
       SeqGenerator generator(loops, constants, applicationName, optionsParser);
       generator.generateKernelFiles();
     }
-    if(opTarget == openmp || opTarget == all) {
-      OpenMPGenerator generator(loops, constants, applicationName, optionsParser);
+    if (opTarget == openmp || opTarget == all) {
+      OpenMPGenerator generator(loops, constants, applicationName,
+                                optionsParser);
       generator.generateKernelFiles();
     }
   }
 
   /// @brief Setting the finders for the refactoring tool then runs the tool
   ///   to collect data about the op calls in the application and generate the
-  ///   xxx_op files. 
+  ///   xxx_op files.
   ///
   /// @return 0 on success
   int generateOPFiles() {
     clang::ast_matchers::MatchFinder Finder;
-    //creating and setting callback to handle op_par_loops 
+    // creating and setting callback to handle op_par_loops
     ParLoopHandler parLoopHandlerCallback(&getReplacements(), getParLoops());
     Finder.addMatcher(
         callExpr(callee(functionDecl(hasName("op_par_loop")))).bind("par_loop"),
         &parLoopHandlerCallback);
-    
-    DataRegister drCallback(sets, mappings, constants); 
+
+    DataRegister drCallback(sets, mappings, constants);
     drCallback.addToFinder(Finder);
 
     return run(clang::tooling::newFrontendActionFactory(&Finder).get());

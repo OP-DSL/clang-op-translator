@@ -13,13 +13,7 @@ struct op_global_const {
 };
 llvm::raw_ostream &operator<<(llvm::raw_ostream &, const op_global_const &);
 
-struct op_set {
-  const int size;
-  const std::string name;
-  op_set(int, std::string);
-  bool operator==(const op_set &) const;
-};
-llvm::raw_ostream &operator<<(llvm::raw_ostream &, const op_set &);
+typedef std::string op_set;
 
 struct op_map {
   const op_set &from;
