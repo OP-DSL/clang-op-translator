@@ -1,4 +1,5 @@
 #include "OMPKernelHandler.h"
+#include "ASTMatchersExtension.h"
 #include "handler.hpp"
 #include "clang/AST/StmtOpenMP.h"
 
@@ -24,15 +25,10 @@ const StatementMatcher OMPKernelHandler::locRedToArgMatcher =
         hasRHS(ignoringImpCasts(declRefExpr(to(varDecl(hasName("arg0_l")))))),
         hasParent(parLoopSkeletonCompStmtMatcher))
         .bind("loc_red_to_arg_assignment");
+
 const StatementMatcher OMPKernelHandler::ompParForMatcher =
-    ifStmt(hasCondition(binaryOperator(hasRHS(integerLiteral(equals(0))))),
-           hasParent(parLoopSkeletonCompStmtMatcher))
-        .bind("if_omp_par_loop"); // FIXME matcher for the pragma..
-const StatementMatcher OMPKernelHandler::ompParForIndirectMatcher = forStmt(
-    hasLoopInit(declStmt(hasSingleDecl(varDecl(hasName("col"))))),
-    hasBody(compoundStmt(/*hasAnySubstatement(OMP)*/).bind("for_omp_par_loop")),
-    hasAncestor(
-        parLoopSkeletonCompStmtMatcher)); // FIXME matcher for the pragma..
+    ompParallelForDirective().bind(
+        "ompParForDir"); // FIXME check if it is in the main file.
 
 ///________________________________CONSTRUCTORS________________________________
 OMPKernelHandler::OMPKernelHandler(
@@ -46,16 +42,16 @@ void OMPKernelHandler::run(const MatchFinder::MatchResult &Result) {
           Result, Replace, "local_reduction_variable",
           std::bind(&OMPKernelHandler::handleRedLocalVarDecl, this)))
     return;
-  if (!handleOMPParLoop(Result))
-    return; // if successfully handled return
-  if (!handleOMPParLoopIndirect(Result))
-    return; // if successfully handled return
   if (!HANDLER(CallExpr, 2, "func_call", OMPKernelHandler::handleFuncCall))
     return; // if successfully handled return
   if (!lineReplHandler<BinaryOperator, 7>(
           Result, Replace, "loc_red_to_arg_assignment",
           std::bind(&OMPKernelHandler::handlelocRedToArgAssignment, this)))
     return; // if successfully handled return
+  if (!HANDLER(OMPParallelForDirective, 0, "ompParForDir",
+               OMPKernelHandler::handleOMPParLoop)) {
+    return;
+  }
 }
 ///__________________________________HANDLERS__________________________________
 
@@ -112,20 +108,7 @@ std::string OMPKernelHandler::handlelocRedToArgAssignment() {
   return os.str();
 }
 
-int OMPKernelHandler::handleOMPParLoop(
-    const matchers::MatchFinder::MatchResult &Result) {
-  const IfStmt *match = Result.Nodes.getNodeAs<IfStmt>("if_omp_par_loop");
-  if (!match)
-    return 1;
-  SourceManager *sm = Result.SourceManager;
-  if (!sm->isWrittenInMainFile(match->getLocStart()))
-    return 0;
-  std::string filename = getFileNameFromSourceLoc(match->getLocStart(), sm);
-  const OMPParallelForDirective *directive =
-      llvm::dyn_cast<OMPParallelForDirective>(
-          *(match->getThen()->child_begin()));
-
-  SourceRange replRange(directive->getLocStart(), directive->getLocEnd());
+std::string OMPKernelHandler::handleOMPParLoop() {
 
   std::string s;
   llvm::raw_string_ostream os(s);
@@ -138,57 +121,7 @@ int OMPKernelHandler::handleOMPParLoop(
   if (os.str().length() > 0) {
     s = " reduction(+:" + s.substr(0, s.length() - 2) + ")";
   }
-  s = "omp parallel for " + s;
-  tooling::Replacement repl(*sm, CharSourceRange(replRange, false), s);
-  if (llvm::Error err = (*Replace)[filename].add(repl)) {
-    // TODO diagnostics..
-    llvm::errs() << "Replacement of omp directive failed in: " << filename
-                 << "\n";
-  }
-  return 0;
+  return "omp parallel for " + s;
 }
 
-int OMPKernelHandler::handleOMPParLoopIndirect(
-    const matchers::MatchFinder::MatchResult &Result) {
-  const CompoundStmt *match =
-      Result.Nodes.getNodeAs<CompoundStmt>("for_omp_par_loop");
-  if (!match)
-    return 1;
-  SourceManager *sm = Result.SourceManager;
-  if (!sm->isWrittenInMainFile(match->getLocStart()))
-    return 0;
-  std::string filename = getFileNameFromSourceLoc(match->getLocStart(), sm);
-  const OMPParallelForDirective *directive = nullptr;
-  auto child = match->child_begin();
-  while (!directive && child != match->child_end()) {
-    directive = llvm::dyn_cast<OMPParallelForDirective>(*child);
-    child++;
-  }
-  if (!directive) {
-    llvm::errs() << "Error: Couldn't find OMP directive\n";
-    return 0;
-  }
-
-  SourceRange replRange(directive->getLocStart(), directive->getLocEnd());
-
-  std::string s;
-  llvm::raw_string_ostream os(s);
-  for (size_t ind = 0; ind < loop.getNumArgs(); ++ind) {
-    const OPArg &arg = loop.getArg(ind);
-    if (arg.isReduction()) { // FIXME min max reductions
-      os << "arg" << ind << "_l, ";
-    }
-  }
-  if (os.str().length() > 0) {
-    s = " reduction(+:" + s.substr(0, s.length() - 2) + ")";
-  }
-  s = "omp parallel for " + s;
-  tooling::Replacement repl(*sm, CharSourceRange(replRange, false), s);
-  if (llvm::Error err = (*Replace)[filename].add(repl)) {
-    // TODO diagnostics..
-    llvm::errs() << "Replacement of omp directive failed in: " << filename
-                 << "\n";
-  }
-  return 0;
-}
 } // namespace OP2

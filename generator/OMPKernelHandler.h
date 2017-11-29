@@ -21,9 +21,7 @@ protected:
   std::string handleRedLocalVarDecl();
   std::string handlelocRedToArgAssignment();
   std::string handleFuncCall();
-  int handleOMPParLoop(const matchers::MatchFinder::MatchResult &Result);
-  int handleOMPParLoopIndirect(
-      const matchers::MatchFinder::MatchResult &Result);
+  std::string handleOMPParLoop();
 
 public:
   /// @brief Construct a OMPKernelHandler
@@ -43,8 +41,6 @@ public:
   static const matchers::StatementMatcher locRedToArgMatcher;
   /// @brief Matcher that matches the omp parallel for pragma
   static const matchers::StatementMatcher ompParForMatcher;
-  /// @brief Matcher that matches the omp parallel for pragma
-  static const matchers::StatementMatcher ompParForIndirectMatcher;
 
   virtual void run(const matchers::MatchFinder::MatchResult &Result) override;
 };
