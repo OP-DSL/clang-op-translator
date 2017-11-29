@@ -32,7 +32,7 @@ public:
   static constexpr const char *_postfix = "mypostfix";
 };
 
-static const std::string skeletons[2] = {"direct_skeleton.cpp",
+const std::string KernelGeneratorSkeleton::skeletons[2] = {"direct_skeleton.cpp",
                                          "indirect_skeleton.cpp"};
 
 } // namespace OP2
