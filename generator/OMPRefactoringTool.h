@@ -42,6 +42,8 @@ public:
   virtual void addGeneratorSpecificMatchers(clang::ast_matchers::MatchFinder &);
 
   static constexpr const char *_postfix = "kernel";
+  static constexpr unsigned numParams = 1;
+  static constexpr const char *commandlineParams[numParams] = {"-fopenmp"};
 
   virtual ~OMPRefactoringTool() = default;
 };

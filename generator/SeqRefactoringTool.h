@@ -37,6 +37,8 @@ public:
   virtual void addGeneratorSpecificMatchers(clang::ast_matchers::MatchFinder &);
 
   static constexpr const char *_postfix = "seqkernel";
+  static constexpr unsigned numParams = 0;
+  static constexpr const char *commandlineParams[numParams] = {};
 
   virtual ~SeqRefactoringTool() = default;
 };

@@ -4,6 +4,7 @@
 #include "OMPRefactoringTool.h"
 #include "SeqRefactoringTool.h"
 #include "handler.hpp"
+#include <algorithm>
 
 namespace OP2 {
 
@@ -59,21 +60,42 @@ public:
   MasterkernelGenerator(
       const std::vector<ParLoop> &loops,
       const std::set<op_global_const> &consts, std::string base,
+      std::string skeleton_name,
       clang::tooling::CommonOptionsParser &optionsParser,
       std::shared_ptr<clang::PCHContainerOperations> PCHContainerOps =
           std::make_shared<clang::PCHContainerOperations>())
       : OP2WriteableRefactoringTool(
             optionsParser.getCompilations(),
-            {std::string(SKELETONS_DIR) + "skeleton_kernels.cpp"},
-            PCHContainerOps),
+            {std::string(SKELETONS_DIR) + skeleton_name}, PCHContainerOps),
         loops(loops), constants(consts), base_name(base),
         optionsParser(optionsParser) {}
+
+  MasterkernelGenerator(
+      const std::vector<ParLoop> &loops,
+      const std::set<op_global_const> &consts, std::string base,
+      clang::tooling::CommonOptionsParser &optionsParser,
+      std::shared_ptr<clang::PCHContainerOperations> PCHContainerOps =
+          std::make_shared<clang::PCHContainerOperations>())
+      : MasterkernelGenerator(loops, consts, base, "skeleton_kernels.cpp",
+                              optionsParser, PCHContainerOps) {}
   /// @brief Generates kernelfiles for all parLoop and then the master kernel
   ///  file
   void generateKernelFiles() {
     for (const ParLoop &loop : loops) {
       std::string name = loop.getName();
-      KernelGeneratorType tool(optionsParser.getCompilations(), loop);
+      //__________________________________________________
+      clang::tooling::CompilationDatabase &c = optionsParser.getCompilations();
+      clang::tooling::CompileCommand myC = c.getCompileCommands("")[0];
+      std::vector<std::string> ToolCommandLine;
+      std::copy(&myC.CommandLine[1],
+                &myC.CommandLine[myC.CommandLine.size() - 1],
+                std::back_inserter(ToolCommandLine));
+      for (size_t i = 0; i < KernelGeneratorType::numParams; ++i) {
+        ToolCommandLine.push_back(KernelGeneratorType::commandlineParams[i]);
+      }
+      clang::tooling::FixedCompilationDatabase F(".", ToolCommandLine);
+      //___________________________________________________
+      KernelGeneratorType tool(F, loop);
       if (tool.generateKernelFile()) {
         llvm::outs() << "Error during processing ";
       }
