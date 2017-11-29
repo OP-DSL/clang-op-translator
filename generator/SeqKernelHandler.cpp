@@ -19,16 +19,6 @@ const DeclarationMatcher SeqKernelHandler::userFuncMatcher =
 const StatementMatcher SeqKernelHandler::funcCallMatcher =
     callExpr(callee(functionDecl(hasName("skeleton"), parameterCountIs(1))))
         .bind("func_call");
-const StatementMatcher SeqKernelHandler::opMPIReduceMatcher =
-    callExpr(
-        callee(functionDecl(hasName("op_mpi_reduce"), parameterCountIs(2))),
-        hasParent(parLoopSkeletonCompStmtMatcher))
-        .bind("reduce_func_call");
-const StatementMatcher SeqKernelHandler::opMPIWaitAllIfStmtMatcher =
-    ifStmt(hasThen(compoundStmt(statementCountIs(1),
-                                hasAnySubstatement(callExpr(callee(functionDecl(
-                                    hasName("op_mpi_wait_all"))))))))
-        .bind("wait_all_if");
 const DeclarationMatcher SeqKernelHandler::mapIdxDeclMatcher =
     varDecl(hasName("map0idx"), hasAncestor(parLoopSkeletonCompStmtMatcher))
         .bind("map_idx_decl");
@@ -49,12 +39,6 @@ void SeqKernelHandler::run(const MatchFinder::MatchResult &Result) {
         return this->loop.getFuncCall();
       }))
     return; // if successfully handled return
-  if (!lineReplHandler<CallExpr, 2>(
-          Result, Replace, "reduce_func_call",
-          [this]() { return this->loop.getMPIReduceCall(); }))
-    return; // if successfully handled return
-  if (!handleMPIWaitAllIfStmt(Result))
-    return; // if successfully handled return
   if (!lineReplHandler<VarDecl, 2>(Result, Replace, "map_idx_decl", [this]() {
         return this->loop.getMapVarDecls();
       }))
@@ -62,28 +46,5 @@ void SeqKernelHandler::run(const MatchFinder::MatchResult &Result) {
 }
 
 ///__________________________________HANDLERS__________________________________
-int SeqKernelHandler::handleMPIWaitAllIfStmt(
-    const MatchFinder::MatchResult &Result) {
-  const IfStmt *ifStmt = Result.Nodes.getNodeAs<IfStmt>("wait_all_if");
-  if (!ifStmt)
-    return 1;
-  if (!loop.isDirect())
-    return 0;
-
-  SourceManager *sm = Result.SourceManager;
-  std::string filename = getFileNameFromSourceLoc(ifStmt->getLocStart(), sm);
-  SourceRange replRange(ifStmt->getLocStart(),
-                        ifStmt->getLocEnd().getLocWithOffset(1));
-  /*FIXME magic number for semicolon pos*/
-
-  tooling::Replacement repl(*sm, CharSourceRange(replRange, false), "");
-
-  if (llvm::Error err = (*Replace)[filename].add(repl)) {
-    // TODO diagnostics..
-    llvm::errs() << "Replacement of op_mpi_wat_all failed in: " << filename
-                 << "\n";
-  }
-  return 0;
-}
 
 } // namespace OP2

@@ -22,6 +22,7 @@ protected:
   std::string handleOPTimingRealloc();
   std::string handleOPDiagPrintf();
   int handleOPKernels(const matchers::MatchFinder::MatchResult &Result);
+  int handleMPIWaitAllIfStmt(const matchers::MatchFinder::MatchResult &Result);
 
 public:
   /// @brief Construct a BaseKernelHandler
@@ -52,6 +53,10 @@ public:
   static const matchers::DeclarationMatcher nindsMatcher;
   /// @brief Matcher for the declaration of inds array
   static const matchers::DeclarationMatcher indsArrMatcher;
+  /// @brief Matcher for op_mpi_reduce call
+  static const matchers::StatementMatcher opMPIReduceMatcher;
+  /// @brief Matcher for the surrounding if statement of op_mpi_wait_all calls
+  static const matchers::StatementMatcher opMPIWaitAllIfStmtMatcher;
 
   virtual void run(const matchers::MatchFinder::MatchResult &Result) override;
 };

@@ -52,6 +52,16 @@ const DeclarationMatcher BaseKernelHandler::nindsMatcher =
 const DeclarationMatcher BaseKernelHandler::indsArrMatcher =
     varDecl(hasName("inds"), hasAncestor(parLoopSkeletonMatcher))
         .bind("inds_arr_decl");
+const StatementMatcher BaseKernelHandler::opMPIReduceMatcher =
+    callExpr(
+        callee(functionDecl(hasName("op_mpi_reduce"), parameterCountIs(2))),
+        hasAncestor(parLoopSkeletonMatcher))
+        .bind("reduce_func_call");
+const StatementMatcher BaseKernelHandler::opMPIWaitAllIfStmtMatcher =
+    ifStmt(hasThen(compoundStmt(statementCountIs(1),
+                                hasAnySubstatement(callExpr(callee(functionDecl(
+                                    hasName("op_mpi_wait_all"))))))))
+        .bind("wait_all_if");
 
 ///________________________________CONSTRUCTORS________________________________
 BaseKernelHandler::BaseKernelHandler(
@@ -100,6 +110,12 @@ void BaseKernelHandler::run(const MatchFinder::MatchResult &Result) {
   if (!HANDLER(clang::VarDecl, 3, "inds_arr_decl",
                BaseKernelHandler::handleIndsArr)) // handleIndsArrDecl
     return;
+  if (!lineReplHandler<CallExpr, 2>(
+          Result, Replace, "reduce_func_call",
+          [this]() { return this->loop.getMPIReduceCall(); }))
+    return; // if successfully handled return
+  if (!handleMPIWaitAllIfStmt(Result))
+    return; // if successfully handled return
 }
 
 ///__________________________________HANDLERS__________________________________
@@ -229,4 +245,29 @@ int BaseKernelHandler::handleOPKernels(const MatchFinder::MatchResult &Result) {
 
   return 0;
 }
+
+int BaseKernelHandler::handleMPIWaitAllIfStmt(
+    const MatchFinder::MatchResult &Result) {
+  const IfStmt *ifStmt = Result.Nodes.getNodeAs<IfStmt>("wait_all_if");
+  if (!ifStmt)
+    return 1;
+  if (!loop.isDirect())
+    return 0;
+
+  SourceManager *sm = Result.SourceManager;
+  std::string filename = getFileNameFromSourceLoc(ifStmt->getLocStart(), sm);
+  SourceRange replRange(ifStmt->getLocStart(),
+                        ifStmt->getLocEnd().getLocWithOffset(1));
+  /*FIXME magic number for semicolon pos*/
+
+  tooling::Replacement repl(*sm, CharSourceRange(replRange, false), "");
+
+  if (llvm::Error err = (*Replace)[filename].add(repl)) {
+    // TODO diagnostics..
+    llvm::errs() << "Replacement of op_mpi_wat_all failed in: " << filename
+                 << "\n";
+  }
+  return 0;
+}
+
 } // end of namespace OP2

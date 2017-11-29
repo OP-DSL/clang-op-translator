@@ -45,6 +45,10 @@ protected:
                       &baseKernelHandler);
     Finder.addMatcher(BaseKernelHandler::nindsMatcher, &baseKernelHandler);
     Finder.addMatcher(BaseKernelHandler::indsArrMatcher, &baseKernelHandler);
+    Finder.addMatcher(BaseKernelHandler::opMPIReduceMatcher,
+                      &baseKernelHandler);
+    Finder.addMatcher(BaseKernelHandler::opMPIWaitAllIfStmtMatcher,
+                      &baseKernelHandler);
   }
 
 public:

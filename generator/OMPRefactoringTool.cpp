@@ -26,8 +26,6 @@ void OMPRefactoringTool::addGeneratorSpecificMatchers(
   Finder.addMatcher(OMPKernelHandler::ompParForMatcher, &ompKernelHandler);
   Finder.addMatcher(SeqKernelHandler::userFuncMatcher, &seqKernelHandler);
   Finder.addMatcher(SeqKernelHandler::funcCallMatcher, &ompKernelHandler);
-  Finder.addMatcher(SeqKernelHandler::opMPIReduceMatcher, &seqKernelHandler);
-  Finder.addMatcher(SeqKernelHandler::mapIdxDeclMatcher, &seqKernelHandler);
 }
 
 } // namespace OP2

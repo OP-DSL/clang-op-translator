@@ -18,9 +18,6 @@ void SeqRefactoringTool::addGeneratorSpecificMatchers(
     clang::ast_matchers::MatchFinder &Finder) {
   Finder.addMatcher(SeqKernelHandler::userFuncMatcher, &seqKernelHandler);
   Finder.addMatcher(SeqKernelHandler::funcCallMatcher, &seqKernelHandler);
-  Finder.addMatcher(SeqKernelHandler::opMPIReduceMatcher, &seqKernelHandler);
-  Finder.addMatcher(SeqKernelHandler::opMPIWaitAllIfStmtMatcher,
-                    &seqKernelHandler);
   Finder.addMatcher(SeqKernelHandler::mapIdxDeclMatcher, &seqKernelHandler);
 }
 
