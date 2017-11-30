@@ -1,7 +1,6 @@
 //
 // Skeleton for direct kernels using OpenMP
 //
-#include "op_lib_cpp.h"
 
 // user function
 void skeleton(double* a){}
