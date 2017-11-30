@@ -3,6 +3,7 @@
 #include "../OP2WriteableRefactoringTool.hpp"
 #include "OMPRefactoringTool.h"
 #include "SeqRefactoringTool.h"
+#include "VecRefactoringTool.h"
 #include "handler.hpp"
 #include <algorithm>
 
@@ -53,48 +54,43 @@ protected:
   const std::vector<ParLoop> &loops;
   const std::set<op_global_const> &constants;
   std::string base_name;
-  clang::tooling::CommonOptionsParser &optionsParser;
+  std::vector<std::string> commandLineArgs;
   std::vector<std::string> generatedFiles;
 
 public:
   MasterkernelGenerator(
       const std::vector<ParLoop> &loops,
       const std::set<op_global_const> &consts, std::string base,
-      std::string skeleton_name,
-      clang::tooling::CommonOptionsParser &optionsParser,
+      std::string skeleton_name, std::vector<std::string> &args,
+      clang::tooling::FixedCompilationDatabase &compilations,
       std::shared_ptr<clang::PCHContainerOperations> PCHContainerOps =
           std::make_shared<clang::PCHContainerOperations>())
       : OP2WriteableRefactoringTool(
-            optionsParser.getCompilations(),
-            {std::string(SKELETONS_DIR) + skeleton_name}, PCHContainerOps),
+            compilations, {std::string(SKELETONS_DIR) + skeleton_name},
+            PCHContainerOps),
         loops(loops), constants(consts), base_name(base),
-        optionsParser(optionsParser) {}
+        commandLineArgs(args) {}
 
   MasterkernelGenerator(
       const std::vector<ParLoop> &loops,
       const std::set<op_global_const> &consts, std::string base,
-      clang::tooling::CommonOptionsParser &optionsParser,
+      std::vector<std::string> &commandLineArgs,
+      clang::tooling::FixedCompilationDatabase &compilations,
       std::shared_ptr<clang::PCHContainerOperations> PCHContainerOps =
           std::make_shared<clang::PCHContainerOperations>())
       : MasterkernelGenerator(loops, consts, base, "skeleton_kernels.cpp",
-                              optionsParser, PCHContainerOps) {}
+                              commandLineArgs, compilations, PCHContainerOps) {}
   /// @brief Generates kernelfiles for all parLoop and then the master kernel
   ///  file
   void generateKernelFiles() {
+    for (size_t i = 0; i < KernelGeneratorType::numParams; ++i) {
+      commandLineArgs.push_back(KernelGeneratorType::commandlineParams[i]);
+    }
+    commandLineArgs.push_back(std::string("-include") + OP2_INC +
+                              "op_lib_cpp.h");
+    clang::tooling::FixedCompilationDatabase F(".", commandLineArgs);
     for (const ParLoop &loop : loops) {
       std::string name = loop.getName();
-      //__________________________________________________
-      clang::tooling::CompilationDatabase &c = optionsParser.getCompilations();
-      clang::tooling::CompileCommand myC = c.getCompileCommands("")[0];
-      std::vector<std::string> ToolCommandLine;
-      std::copy(&myC.CommandLine[1],
-                &myC.CommandLine[myC.CommandLine.size() - 1],
-                std::back_inserter(ToolCommandLine));
-      for (size_t i = 0; i < KernelGeneratorType::numParams; ++i) {
-        ToolCommandLine.push_back(KernelGeneratorType::commandlineParams[i]);
-      }
-      clang::tooling::FixedCompilationDatabase F(".", ToolCommandLine);
-      //___________________________________________________
       KernelGeneratorType tool(F, loop);
       if (tool.generateKernelFile()) {
         llvm::outs() << "Error during processing ";
@@ -121,6 +117,7 @@ public:
 
 typedef MasterkernelGenerator<SeqRefactoringTool> SeqGenerator;
 typedef MasterkernelGenerator<OMPRefactoringTool> OpenMPGenerator;
+typedef MasterkernelGenerator<VecRefactoringTool> VectorizedGenerator;
 } // namespace OP2
 
 #endif /* ifndef MASTERKERNELGENERATOR_HPP */

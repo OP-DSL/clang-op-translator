@@ -10,12 +10,13 @@
 
 namespace OP2 {
 
-enum OP2Targets { all = 0, none, seq, openmp };
+enum OP2Targets { all = 0, none, seq, openmp, vec };
 
 class OP2RefactoringTool : public OP2WriteableRefactoringTool {
 protected:
   OP2Targets opTarget;
-  clang::tooling::CommonOptionsParser &optionsParser;
+  std::vector<std::string> &commandLineArgs;
+  clang::tooling::FixedCompilationDatabase &Compilations;
   // We can collect all data about kernels
   std::vector<ParLoop> loops;
   std::set<op_global_const> constants;
@@ -25,11 +26,15 @@ protected:
 
 public:
   OP2RefactoringTool(
+      std::vector<std::string> &commandLineArgs,
+      clang::tooling::FixedCompilationDatabase &compilations,
       clang::tooling::CommonOptionsParser &optionsParser, OP2Targets opTarget,
       std::shared_ptr<clang::PCHContainerOperations> PCHContainerOps =
           std::make_shared<clang::PCHContainerOperations>())
-      : OP2WriteableRefactoringTool(optionsParser, PCHContainerOps),
-        opTarget(opTarget), optionsParser(optionsParser) {
+      : OP2WriteableRefactoringTool(
+            compilations, optionsParser.getSourcePathList(), PCHContainerOps),
+        opTarget(opTarget), commandLineArgs(commandLineArgs),
+        Compilations(compilations) {
     applicationName = optionsParser.getSourcePathList()[0];
     size_t basename_start = applicationName.rfind("/"),
            basename_end = applicationName.rfind(".");
@@ -51,12 +56,19 @@ public:
     if (opTarget == none)
       return;
     if (opTarget == seq || opTarget == all) {
-      SeqGenerator generator(loops, constants, applicationName, optionsParser);
+      SeqGenerator generator(loops, constants, applicationName, commandLineArgs,
+                             Compilations);
       generator.generateKernelFiles();
     }
     if (opTarget == openmp || opTarget == all) {
       OpenMPGenerator generator(loops, constants, applicationName,
-                                optionsParser);
+                                commandLineArgs, Compilations);
+      generator.generateKernelFiles();
+    }
+    if (opTarget == vec || opTarget == all) {
+      VectorizedGenerator generator(loops, constants, applicationName,
+                                    "skeleton_veckernels.cpp", commandLineArgs,
+                                    Compilations);
       generator.generateKernelFiles();
     }
   }

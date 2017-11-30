@@ -4,8 +4,19 @@
 #include <clang/AST/Expr.h>
 #include <clang/ASTMatchers/ASTMatchFinder.h>
 #include <clang/Frontend/CompilerInstance.h>
+#include <clang/Tooling/CommonOptionsParser.h>
 
 namespace OP2 {
+
+inline std::vector<std::string> 
+getCommandlineArgs(clang::tooling::CommonOptionsParser &parser) {
+  clang::tooling::CompilationDatabase &c = parser.getCompilations();
+  clang::tooling::CompileCommand myC = c.getCompileCommands("")[0];
+  std::vector<std::string> ToolCommandLine;
+  std::copy(&myC.CommandLine[1], &myC.CommandLine[myC.CommandLine.size() - 1],
+            std::back_inserter(ToolCommandLine));
+  return ToolCommandLine;
+}
 
 inline std::string
 getFileNameFromSourceLoc(clang::SourceLocation sLoc,

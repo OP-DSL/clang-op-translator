@@ -31,6 +31,7 @@ if(LLVM_BUILD_MAIN_SRC_DIR)
 endif()
 
 set(OP2_CLANG_INSTALL_PATH "$ENV{OP2_CLANG_INSTALL_PATH}")
+set(OP2_INSTALL_PATH "$ENV{OP2_INSTALL_PATH}")
 
 if(OP2_CLANG_INSTALL_PATH)
   set(SKELETONS_DIR \"${OP2_CLANG_INSTALL_PATH}/skeletons/\")
@@ -38,10 +39,18 @@ else()
   message(STATUS "OP2_CLANG_INSTALL_PATH not found.")
 endif()
 
+if(OP2_INSTALL_PATH)
+  set(OP2_INC \"${OP2_INSTALL_PATH}/c/include/\")
+else()
+  message(STATUS "OP2_INSTALL_PATH not found. Use default: \"~/OP2-Common/op2/c/include/\"")
+  set(OP2_INC \"~/OP2-Common/op2/c/include/\")
+endif()
+
 link_directories(${LLVM_LIBRARY_DIRS})
 add_definitions(${LLVM_DEFINITIONS})
 add_definitions(
   -DSKELETONS_DIR=${SKELETONS_DIR}
+  -DOP2_INC=${OP2_INC}
   )
 
 add_executable(${PROJECT_NAME}
