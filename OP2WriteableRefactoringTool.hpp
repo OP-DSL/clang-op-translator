@@ -66,8 +66,34 @@ public:
       I->second.write(outfile);
     }
   }
+
+  virtual void writeReplacementsTo(llvm::raw_ostream &os) {
+    // Set up the Rewriter (For this we need a SourceManager)
+    llvm::IntrusiveRefCntPtr<clang::DiagnosticOptions> DiagOpts =
+        new clang::DiagnosticOptions();
+    clang::DiagnosticsEngine Diagnostics(
+        llvm::IntrusiveRefCntPtr<clang::DiagnosticIDs>(
+            new clang::DiagnosticIDs()),
+        &*DiagOpts, new clang::TextDiagnosticPrinter(llvm::errs(), &*DiagOpts),
+        true);
+    clang::SourceManager Sources(Diagnostics, getFiles());
+
+    // Apply all replacements to a rewriter.
+    clang::Rewriter Rewrite(Sources, clang::LangOptions());
+    formatAndApplyAllReplacements(getReplacements(), Rewrite, "LLVM");
+
+    // Query the rewriter for all the files it has rewritten, dumping their new
+    // contents to output files.
+    for (clang::Rewriter::buffer_iterator I = Rewrite.buffer_begin(),
+                                          E = Rewrite.buffer_end();
+         I != E; ++I) {
+      I->second.write(os);
+    }
+  }
+
   virtual ~OP2WriteableRefactoringTool() = default;
 };
+
 } // namespace OP2
 
 #endif /* ifndef OP2WRITEABLEREFACTORINGTOOL_HPP */

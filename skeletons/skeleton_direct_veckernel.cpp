@@ -1,10 +1,11 @@
 //
-// Skeleton for direct kernels using OpenMP
+// Skeleton for direct kernels with vectorization
 //
 #include "op_lib_cpp.h"
 
 // user function
 void skeleton(double* a){}
+void skeleton_vec(double* a){}
 
 // host stub function
 void op_par_loop_skeleton(char const *name, op_set set, op_arg arg0) {
@@ -14,30 +15,42 @@ void op_par_loop_skeleton(char const *name, op_set set, op_arg arg0) {
 
   args[0] = arg0;
 
+  // create aligned pointers for dats
+  const double *__restrict__ ptr0 = (double *)arg0.data;
+
   // initialise timers
   double cpu_t1, cpu_t2, wall_t1, wall_t2;
   op_timing_realloc(0);
   op_timers_core(&cpu_t1, &wall_t1);
 
-  // local variables for reduction 
-  double arg0_l = *(double *)arg0.data;
-
   if (OP_diags > 2) {
     printf("");
   }
 
-  op_mpi_halo_exchanges(set, nargs, args);
+  int exec_size = op_mpi_halo_exchanges(set, nargs, args);
 
-  if (set->size > 0) {
+  if (exec_size > 0) {
 
-    #pragma omp parallel for reduction(+:arg0_l)
-    for (int n = 0; n < set->size; n++) {
-      int map0idx = arg0.map_data[n * arg0.map->dim + 0];
-      
+#ifdef VECTORIZE
+#pragma novector
+    for (int n = 0; n < (exec_size / SIMD_VEC) * SIMD_VEC; n += SIMD_VEC) {
+      double dat[SIMD_VEC] = {0.0};
+#pragma simd
+      for (int i = 0; i < SIMD_VEC; i++) {
+        skeleton_vec(&((double *)arg0.data)[4 * n]);
+      }
+      for (int i = 0; i < SIMD_VEC; i++) {
+        dat[i]=0;
+      }
+    }
+    // remainder
+    for (int n = (exec_size / SIMD_VEC) * SIMD_VEC; n < exec_size; n++) {
+#else
+    for (int n = 0; n < exec_size; n++) {
+#endif
       skeleton(&((double *)arg0.data)[4 * n]);
     }
   }
-  *((double *)arg0.data) = arg0_l;
 
   // combine reduction data
   op_mpi_reduce(&arg0, (double *)arg0.data);

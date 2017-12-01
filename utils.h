@@ -3,12 +3,22 @@
 #include <clang/AST/ASTContext.h>
 #include <clang/AST/Expr.h>
 #include <clang/ASTMatchers/ASTMatchFinder.h>
+#include <clang/Basic/LangOptions.h>
 #include <clang/Frontend/CompilerInstance.h>
+#include <clang/Lex/Lexer.h>
 #include <clang/Tooling/CommonOptionsParser.h>
-
 namespace OP2 {
 
-inline std::vector<std::string> 
+inline std::string decl2str(const clang::Decl *d,
+                            const clang::SourceManager *sm) {
+  clang::SourceLocation b(d->getLocStart()), _e(d->getLocEnd());
+  clang::SourceLocation e(
+      clang::Lexer::getLocForEndOfToken(_e, 0, *sm, clang::LangOptions()));
+  return std::string(sm->getCharacterData(b),
+                     sm->getCharacterData(e) - sm->getCharacterData(b));
+}
+
+inline std::vector<std::string>
 getCommandlineArgs(clang::tooling::CommonOptionsParser &parser) {
   clang::tooling::CompilationDatabase &c = parser.getCompilations();
   clang::tooling::CompileCommand myC = c.getCompileCommands("")[0];

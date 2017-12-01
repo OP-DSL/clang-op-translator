@@ -34,6 +34,14 @@ inline llvm::raw_ostream &operator<<(llvm::raw_ostream &os,
   return os << OP_accs_labels[accs];
 }
 
+struct UserFuncData {
+  std::string functionDecl;
+  std::string funcName;
+  std::string path;
+  std::vector<std::string> paramNames;
+  UserFuncData(const clang::FunctionDecl *, const clang::SourceManager *);
+};
+
 struct DummyOPArgv2 {
   std::string opDat;
   int idx;
@@ -59,17 +67,19 @@ typedef DummyOPArgv2 OPArg;
 class DummyParLoop {
   static size_t numLoops;
   int loopId;
-  std::string function;
+  UserFuncData function;
   const std::string name;
   std::vector<OPArg> args;
 
 public:
-  DummyParLoop(const clang::FunctionDecl *_function, std::string _name,
+  DummyParLoop(const clang::FunctionDecl *_function,
+               const clang::SourceManager *sm, std::string _name,
                std::vector<OPArg> _args);
 
   bool isDirect() const;
   std::string getName() const;
   std::string getFuncCall() const;
+  std::string getFuncText() const;
   std::string getUserFuncInc() const;
   std::string getParLoopDef() const;
   size_t getNumArgs() const;
@@ -79,6 +89,7 @@ public:
   std::string getMPIReduceCall() const;
   std::string getTransferData() const;
   std::string getMapVarDecls() const;
+  UserFuncData getUserFuncInfo() const;
 };
 
 typedef DummyParLoop ParLoop;

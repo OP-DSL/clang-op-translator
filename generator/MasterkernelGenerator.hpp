@@ -86,8 +86,11 @@ public:
     for (size_t i = 0; i < KernelGeneratorType::numParams; ++i) {
       commandLineArgs.push_back(KernelGeneratorType::commandlineParams[i]);
     }
+    /* Here we could add the op_lib_cpp.h for kernel gen
+     * but it gives errors in userkernel modifications..
     commandLineArgs.push_back(std::string("-include") + OP2_INC +
                               "op_lib_cpp.h");
+    */
     clang::tooling::FixedCompilationDatabase F(".", commandLineArgs);
     for (const ParLoop &loop : loops) {
       std::string name = loop.getName();

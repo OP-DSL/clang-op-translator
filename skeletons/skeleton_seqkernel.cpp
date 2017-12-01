@@ -1,6 +1,7 @@
 //
 // Skeleton for sequential kernels
 //
+#include "op_lib_cpp.h"
 
 // user function
 void skeleton(double* a){}

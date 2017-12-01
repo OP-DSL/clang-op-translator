@@ -50,7 +50,30 @@ int lineReplHandler(const clang::ast_matchers::MatchFinder::MatchResult &Result,
 #define HANDLER(MatchType, Offset, Key, MemberFunction)                        \
   lineReplHandler<MatchType, Offset>(Result, Replace, Key,                     \
                                      std::bind(&MemberFunction, this))
+template <typename MatchType, int Offset = 0, bool debug = false>
+int fixLengthReplHandler(
+    const clang::ast_matchers::MatchFinder::MatchResult &Result,
+    std::map<std::string, tooling::Replacements> *Replace,
+    const std::string Key, unsigned length,
+    std::function<std::string(void)> &&ReplacementGenerator) {
+  const MatchType *match = Result.Nodes.getNodeAs<MatchType>(Key);
+  if (!match)
+    return 1; // We shouldn't handle this match
+  if (debug)
+    llvm::outs() << Key << "\n";
+  clang::SourceManager *sm = Result.SourceManager;
+  std::string filename = getFileNameFromSourceLoc(match->getLocStart(), sm);
+  std::string replacement = ReplacementGenerator();
 
+  tooling::Replacement repl(*sm, match->getLocStart().getLocWithOffset(Offset),
+                            length, replacement);
+  if (llvm::Error err = (*Replace)[filename].add(repl)) {
+    // TODO diagnostics..
+    llvm::errs() << "Replacement for key: " << Key << " failed in: " << filename
+                 << "\n";
+  }
+  return 0;
+}
 } // namespace OP2
 
 #endif /* ifndef MATCHHANDLER_FUNC_HPP */

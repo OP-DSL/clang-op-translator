@@ -77,7 +77,7 @@ void ParLoopHandler::parseFunctionDecl(const clang::CallExpr *parloopExpr,
     addOPArgToVector(parloopExpr->getArg(arg_ind), args);
     parLoopDataSS << args.back();
   }
-  parLoops.push_back(ParLoop(fDecl, name, args));
+  parLoops.push_back(ParLoop(fDecl, SM, name, args));
   llvm::outs() << parLoopDataSS.str();
 }
 

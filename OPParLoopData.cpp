@@ -1,4 +1,5 @@
 #include "OPParLoopData.h"
+#include "utils.h"
 
 namespace OP2 {
 //__________________________________OP_CONST__________________________________
@@ -21,6 +22,16 @@ bool op_map::operator==(const op_map &m) const {
 llvm::raw_ostream &operator<<(llvm::raw_ostream &os, const op_map &m) {
   return os << "map:" << m.name << "::" << m.from << "-->" << m.to
             << " dim: " << m.dim;
+}
+
+UserFuncData::UserFuncData(const clang::FunctionDecl *funcD,
+                           const clang::SourceManager *sm)
+    : functionDecl(decl2str(funcD, sm)), funcName(funcD->getNameAsString()) {
+  path = funcD->getLocStart().printToString(*sm);
+  path = path.substr(0, path.find(":"));
+  for (size_t i = 0; i < funcD->getNumParams(); ++i) {
+    paramNames.push_back(funcD->getParamDecl(i)->getNameAsString());
+  }
 }
 
 //___________________________________OP_ARG___________________________________
@@ -62,14 +73,14 @@ bool DummyOPArgv2::isReduction() const {
   return isGBL && (accs == OP_INC || accs == OP_MAX || accs == OP_MIN);
 }
 
-// ParLoop functions
+//__________________________________PAR_LOOP__________________________________
 
 size_t DummyParLoop::numLoops = 0;
 
 DummyParLoop::DummyParLoop(const clang::FunctionDecl *_function,
-                           std::string _name, std::vector<OPArg> _args)
-    : loopId(numLoops++), function(_function->getNameAsString()), name(_name),
-      args(_args) {}
+                           const clang::SourceManager *sm, std::string _name,
+                           std::vector<OPArg> _args)
+    : loopId(numLoops++), function(_function, sm), name(_name), args(_args) {}
 
 bool DummyParLoop::isDirect() const {
   return std::all_of(args.begin(), args.end(),
@@ -77,6 +88,7 @@ bool DummyParLoop::isDirect() const {
 }
 
 std::string DummyParLoop::getName() const { return name; }
+std::string DummyParLoop::getFuncText() const { return function.functionDecl; }
 
 size_t DummyParLoop::getLoopID() const { return loopId; }
 
@@ -167,5 +179,7 @@ std::string DummyParLoop::getMapVarDecls() const {
   }
   return ss.str();
 }
+
+UserFuncData DummyParLoop::getUserFuncInfo() const { return function; }
 
 } // namespace OP2
