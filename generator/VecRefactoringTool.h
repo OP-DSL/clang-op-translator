@@ -11,6 +11,7 @@ class VecRefactoringTool : public OP2KernelGeneratorBase {
   static const std::string skeletons[2];
 
   VecKernelHandler vecKernelHandler;
+  SeqKernelHandler seqKernelHandler;
 
 public:
   VecRefactoringTool(
@@ -22,17 +23,29 @@ public:
             Compilations,
             {std::string(SKELETONS_DIR) + skeletons[!loop.isDirect()]}, loop,
             VecRefactoringTool::_postfix, PCHContainerOps),
-        vecKernelHandler(&getReplacements(), Compilations, loop) {}
+        vecKernelHandler(&getReplacements(), Compilations, loop),
+        seqKernelHandler(&getReplacements(), loop) {}
 
   virtual void
   addGeneratorSpecificMatchers(clang::ast_matchers::MatchFinder &Finder) {
+    Finder.addMatcher(SeqKernelHandler::mapIdxDeclMatcher, &seqKernelHandler);
     Finder.addMatcher(SeqKernelHandler::userFuncMatcher, &vecKernelHandler);
     Finder.addMatcher(SeqKernelHandler::funcCallMatcher, &vecKernelHandler);
     Finder.addMatcher(VecKernelHandler::vecFuncCallMatcher, &vecKernelHandler);
     Finder.addMatcher(VecKernelHandler::vecUserFuncMatcher, &vecKernelHandler);
     Finder.addMatcher(VecKernelHandler::alignedPtrMatcher, &vecKernelHandler);
     Finder.addMatcher(VecKernelHandler::localRedVarMatcher, &vecKernelHandler);
+    Finder.addMatcher(VecKernelHandler::localidx0Matcher, &vecKernelHandler);
+    Finder.addMatcher(VecKernelHandler::localidx1Matcher, &vecKernelHandler);
+    Finder.addMatcher(VecKernelHandler::localIndirectVarMatcher,
+                      &vecKernelHandler);
     Finder.addMatcher(VecKernelHandler::redForMatcher, &vecKernelHandler);
+    Finder.addMatcher(VecKernelHandler::localIncWriteBackMatcher,
+                      &vecKernelHandler);
+    Finder.addMatcher(VecKernelHandler::localIndDatInitMatcher,
+                      &vecKernelHandler);
+    Finder.addMatcher(VecKernelHandler::localIndRedWriteBackMatcher,
+                      &vecKernelHandler);
   };
 
   static constexpr const char *_postfix = "veckernel";

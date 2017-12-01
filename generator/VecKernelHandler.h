@@ -16,6 +16,87 @@ protected:
   std::map<std::string, clang::tooling::Replacements> *Replace;
   const ParLoop &loop;
 
+  std::string handleRedWriteBack() {
+    std::string repl;
+    llvm::raw_string_ostream os(repl);
+    for (size_t i = 0; i < loop.getNumArgs(); ++i) {
+      if (loop.getArg(i).isReduction()) { // TODO other types of reductions
+        os << "*(" << loop.getArg(i).type << "*)arg" << i << ".data += dat" << i
+           << "[i];\n";
+      }
+    }
+    return os.str();
+  }
+  std::string handleLocalIndirectInc() {
+    std::string repl;
+    llvm::raw_string_ostream os(repl);
+    for (size_t i = 0; i < loop.getNumArgs(); ++i) {
+      if (loop.getArg(i).isDirect() ||
+          loop.getArg(i).accs != OP_accs_type::OP_INC)
+        continue;
+      std::string linebeg = "(ptr" + std::to_string(i) + ")[idx" +
+                            std::to_string(i) + "_" +
+                            std::to_string(loop.getArg(i).dim) + "+";
+      for (size_t d = 0; d < loop.getArg(i).dim; ++d) {
+        os << linebeg << d << "]+="
+           << "dat" << i << "[" << d << "][i];\n";
+      }
+      os << "\n";
+    }
+    return os.str();
+  }
+
+  std::string handleLocalIndirectInit() {
+    std::string repl;
+    llvm::raw_string_ostream os(repl);
+    for (size_t i = 0; i < loop.getNumArgs(); ++i) {
+      if (loop.getArg(i).isDirect())
+        continue;
+      for (size_t d = 0; d < loop.getArg(i).dim; ++d) {
+        os << "dat" << i << "[" << d << "][i] =";
+        if (loop.getArg(i).accs == OP_accs_type::OP_READ) {
+          os << "(ptr" << i << ")[idx" << i << "_" << loop.getArg(i).dim << "+"
+             << d << "];\n";
+        } else {
+          os << "0;\n";
+        }
+      }
+      os << "\n";
+    }
+    return os.str();
+  }
+
+  template <bool READS> std::string handleIDX() {
+    std::string repl;
+    llvm::raw_string_ostream os(repl);
+    for (size_t i = 0; i < loop.getNumArgs(); ++i) {
+      if (loop.getArg(i).isDirect())
+        continue;
+      if ((READS && loop.getArg(i).accs == OP_accs_type::OP_READ) ||
+          (!READS && loop.getArg(i).accs == OP_accs_type::OP_INC)) {
+        int dim = loop.getArg(i).dim;
+        std::string argmap = "arg" + std::to_string(i) + ".map";
+        os << "int idx" << i << "_" << dim << "=" << dim << "*" << argmap
+           << "_data[(n+i)*" << argmap << "->dim+" << loop.getArg(i).idx
+           << "];";
+      }
+    }
+    return os.str();
+  }
+
+  std::string localIndirectVarDecls() {
+    std::string repl;
+    llvm::raw_string_ostream os(repl);
+    for (size_t i = 0; i < loop.getNumArgs(); ++i) {
+      if (!loop.getArg(i).isDirect() && !loop.getArg(i).isGBL) {
+        std::string type = loop.getArg(i).type;
+        os << "ALIGNED_" << type << " " << type << " dat" << i << "["
+           << loop.getArg(i).dim << "][SIMD_VEC];";
+      }
+    }
+    return os.str();
+  }
+
   std::string funcDeclCopy() {
     std::vector<size_t> redIndexes;
     for (size_t i = 0; i < loop.getNumArgs(); ++i) {
@@ -58,10 +139,17 @@ protected:
     llvm::raw_string_ostream os(repl);
     for (size_t i = 0; i < loop.getNumArgs(); ++i) {
       if (!loop.getArg(i).isGBL) {
-        os << "&(ptr" << i << ")[" << loop.getArg(i).dim << "*(n+i)],";
+        if (loop.getArg(i).isDirect()) {
+          os << "&(ptr" << i << ")[" << loop.getArg(i).dim << "*(n+i)],";
+        } else {
+          os << "dat" << i << ",";
+        }
       } else {
         os << "&dat" << i << "[i],";
       }
+    }
+    if (!loop.isDirect()) {
+      os << "i,";
     }
     os.str();
     return repl.substr(0, repl.size() - 1) + ");";
@@ -72,7 +160,12 @@ protected:
     llvm::raw_string_ostream os(repl);
     for (size_t i = 0; i < loop.getNumArgs(); ++i) {
       if (!loop.getArg(i).isGBL) {
-        os << "&(ptr" << i << ")[" << loop.getArg(i).dim << "*n],";
+        std::string mapStr = "n";
+        if (!loop.getArg(i).isDirect()) {
+          mapStr = "map" + std::to_string(i) + "idx";
+        }
+        os << "&(ptr" << i << ")[" << loop.getArg(i).dim << "*" << mapStr
+           << "],";
       } else {
         os << loop.getArg(i).getArgCall(i, "") << ",";
       }
@@ -118,6 +211,12 @@ public:
   static const matchers::StatementMatcher redForMatcher;
   static const matchers::DeclarationMatcher vecUserFuncMatcher;
   static const matchers::DeclarationMatcher localRedVarMatcher;
+  static const matchers::DeclarationMatcher localIndirectVarMatcher;
+  static const matchers::DeclarationMatcher localidx0Matcher;
+  static const matchers::DeclarationMatcher localidx1Matcher;
+  static const matchers::StatementMatcher localIndDatInitMatcher;
+  static const matchers::StatementMatcher localIncWriteBackMatcher;
+  static const matchers::StatementMatcher localIndRedWriteBackMatcher;
 
   virtual void run(const matchers::MatchFinder::MatchResult &Result) override {
     if (!HANDLER(clang::FunctionDecl, 1, "user_func",
@@ -137,11 +236,27 @@ public:
     if (!HANDLER(VarDecl, 3, "red_dat_decl",
                  VecKernelHandler::localReductionVarDecls))
       return;
+    if (!HANDLER(VarDecl, 2, "indirect_dat_decl",
+                 VecKernelHandler::localIndirectVarDecls))
+      return;
+    if (!HANDLER(VarDecl, 2, "idx0_decl", VecKernelHandler::handleIDX<true>))
+      return;
+    if (!HANDLER(VarDecl, 2, "idx1_decl", VecKernelHandler::handleIDX<false>))
+      return;
+    if (!HANDLER(BinaryOperator, 2, "localIndInit",
+                 VecKernelHandler::handleLocalIndirectInit))
+      return;
+    if (!HANDLER(BinaryOperator, 2, "local_inc_add",
+                 VecKernelHandler::handleLocalIndirectInc))
+      return;
+    if (!HANDLER(BinaryOperator, 3, "red_write_back",
+                 VecKernelHandler::handleRedWriteBack))
+      return;
     if (!HANDLER(ForStmt, 2, "red_for_stmt",
                  VecKernelHandler::reductionVecForStmt))
       return;
   }
-};
+}; // namespace OP2
 
 const matchers::StatementMatcher VecKernelHandler::alignedPtrMatcher =
     declStmt(containsDeclaration(0, varDecl(hasName("ptr0"), isDefinition())))
@@ -157,6 +272,18 @@ const DeclarationMatcher VecKernelHandler::localRedVarMatcher =
     varDecl(hasName("dat"),
             hasAncestor(functionDecl(hasName("op_par_loop_skeleton"))))
         .bind("red_dat_decl");
+const DeclarationMatcher VecKernelHandler::localidx0Matcher =
+    varDecl(hasName("idx0_2"),
+            hasAncestor(functionDecl(hasName("op_par_loop_skeleton"))))
+        .bind("idx0_decl");
+const DeclarationMatcher VecKernelHandler::localidx1Matcher =
+    varDecl(hasName("idx1_2"),
+            hasAncestor(functionDecl(hasName("op_par_loop_skeleton"))))
+        .bind("idx1_decl");
+const DeclarationMatcher VecKernelHandler::localIndirectVarMatcher =
+    varDecl(hasName("dat0"),
+            hasAncestor(functionDecl(hasName("op_par_loop_skeleton"))))
+        .bind("indirect_dat_decl");
 const StatementMatcher VecKernelHandler::redForMatcher =
     forStmt(
         hasLoopInit(declStmt(containsDeclaration(0, varDecl(hasName("i"))))),
@@ -164,5 +291,27 @@ const StatementMatcher VecKernelHandler::redForMatcher =
                              hasAnySubstatement(binaryOperator()))),
         hasAncestor(functionDecl(hasName("op_par_loop_skeleton"))))
         .bind("red_for_stmt");
+const StatementMatcher VecKernelHandler::localIndDatInitMatcher =
+    binaryOperator(
+        hasOperatorName("="),
+        hasLHS(hasDescendant(declRefExpr(to(varDecl(hasName("dat0")))))),
+        hasAncestor(functionDecl(hasName("op_par_loop_skeleton"))))
+        .bind("localIndInit");
+const StatementMatcher VecKernelHandler::localIncWriteBackMatcher =
+    binaryOperator(
+        hasOperatorName("+="),
+        hasRHS(hasDescendant(declRefExpr(to(varDecl(hasName("dat0")))))),
+        hasAncestor(functionDecl(hasName("op_par_loop_skeleton"))))
+        .bind("local_inc_add");
+const StatementMatcher VecKernelHandler::localIndRedWriteBackMatcher = forStmt(
+    hasLoopInit(declStmt(containsDeclaration(0, varDecl(hasName("i"))))),
+    hasBody(compoundStmt(
+        statementCountIs(3),
+        hasAnySubstatement(binaryOperator(hasOperatorName("="),
+                                          hasLHS(hasDescendant(declRefExpr(
+                                              to(varDecl(hasName("dat")))))))
+                               .bind("red_write_back")))),
+    hasAncestor(functionDecl(hasName("op_par_loop_skeleton"))));
+
 } // namespace OP2
 #endif /* ifndef KERNELHANDLERSKELETON_HPP */
