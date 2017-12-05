@@ -9,6 +9,7 @@
 namespace OP2 {
 using namespace clang::ast_matchers;
 
+template <bool VEC = false>
 class VecDirUserFuncHandler
     : public clang::ast_matchers::MatchFinder::MatchCallback {
 
@@ -21,15 +22,13 @@ class VecDirUserFuncHandler
         Result.Nodes.getNodeAs<clang::FunctionDecl>("userFuncDecl");
     if (!match)
       return 1;
-    llvm::outs() << "userFuncDecl"
-                 << "\n";
     clang::SourceManager *sm = Result.SourceManager;
     std::string filename = getFileNameFromSourceLoc(match->getLocStart(), sm);
     std::string localdefs, addlocals;
     for (const size_t &i : redIndexes) {
       std::string name = loop.getUserFuncInfo().paramNames[i];
       std::string type = loop.getArg(i).type;
-      localdefs += type + " __" + name + "_l;";
+      localdefs += type + " __" + name + "_l = 0;";
       addlocals += "*" + name + "+= " + "__" + name + "_l;";
     }
     clang::SourceLocation end = match->getBodyRBrace();
@@ -53,7 +52,56 @@ class VecDirUserFuncHandler
                    << " (reduction adding in the end) "
                    << " failed in: " << filename << "\n";
     }
+    if (VEC) {
+      SourceRange replRange(
+          match->getLocStart().getLocWithOffset(
+              ("inline void " + loop.getUserFuncInfo().funcName).length()),
+          match->getBody()->getLocStart().getLocWithOffset(-1));
+      std::string funcSignature = "_vec(";
+      llvm::raw_string_ostream os(funcSignature);
+      for (size_t i = 0; i < loop.getNumArgs(); ++i) {
+        const OPArg &arg = loop.getArg(i);
+        if (arg.accs == OP_accs_type::OP_READ) {
+          os << "const ";
+        }
+        os << arg.type << " ";
+        if (loop.getArg(i).isDirect() || loop.getArg(i).isGBL) {
+          os << "*" << loop.getUserFuncInfo().paramNames[i] << ",";
+        } else {
+          os << loop.getUserFuncInfo().paramNames[i] << "[*][SIMD_VEC],";
+        }
+      }
+      os << " int idx)";
+      os.str();
+      tooling::Replacement funcNameRepl(*sm, CharSourceRange(replRange, false),
+                                        funcSignature);
+      if (llvm::Error err = (*Replace)[filename].add(funcNameRepl)) {
+        // TODO diagnostics..
+        llvm::errs() << "Replacement for key: "
+                     << "userFuncDecl"
+                     << " (_vec signature) "
+                     << " failed in: " << filename << "\n";
+      }
+    }
+    return 0;
+  }
 
+  int handleIndirects(const MatchFinder::MatchResult &Result, std::string key) {
+    const clang::ArraySubscriptExpr *match =
+        Result.Nodes.getNodeAs<clang::ArraySubscriptExpr>(key);
+    if (!match)
+      return 1;
+    clang::SourceManager *sm = Result.SourceManager;
+    std::string filename = getFileNameFromSourceLoc(match->getLocStart(), sm);
+
+    tooling::Replacement repl(*Result.SourceManager,
+                              match->getLocEnd().getLocWithOffset(1), 0,
+                              "[idx]");
+    if (llvm::Error err = (*Replace)[filename].add(repl)) {
+      // TODO diagnostics..
+      llvm::errs() << "Replacement for key: " << key
+                   << " failed in: " << filename << "\n";
+    }
     return 0;
   }
 
@@ -66,13 +114,26 @@ public:
 
     for (const size_t &i : redIndexes) {
       std::string name = loop.getUserFuncInfo().paramNames[i];
-      if (!fixLengthReplHandler<clang::DeclRefExpr, -1, true>(
+      if (!fixLengthReplHandler<clang::DeclRefExpr, -1>(
               Result, Replace, name + "_red", name.size() + 1,
               [name]() { return "__" + name + "_l"; }))
         return;
-      if (!addLocalVarDecls(Result))
-        return;
     }
+    if (VEC && !loop.isDirect()) {
+      for (size_t i = 0; i < loop.getNumArgs(); ++i) {
+        if (!loop.getArg(i).isDirect() && !loop.getArg(i).isGBL) {
+          std::string name = loop.getUserFuncInfo().paramNames[i];
+          if (!handleIndirects(Result, name + "_indirect"))
+            return;
+          if (!fixLengthReplHandler<clang::DeclRefExpr, -1>(
+                  Result, Replace, name + "_indirect", name.size() + 1,
+                  [name]() { return name + "[0][idx]"; }))
+            return;
+        }
+      }
+    }
+    if (!addLocalVarDecls(Result))
+      return;
   }
 };
 
@@ -84,14 +145,14 @@ public:
   VecDirectUserFuncGenerator(
       const clang::tooling::CompilationDatabase &Compilations,
       const ParLoop &_loop, const std::vector<size_t> &redIndexes)
-      : OP2WriteableRefactoringTool(Compilations,
-                                    {_loop.getUserFuncInfo().path}),
+      : OP2WriteableRefactoringTool(
+            Compilations, {/*"/tmp/kernel.cpp"*/ _loop.getUserFuncInfo().path}),
         loop(_loop), redIndexes(redIndexes) {}
 
-  std::string run() {
+  template <bool VEC = false> std::string run() {
 
     clang::ast_matchers::MatchFinder Finder;
-    VecDirUserFuncHandler handler(loop, redIndexes, &getReplacements());
+    VecDirUserFuncHandler<VEC> handler(loop, redIndexes, &getReplacements());
 
     Finder.addMatcher(functionDecl(isDefinition(),
                                    hasName(loop.getUserFuncInfo().funcName),
@@ -105,6 +166,28 @@ public:
                                         loop.getUserFuncInfo().funcName))))
                             .bind(name + "_red"),
                         &handler);
+    }
+    if (VEC && !loop.isDirect()) {
+      for (size_t i = 0; i < loop.getNumArgs(); ++i) {
+        if (!loop.getArg(i).isDirect() && !loop.getArg(i).isGBL) {
+          std::string name = loop.getUserFuncInfo().paramNames[i];
+          Finder.addMatcher(
+              arraySubscriptExpr(hasBase(hasDescendant(declRefExpr(
+                                     to(parmVarDecl(hasName(name))),
+                                     hasAncestor(functionDecl(hasName(
+                                         loop.getUserFuncInfo().funcName)))))))
+                  .bind(name + "_indirect"),
+              &handler);
+          Finder.addMatcher(
+              unaryOperator(hasOperatorName("*"),
+                            hasUnaryOperand(hasDescendant(
+                                declRefExpr(to(parmVarDecl(hasName(name))))
+                                    .bind(name + "_indirect"))),
+                            hasAncestor(functionDecl(
+                                hasName(loop.getUserFuncInfo().funcName)))),
+              &handler);
+        }
+      }
     }
 
     // run the tool

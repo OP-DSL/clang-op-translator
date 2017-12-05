@@ -5,6 +5,7 @@
 #include "handler.hpp"
 #include "clang/ASTMatchers/ASTMatchFinder.h"
 #include "clang/Tooling/Refactoring.h"
+#include <fstream>
 
 namespace OP2 {
 namespace matchers = clang::ast_matchers;
@@ -108,14 +109,53 @@ protected:
     if (redIndexes.size() == 0) {
       return loop.getFuncText();
     }
+
     return VecDirectUserFuncGenerator(Compilations, loop, redIndexes).run();
+    /* std::ofstream os("/tmp/kernel.cpp");
+     os << " extern double alpha; extern double cfl; extern double eps; extern "
+           "double gam; extern double gm1; extern double mach; extern double "
+           "qinf[4];\n";
+     std::ifstream fin(loop.getUserFuncInfo().path);
+     std::string line;
+     while (getline(fin, line)) {
+       os << line << "\n";
+     }
+     os.close();
+     fin.close();
+
+     line = VecDirectUserFuncGenerator(Compilations, loop, redIndexes).run();
+     return line.substr(line.rfind("inline"),
+                        line.length() - line.rfind("inline") - 1);*/
   }
 
   std::string userFuncVecHandler() {
     if (loop.isDirect()) {
       return "";
     }
-    return "";
+    std::vector<size_t> redIndexes;
+    for (size_t i = 0; i < loop.getNumArgs(); ++i) {
+      if (loop.getArg(i).isReduction()) {
+        redIndexes.push_back(i);
+      }
+    }
+
+    return VecDirectUserFuncGenerator(Compilations, loop, redIndexes)
+        .run<true>();
+    /*    std::ofstream os("/tmp/kernel.cpp");
+        os << " extern double alpha; extern double cfl; extern double eps;
+       extern " "double gam; extern double gm1; extern double mach; extern
+       double " "qinf[4];\n"; std::ifstream fin(loop.getUserFuncInfo().path);
+        std::string line;
+        while (getline(fin, line)) {
+          os << line << "\n";
+        }
+        os.close();
+        fin.close();
+
+        line =
+            VecDirectUserFuncGenerator(Compilations, loop,
+       redIndexes).run<true>(); return line.substr(line.rfind("inline"),
+                           line.length() - line.rfind("inline") - 1);*/
   }
   std::string alignedPtrDecls() {
     std::string repl = "";

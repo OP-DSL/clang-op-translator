@@ -86,11 +86,21 @@ public:
     for (size_t i = 0; i < KernelGeneratorType::numParams; ++i) {
       commandLineArgs.push_back(KernelGeneratorType::commandlineParams[i]);
     }
-    /* Here we could add the op_lib_cpp.h for kernel gen
-     * but it gives errors in userkernel modifications..
     commandLineArgs.push_back(std::string("-include") + OP2_INC +
                               "op_lib_cpp.h");
-    */
+    // Currently this only needed when we modify the user kernel.
+    commandLineArgs.push_back(std::string("-xc++"));
+
+    std::ofstream os("/tmp/" + base_name + "_global.h");
+    for (const op_global_const &c : constants) {
+      os << c.type << " " << c.name;
+      if (c.size != 1)
+        os << "[" << c.size << "]";
+      os << ";\n";
+    }
+    os.close();
+    commandLineArgs.push_back("-include/tmp/" + base_name + "_global.h");
+
     clang::tooling::FixedCompilationDatabase F(".", commandLineArgs);
     for (const ParLoop &loop : loops) {
       std::string name = loop.getName();
