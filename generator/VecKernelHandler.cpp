@@ -76,8 +76,7 @@ VecKernelHandler::VecKernelHandler(
     : Compilations(Compilations), Replace(Replace), loop(loop) {}
 
 ///_______________________________GLOBAL_HANDLER_______________________________
-virtual void VecKernelHandle::run(
-    const matchers::MatchFinder::MatchResult &Result) override {
+void VecKernelHandler::run(const matchers::MatchFinder::MatchResult &Result) {
   if (!HANDLER(clang::FunctionDecl, 1, "user_func",
                VecKernelHandler::funcDeclCopy))
     return;

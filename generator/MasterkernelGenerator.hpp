@@ -6,6 +6,7 @@
 #include "VecRefactoringTool.h"
 #include "handler.hpp"
 #include <algorithm>
+#include <fstream>
 
 namespace OP2 {
 
