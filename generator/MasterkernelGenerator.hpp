@@ -30,10 +30,7 @@ public:
     std::string repl;
     llvm::raw_string_ostream os(repl);
     for (const op_global_const &c : constants) {
-      os << "extern " << c.type << " " << c.name;
-      if (c.size != 1)
-        os << "[" << c.size << "]";
-      os << ";\n";
+      os << "extern " << c << ";\n";
     }
     os << "// user kernel files\n";
     for (const std::string &kernel : kernels) {
@@ -93,10 +90,7 @@ public:
 
     std::ofstream os("/tmp/" + base_name + "_global.h");
     for (const op_global_const &c : constants) {
-      os << c.type << " " << c.name;
-      if (c.size != 1)
-        os << "[" << c.size << "]";
-      os << ";\n";
+      os << c << ";\n";
     }
     os.close();
     commandLineArgs.push_back("-include/tmp/" + base_name + "_global.h");

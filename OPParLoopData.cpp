@@ -10,7 +10,16 @@ bool op_global_const::operator<(const op_global_const &c) const {
   return name < c.name;
 }
 llvm::raw_ostream &operator<<(llvm::raw_ostream &os, const op_global_const &c) {
-  return os << c.type << " " << c.name << "{" << c.size << "}";
+  os << c.type << " " << c.name;
+  if (c.size != 1)
+    os << "[" << c.size << "]";
+  return os;
+}
+std::ostream &operator<<(std::ostream &os, const op_global_const &c) {
+  os << c.type << " " << c.name;
+  if (c.size != 1)
+    os << "[" << c.size << "]";
+  return os;
 }
 
 //___________________________________OP_MAP___________________________________

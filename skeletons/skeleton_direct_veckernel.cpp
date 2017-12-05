@@ -1,11 +1,10 @@
 //
 // Skeleton for direct kernels with vectorization
 //
-#include "op_lib_cpp.h"
 
 // user function
-void skeleton(double* a){}
-void skeleton_vec(double* a){}
+void skeleton(double *a) {}
+void skeleton_vec(double *a) {}
 
 // host stub function
 void op_par_loop_skeleton(char const *name, op_set set, op_arg arg0) {
@@ -16,7 +15,7 @@ void op_par_loop_skeleton(char const *name, op_set set, op_arg arg0) {
   args[0] = arg0;
 
   // create aligned pointers for dats
-  const double *__restrict__ ptr0 = (double *)arg0.data;
+  double *__restrict__ ptr0 = (double *)arg0.data;
 
   // initialise timers
   double cpu_t1, cpu_t2, wall_t1, wall_t2;
@@ -40,7 +39,7 @@ void op_par_loop_skeleton(char const *name, op_set set, op_arg arg0) {
         skeleton_vec(&((double *)arg0.data)[4 * n]);
       }
       for (int i = 0; i < SIMD_VEC; i++) {
-        dat[i]=0;
+        dat[i] = 0;
       }
     }
     // remainder

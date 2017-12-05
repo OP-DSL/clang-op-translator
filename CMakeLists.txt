@@ -59,11 +59,10 @@ add_executable(${PROJECT_NAME}
   utils.cpp
   OPParLoopData.cpp
   generator/handler.hpp
-  generator/OMPRefactoringTool.cpp
-  generator/SeqRefactoringTool.cpp
   generator/BaseKernelHandler.cpp
   generator/SeqKernelHandler.cpp
   generator/OMPKernelHandler.cpp
+  generator/VecKernelHandler.cpp
   )
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -fno-exceptions -fno-rtti")

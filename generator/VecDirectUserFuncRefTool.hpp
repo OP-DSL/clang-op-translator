@@ -146,7 +146,7 @@ public:
       const clang::tooling::CompilationDatabase &Compilations,
       const ParLoop &_loop, const std::vector<size_t> &redIndexes)
       : OP2WriteableRefactoringTool(
-            Compilations, {/*"/tmp/kernel.cpp"*/ _loop.getUserFuncInfo().path}),
+            Compilations, {_loop.getUserFuncInfo().path}),
         loop(_loop), redIndexes(redIndexes) {}
 
   template <bool VEC = false> std::string run() {

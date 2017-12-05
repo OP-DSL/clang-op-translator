@@ -1,10 +1,9 @@
 //
 // Skeleton for indirect kernels using OpenMP
 //
-#include "op_lib_cpp.h"
 
 // user function
-void skeleton(double* a){}
+void skeleton(double *a) {}
 
 // host stub function
 void op_par_loop_skeleton(char const *name, op_set set, op_arg arg0) {
@@ -21,8 +20,8 @@ void op_par_loop_skeleton(char const *name, op_set set, op_arg arg0) {
 
   int ninds = 1;
   int inds[1] = {0};
-  
-  // local variables for reduction 
+
+  // local variables for reduction
   double arg0_l = *(double *)arg0.data;
 
   if (OP_diags > 2) {
@@ -46,7 +45,7 @@ void op_par_loop_skeleton(char const *name, op_set set, op_arg arg0) {
       }
       int nblocks = Plan->ncolblk[col];
 
-#pragma omp parallel for reduction(+:arg0_l)
+#pragma omp parallel for reduction(+ : arg0_l)
       for (int blockIdx = 0; blockIdx < nblocks; blockIdx++) {
         int blockId = Plan->blkmap[blockIdx + block_offset];
         int nelem = Plan->nelems[blockId];

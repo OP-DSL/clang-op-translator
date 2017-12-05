@@ -33,13 +33,27 @@ public:
       const clang::tooling::CompilationDatabase &Compilations,
       const ParLoop &loop,
       std::shared_ptr<clang::PCHContainerOperations> PCHContainerOps =
-          std::make_shared<clang::PCHContainerOperations>());
+          std::make_shared<clang::PCHContainerOperations>())
+      : OP2KernelGeneratorBase(
+            Compilations,
+            {std::string(SKELETONS_DIR) + skeletons[loop.getKernelType()]},
+            loop, OMPRefactoringTool::_postfix, PCHContainerOps),
+        ompKernelHandler(&getReplacements(), loop),
+        seqKernelHandler(&getReplacements(), loop) {}
 
   /// @brief Adding OpenMP specific Matchers and handlers.
   ///   Called from OP2KernelGeneratorBase::GenerateKernelFile()
   ///
   /// @param MatchFinder used by the RefactoringTool
-  virtual void addGeneratorSpecificMatchers(clang::ast_matchers::MatchFinder &);
+  virtual void
+  addGeneratorSpecificMatchers(clang::ast_matchers::MatchFinder &Finder) {
+    Finder.addMatcher(OMPKernelHandler::locRedVarMatcher, &ompKernelHandler);
+    Finder.addMatcher(OMPKernelHandler::locRedToArgMatcher, &ompKernelHandler);
+    Finder.addMatcher(OMPKernelHandler::ompParForMatcher, &ompKernelHandler);
+    Finder.addMatcher(SeqKernelHandler::userFuncMatcher, &seqKernelHandler);
+    Finder.addMatcher(SeqKernelHandler::funcCallMatcher, &ompKernelHandler);
+    Finder.addMatcher(SeqKernelHandler::mapIdxDeclMatcher, &seqKernelHandler);
+  }
 
   static constexpr const char *_postfix = "kernel";
   static constexpr unsigned numParams = 1;
@@ -47,6 +61,9 @@ public:
 
   virtual ~OMPRefactoringTool() = default;
 };
+
+const std::string OMPRefactoringTool::skeletons[2] = {
+    "skeleton_direct_kernel.cpp", "skeleton_kernel.cpp"};
 
 } // namespace OP2
 

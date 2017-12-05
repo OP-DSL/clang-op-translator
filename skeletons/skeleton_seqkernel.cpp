@@ -1,10 +1,9 @@
 //
 // Skeleton for sequential kernels
 //
-#include "op_lib_cpp.h"
 
 // user function
-void skeleton(double* a){}
+void skeleton(double *a) {}
 
 // host stub function
 void op_par_loop_skeleton(char const *name, op_set set, op_arg arg0) {
@@ -32,7 +31,7 @@ void op_par_loop_skeleton(char const *name, op_set set, op_arg arg0) {
         op_mpi_wait_all(nargs, args);
       }
       int map0idx = arg0.map_data[n * arg0.map->dim + 0];
-      
+
       skeleton(&((double *)arg0.data)[4 * n]);
     }
   }

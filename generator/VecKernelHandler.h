@@ -1,11 +1,8 @@
 #ifndef KERNELHANDLERSKELETON_HPP
 #define KERNELHANDLERSKELETON_HPP
 #include "../OPParLoopData.h"
-#include "VecDirectUserFuncRefTool.hpp"
-#include "handler.hpp"
 #include "clang/ASTMatchers/ASTMatchFinder.h"
 #include "clang/Tooling/Refactoring.h"
-#include <fstream>
 
 namespace OP2 {
 namespace matchers = clang::ast_matchers;
@@ -17,232 +14,34 @@ protected:
   std::map<std::string, clang::tooling::Replacements> *Replace;
   const ParLoop &loop;
 
-  std::string handleRedWriteBack() {
-    std::string repl;
-    llvm::raw_string_ostream os(repl);
-    for (size_t i = 0; i < loop.getNumArgs(); ++i) {
-      if (loop.getArg(i).isReduction()) { // TODO other types of reductions
-        os << "*(" << loop.getArg(i).type << "*)arg" << i << ".data += dat" << i
-           << "[i];\n";
-      }
-    }
-    return os.str();
-  }
-  std::string handleLocalIndirectInc() {
-    std::string repl;
-    llvm::raw_string_ostream os(repl);
-    for (size_t i = 0; i < loop.getNumArgs(); ++i) {
-      if (loop.getArg(i).isDirect() ||
-          loop.getArg(i).accs != OP_accs_type::OP_INC)
-        continue;
-      std::string linebeg = "(ptr" + std::to_string(i) + ")[idx" +
-                            std::to_string(i) + "_" +
-                            std::to_string(loop.getArg(i).dim) + "+";
-      for (size_t d = 0; d < loop.getArg(i).dim; ++d) {
-        os << linebeg << d << "]+="
-           << "dat" << i << "[" << d << "][i];\n";
-      }
-      os << "\n";
-    }
-    return os.str();
-  }
+  std::string handleRedWriteBack();
 
-  std::string handleLocalIndirectInit() {
-    std::string repl;
-    llvm::raw_string_ostream os(repl);
-    for (size_t i = 0; i < loop.getNumArgs(); ++i) {
-      if (loop.getArg(i).isDirect())
-        continue;
-      for (size_t d = 0; d < loop.getArg(i).dim; ++d) {
-        os << "dat" << i << "[" << d << "][i] =";
-        if (loop.getArg(i).accs == OP_accs_type::OP_READ) {
-          os << "(ptr" << i << ")[idx" << i << "_" << loop.getArg(i).dim << "+"
-             << d << "];\n";
-        } else {
-          os << "0;\n";
-        }
-      }
-      os << "\n";
-    }
-    return os.str();
-  }
+  std::string handleLocalIndirectInc();
 
-  template <bool READS> std::string handleIDX() {
-    std::string repl;
-    llvm::raw_string_ostream os(repl);
-    for (size_t i = 0; i < loop.getNumArgs(); ++i) {
-      if (loop.getArg(i).isDirect())
-        continue;
-      if ((READS && loop.getArg(i).accs == OP_accs_type::OP_READ) ||
-          (!READS && loop.getArg(i).accs == OP_accs_type::OP_INC)) {
-        int dim = loop.getArg(i).dim;
-        std::string argmap = "arg" + std::to_string(i) + ".map";
-        os << "int idx" << i << "_" << dim << "=" << dim << "*" << argmap
-           << "_data[(n+i)*" << argmap << "->dim+" << loop.getArg(i).idx
-           << "];";
-      }
-    }
-    return os.str();
-  }
+  std::string handleLocalIndirectInit();
 
-  std::string localIndirectVarDecls() {
-    std::string repl;
-    llvm::raw_string_ostream os(repl);
-    for (size_t i = 0; i < loop.getNumArgs(); ++i) {
-      if (!loop.getArg(i).isDirect() && !loop.getArg(i).isGBL) {
-        std::string type = loop.getArg(i).type;
-        os << "ALIGNED_" << type << " " << type << " dat" << i << "["
-           << loop.getArg(i).dim << "][SIMD_VEC];";
-      }
-    }
-    return os.str();
-  }
+  template <bool READS> std::string handleIDX();
 
-  std::string funcDeclCopy() {
-    std::vector<size_t> redIndexes;
-    for (size_t i = 0; i < loop.getNumArgs(); ++i) {
-      if (loop.getArg(i).isReduction()) {
-        redIndexes.push_back(i);
-      }
-    }
+  std::string localIndirectVarDecls();
 
-    if (redIndexes.size() == 0) {
-      return loop.getFuncText();
-    }
+  std::string funcDeclCopy();
 
-    return VecDirectUserFuncGenerator(Compilations, loop, redIndexes).run();
-    /* std::ofstream os("/tmp/kernel.cpp");
-     os << " extern double alpha; extern double cfl; extern double eps; extern "
-           "double gam; extern double gm1; extern double mach; extern double "
-           "qinf[4];\n";
-     std::ifstream fin(loop.getUserFuncInfo().path);
-     std::string line;
-     while (getline(fin, line)) {
-       os << line << "\n";
-     }
-     os.close();
-     fin.close();
+  std::string userFuncVecHandler();
 
-     line = VecDirectUserFuncGenerator(Compilations, loop, redIndexes).run();
-     return line.substr(line.rfind("inline"),
-                        line.length() - line.rfind("inline") - 1);*/
-  }
+  std::string alignedPtrDecls();
 
-  std::string userFuncVecHandler() {
-    if (loop.isDirect()) {
-      return "";
-    }
-    std::vector<size_t> redIndexes;
-    for (size_t i = 0; i < loop.getNumArgs(); ++i) {
-      if (loop.getArg(i).isReduction()) {
-        redIndexes.push_back(i);
-      }
-    }
+  std::string vecFuncCallHandler();
 
-    return VecDirectUserFuncGenerator(Compilations, loop, redIndexes)
-        .run<true>();
-    /*    std::ofstream os("/tmp/kernel.cpp");
-        os << " extern double alpha; extern double cfl; extern double eps;
-       extern " "double gam; extern double gm1; extern double mach; extern
-       double " "qinf[4];\n"; std::ifstream fin(loop.getUserFuncInfo().path);
-        std::string line;
-        while (getline(fin, line)) {
-          os << line << "\n";
-        }
-        os.close();
-        fin.close();
+  std::string funcCallHandler();
 
-        line =
-            VecDirectUserFuncGenerator(Compilations, loop,
-       redIndexes).run<true>(); return line.substr(line.rfind("inline"),
-                           line.length() - line.rfind("inline") - 1);*/
-  }
-  std::string alignedPtrDecls() {
-    std::string repl = "";
-    llvm::raw_string_ostream os(repl);
-    for (size_t i = 0; i < loop.getNumArgs(); ++i) {
-      if (loop.getArg(i).isGBL) {
-        continue;
-      }
-      std::string type = loop.getArg(i).type;
-      os << "ALIGNED_" << type << " ";
-      if (loop.getArg(i).accs == OP_accs_type::OP_READ)
-        os << "const ";
-      os << type << "*__restrict__ ptr" << i << " = (" << type << " *)arg" << i
-         << ".data;\n__assume_aligned(ptr" << i << ", " << type << "_ALIGN);\n";
-    }
-    return os.str();
-  }
+  std::string localReductionVarDecls();
 
-  std::string vecFuncCallHandler() {
-    std::string repl = loop.getName() + (loop.isDirect() ? "(" : "_vec(");
-    llvm::raw_string_ostream os(repl);
-    for (size_t i = 0; i < loop.getNumArgs(); ++i) {
-      if (!loop.getArg(i).isGBL) {
-        if (loop.getArg(i).isDirect()) {
-          os << "&(ptr" << i << ")[" << loop.getArg(i).dim << "*(n+i)],";
-        } else {
-          os << "dat" << i << ",";
-        }
-      } else {
-        os << "&dat" << i << "[i],";
-      }
-    }
-    if (!loop.isDirect()) {
-      os << "i,";
-    }
-    os.str();
-    return repl.substr(0, repl.size() - 1) + ");";
-  }
-
-  std::string funcCallHandler() {
-    std::string repl = loop.getName() + "(";
-    llvm::raw_string_ostream os(repl);
-    for (size_t i = 0; i < loop.getNumArgs(); ++i) {
-      if (!loop.getArg(i).isGBL) {
-        std::string mapStr = "n";
-        if (!loop.getArg(i).isDirect()) {
-          mapStr = "map" + std::to_string(i) + "idx";
-        }
-        os << "&(ptr" << i << ")[" << loop.getArg(i).dim << "*" << mapStr
-           << "],";
-      } else {
-        os << loop.getArg(i).getArgCall(i, "") << ",";
-      }
-    }
-    os.str();
-    return repl.substr(0, repl.size() - 1) + ");";
-  }
-  std::string localReductionVarDecls() {
-    std::string repl;
-    llvm::raw_string_ostream os(repl);
-    for (size_t i = 0; i < loop.getNumArgs(); ++i) {
-      if (loop.getArg(i).isReduction()) {
-        os << loop.getArg(i).type << " dat" << i << "[SIMD_VEC]={0.0};\n";
-      }
-    }
-    return os.str();
-  }
-  std::string reductionVecForStmt() {
-    std::string repl = "for(int i = 0; i<SIMD_VEC;++i){";
-    llvm::raw_string_ostream os(repl);
-    bool hasRed = false;
-    for (size_t i = 0; i < loop.getNumArgs(); ++i) {
-      if (loop.getArg(i).isReduction()) { // TODO other types of reductions
-        hasRed = true;
-        os << "*(" << loop.getArg(i).type << "*)arg" << i << ".data += dat" << i
-           << "[i];\n";
-      }
-    }
-    os << "}";
-    return hasRed ? os.str() : "";
-  }
+  std::string reductionVecForStmt();
 
 public:
   VecKernelHandler(std::map<std::string, clang::tooling::Replacements> *Replace,
                    const clang::tooling::CompilationDatabase &Compilations,
-                   const ParLoop &loop)
-      : Compilations(Compilations), Replace(Replace), loop(loop) {}
+                   const ParLoop &loop);
 
   // Static matchers handled by this class
   /// @brief Matcher for the declaration of ptr0 in the skeleton
@@ -258,100 +57,7 @@ public:
   static const matchers::StatementMatcher localIncWriteBackMatcher;
   static const matchers::StatementMatcher localIndRedWriteBackMatcher;
 
-  virtual void run(const matchers::MatchFinder::MatchResult &Result) override {
-    if (!HANDLER(clang::FunctionDecl, 1, "user_func",
-                 VecKernelHandler::funcDeclCopy))
-      return;
-    if (!HANDLER(clang::DeclStmt, 2, "ptr0_decl",
-                 VecKernelHandler::alignedPtrDecls))
-      return;
-    if (!HANDLER(CallExpr, 2, "func_call", VecKernelHandler::funcCallHandler))
-      return; // if successfully handled return
-    if (!HANDLER(CallExpr, 2, "vec_func_call",
-                 VecKernelHandler::vecFuncCallHandler))
-      return; // if successfully handled return
-    if (!HANDLER(FunctionDecl, 2, "user_func_vec",
-                 VecKernelHandler::userFuncVecHandler))
-      return; // if successfully handled return
-    if (!HANDLER(VarDecl, 3, "red_dat_decl",
-                 VecKernelHandler::localReductionVarDecls))
-      return;
-    if (!HANDLER(VarDecl, 2, "indirect_dat_decl",
-                 VecKernelHandler::localIndirectVarDecls))
-      return;
-    if (!HANDLER(VarDecl, 2, "idx0_decl", VecKernelHandler::handleIDX<true>))
-      return;
-    if (!HANDLER(VarDecl, 2, "idx1_decl", VecKernelHandler::handleIDX<false>))
-      return;
-    if (!HANDLER(BinaryOperator, 2, "localIndInit",
-                 VecKernelHandler::handleLocalIndirectInit))
-      return;
-    if (!HANDLER(BinaryOperator, 2, "local_inc_add",
-                 VecKernelHandler::handleLocalIndirectInc))
-      return;
-    if (!HANDLER(BinaryOperator, 3, "red_write_back",
-                 VecKernelHandler::handleRedWriteBack))
-      return;
-    if (!HANDLER(ForStmt, 2, "red_for_stmt",
-                 VecKernelHandler::reductionVecForStmt))
-      return;
-  }
-}; // namespace OP2
-
-const matchers::StatementMatcher VecKernelHandler::alignedPtrMatcher =
-    declStmt(containsDeclaration(0, varDecl(hasName("ptr0"), isDefinition())))
-        .bind("ptr0_decl");
-
-const StatementMatcher VecKernelHandler::vecFuncCallMatcher =
-    callExpr(callee(functionDecl(hasName("skeleton_vec"), parameterCountIs(1))))
-        .bind("vec_func_call");
-const DeclarationMatcher VecKernelHandler::vecUserFuncMatcher =
-    functionDecl(hasName("skeleton_vec"), isDefinition(), parameterCountIs(1))
-        .bind("user_func_vec");
-const DeclarationMatcher VecKernelHandler::localRedVarMatcher =
-    varDecl(hasName("dat"),
-            hasAncestor(functionDecl(hasName("op_par_loop_skeleton"))))
-        .bind("red_dat_decl");
-const DeclarationMatcher VecKernelHandler::localidx0Matcher =
-    varDecl(hasName("idx0_2"),
-            hasAncestor(functionDecl(hasName("op_par_loop_skeleton"))))
-        .bind("idx0_decl");
-const DeclarationMatcher VecKernelHandler::localidx1Matcher =
-    varDecl(hasName("idx1_2"),
-            hasAncestor(functionDecl(hasName("op_par_loop_skeleton"))))
-        .bind("idx1_decl");
-const DeclarationMatcher VecKernelHandler::localIndirectVarMatcher =
-    varDecl(hasName("dat0"),
-            hasAncestor(functionDecl(hasName("op_par_loop_skeleton"))))
-        .bind("indirect_dat_decl");
-const StatementMatcher VecKernelHandler::redForMatcher =
-    forStmt(
-        hasLoopInit(declStmt(containsDeclaration(0, varDecl(hasName("i"))))),
-        hasBody(compoundStmt(statementCountIs(1),
-                             hasAnySubstatement(binaryOperator()))),
-        hasAncestor(functionDecl(hasName("op_par_loop_skeleton"))))
-        .bind("red_for_stmt");
-const StatementMatcher VecKernelHandler::localIndDatInitMatcher =
-    binaryOperator(
-        hasOperatorName("="),
-        hasLHS(hasDescendant(declRefExpr(to(varDecl(hasName("dat0")))))),
-        hasAncestor(functionDecl(hasName("op_par_loop_skeleton"))))
-        .bind("localIndInit");
-const StatementMatcher VecKernelHandler::localIncWriteBackMatcher =
-    binaryOperator(
-        hasOperatorName("+="),
-        hasRHS(hasDescendant(declRefExpr(to(varDecl(hasName("dat0")))))),
-        hasAncestor(functionDecl(hasName("op_par_loop_skeleton"))))
-        .bind("local_inc_add");
-const StatementMatcher VecKernelHandler::localIndRedWriteBackMatcher = forStmt(
-    hasLoopInit(declStmt(containsDeclaration(0, varDecl(hasName("i"))))),
-    hasBody(compoundStmt(
-        statementCountIs(3),
-        hasAnySubstatement(binaryOperator(hasOperatorName("="),
-                                          hasLHS(hasDescendant(declRefExpr(
-                                              to(varDecl(hasName("dat")))))))
-                               .bind("red_write_back")))),
-    hasAncestor(functionDecl(hasName("op_par_loop_skeleton"))));
-
+  virtual void run(const matchers::MatchFinder::MatchResult &Result) override;
+};
 } // namespace OP2
 #endif /* ifndef KERNELHANDLERSKELETON_HPP */

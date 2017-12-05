@@ -12,6 +12,7 @@ struct op_global_const {
   bool operator<(const op_global_const &) const;
 };
 llvm::raw_ostream &operator<<(llvm::raw_ostream &, const op_global_const &);
+std::ostream &operator<<(std::ostream &, const op_global_const &);
 
 typedef std::string op_set;
 

@@ -28,13 +28,22 @@ public:
       const clang::tooling::CompilationDatabase &Compilations,
       const ParLoop &loop,
       std::shared_ptr<clang::PCHContainerOperations> PCHContainerOps =
-          std::make_shared<clang::PCHContainerOperations>());
+          std::make_shared<clang::PCHContainerOperations>())
+      : OP2KernelGeneratorBase(
+            Compilations, {std::string(SKELETONS_DIR) + skeletons[0]}, loop,
+            SeqRefactoringTool::_postfix, PCHContainerOps),
+        seqKernelHandler(&getReplacements(), loop) {}
 
   /// @brief Adding Sequential specific MAtchers and handlers.
   ///   Called from OP2KernelGeneratorBase::GenerateKernelFile()
   ///
   /// @param MatchFinder used by the RefactoringTool
-  virtual void addGeneratorSpecificMatchers(clang::ast_matchers::MatchFinder &);
+  virtual void
+  addGeneratorSpecificMatchers(clang::ast_matchers::MatchFinder &Finder) {
+    Finder.addMatcher(SeqKernelHandler::userFuncMatcher, &seqKernelHandler);
+    Finder.addMatcher(SeqKernelHandler::funcCallMatcher, &seqKernelHandler);
+    Finder.addMatcher(SeqKernelHandler::mapIdxDeclMatcher, &seqKernelHandler);
+  }
 
   static constexpr const char *_postfix = "seqkernel";
   static constexpr unsigned numParams = 0;
