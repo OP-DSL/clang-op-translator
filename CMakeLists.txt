@@ -24,20 +24,16 @@ find_package(LLVM REQUIRED CONFIG)
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
 include_directories(${LLVM_INCLUDE_DIRS})
 if(LLVM_BUILD_MAIN_SRC_DIR)
   include_directories(${LLVM_BUILD_MAIN_SRC_DIR}/tools/clang/include)
   include_directories(${LLVM_BUILD_BINARY_DIR}/tools/clang/include)
 endif()
 
-set(OP2_CLANG_INSTALL_PATH "$ENV{OP2_CLANG_INSTALL_PATH}")
 set(OP2_INSTALL_PATH "$ENV{OP2_INSTALL_PATH}")
 
-if(OP2_CLANG_INSTALL_PATH)
-  set(SKELETONS_DIR \"${OP2_CLANG_INSTALL_PATH}/skeletons/\")
-else()
-  message(STATUS "OP2_CLANG_INSTALL_PATH not found.")
-endif()
+set(SKELETONS_DIR \"${CMAKE_CURRENT_SOURCE_DIR}/skeletons/\")
 
 if(OP2_INSTALL_PATH)
   set(OP2_INC \"${OP2_INSTALL_PATH}/c/include/\")
@@ -54,15 +50,14 @@ add_definitions(
   )
 
 add_executable(${PROJECT_NAME}
-  op2.cpp
-  ParLoopHandler.cpp
-  utils.cpp
-  OPParLoopData.cpp
-  generator/handler.hpp
-  generator/BaseKernelHandler.cpp
-  generator/SeqKernelHandler.cpp
-  generator/OMPKernelHandler.cpp
-  generator/VecKernelHandler.cpp
+  src/op2.cpp
+  src/ParLoopHandler.cpp
+  src/core/utils.cpp
+  src/core/OPParLoopData.cpp
+  src/generators/common/BaseKernelHandler.cpp
+  src/generators/sequential/SeqKernelHandler.cpp
+  src/generators/openmp/OMPKernelHandler.cpp
+  src/generators/vectorization/VecKernelHandler.cpp
   )
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -fno-exceptions -fno-rtti")

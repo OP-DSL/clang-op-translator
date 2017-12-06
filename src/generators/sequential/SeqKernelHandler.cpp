@@ -1,6 +1,6 @@
 #include "SeqKernelHandler.h"
-#include "../utils.h"
-#include "handler.hpp"
+#include "core/utils.h"
+#include "generators/common/handler.hpp"
 
 namespace {
 using namespace clang::ast_matchers;

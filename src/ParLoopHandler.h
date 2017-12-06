@@ -1,6 +1,6 @@
 #ifndef PARLOOPHANDLER_H_INCLUDED
 #define PARLOOPHANDLER_H_INCLUDED
-#include "OPParLoopData.h"
+#include "core/OPParLoopData.h"
 #include "clang/Tooling/Refactoring.h"
 #include "clang/ASTMatchers/ASTMatchFinder.h"
 

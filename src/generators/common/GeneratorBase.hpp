@@ -1,8 +1,8 @@
 #ifndef OP2GENERATORBASE_HPP
 #define OP2GENERATORBASE_HPP
 
-#include "../OP2WriteableRefactoringTool.hpp"
 #include "BaseKernelHandler.h"
+#include "core/OP2WriteableRefactoringTool.hpp"
 
 namespace OP2 {
 

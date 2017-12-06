@@ -1,5 +1,5 @@
 #include "OPParLoopData.h"
-#include "utils.h"
+#include "core/utils.h"
 
 namespace OP2 {
 //__________________________________OP_CONST__________________________________

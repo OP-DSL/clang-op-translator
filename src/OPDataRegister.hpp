@@ -1,7 +1,7 @@
 #ifndef OPDATAREGISTER_HPP
 #define OPDATAREGISTER_HPP
-#include "OPParLoopData.h"
-#include "utils.h"
+#include "core/OPParLoopData.h"
+#include "core/utils.h"
 #include "clang/ASTMatchers/ASTMatchFinder.h"
 
 namespace OP2 {

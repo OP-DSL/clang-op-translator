@@ -1,6 +1,6 @@
 #include "OMPKernelHandler.h"
-#include "ASTMatchersExtension.h"
-#include "handler.hpp"
+#include "generators/common/ASTMatchersExtension.h"
+#include "generators/common/handler.hpp"
 #include "clang/AST/StmtOpenMP.h"
 
 namespace {

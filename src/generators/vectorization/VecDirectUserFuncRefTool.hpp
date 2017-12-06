@@ -1,8 +1,8 @@
 #ifndef VECDIREXTUSERFUNCREFTOOL
 #define VECDIREXTUSERFUNCREFTOOL
-#include "../OP2WriteableRefactoringTool.hpp"
-#include "../OPParLoopData.h"
-#include "handler.hpp"
+#include "core/OP2WriteableRefactoringTool.hpp"
+#include "core/OPParLoopData.h"
+#include "generators/common/handler.hpp"
 #include "clang/ASTMatchers/ASTMatchFinder.h"
 #include "clang/Tooling/Refactoring.h"
 
@@ -145,8 +145,8 @@ public:
   VecDirectUserFuncGenerator(
       const clang::tooling::CompilationDatabase &Compilations,
       const ParLoop &_loop, const std::vector<size_t> &redIndexes)
-      : OP2WriteableRefactoringTool(
-            Compilations, {_loop.getUserFuncInfo().path}),
+      : OP2WriteableRefactoringTool(Compilations,
+                                    {_loop.getUserFuncInfo().path}),
         loop(_loop), redIndexes(redIndexes) {}
 
   template <bool VEC = false> std::string run() {

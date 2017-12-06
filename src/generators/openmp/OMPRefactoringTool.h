@@ -1,10 +1,10 @@
 #ifndef OMPREFACTORINGTOOL_H
 #define OMPREFACTORINGTOOL_H
 
-#include "../OPParLoopData.h"
-#include "GeneratorBase.hpp"
-#include "OMPKernelHandler.h"
-#include "SeqKernelHandler.h"
+#include "core/OPParLoopData.h"
+#include "generators/common/GeneratorBase.hpp"
+#include "generators/openmp/OMPKernelHandler.h"
+#include "generators/sequential/SeqKernelHandler.h"
 
 namespace OP2 {
 /// \brief Utility of generate OpenMP kernel based on ParLoop information.

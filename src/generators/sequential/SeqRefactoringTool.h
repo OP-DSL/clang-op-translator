@@ -1,9 +1,9 @@
 #ifndef SEQREFACTORINGTOOL_H
 #define SEQREFACTORINGTOOL_H
 
-#include "../OPParLoopData.h"
-#include "GeneratorBase.hpp"
-#include "SeqKernelHandler.h"
+#include "core/OPParLoopData.h"
+#include "generators/common/GeneratorBase.hpp"
+#include "generators/sequential/SeqKernelHandler.h"
 namespace OP2 {
 /// \brief Utility of generate sequential kernel based on ParLoop information.
 ///

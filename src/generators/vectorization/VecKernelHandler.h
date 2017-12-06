@@ -1,6 +1,6 @@
 #ifndef KERNELHANDLERSKELETON_HPP
 #define KERNELHANDLERSKELETON_HPP
-#include "../OPParLoopData.h"
+#include "core/OPParLoopData.h"
 #include "clang/ASTMatchers/ASTMatchFinder.h"
 #include "clang/Tooling/Refactoring.h"
 

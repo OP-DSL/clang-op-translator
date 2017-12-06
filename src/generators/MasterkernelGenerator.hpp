@@ -1,10 +1,10 @@
 #ifndef MASTERKERNELGENERATOR_HPP
 #define MASTERKERNELGENERATOR_HPP
-#include "../OP2WriteableRefactoringTool.hpp"
-#include "OMPRefactoringTool.h"
-#include "SeqRefactoringTool.h"
-#include "VecRefactoringTool.h"
-#include "handler.hpp"
+#include "core/OP2WriteableRefactoringTool.hpp"
+#include "generators/common/handler.hpp"
+#include "generators/openmp/OMPRefactoringTool.h"
+#include "generators/sequential/SeqRefactoringTool.h"
+#include "generators/vectorization/VecRefactoringTool.h"
 #include <algorithm>
 #include <fstream>
 

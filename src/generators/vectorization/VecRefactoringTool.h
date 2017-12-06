@@ -1,9 +1,9 @@
 #ifndef VECREFACTORINGTOOL_H
 #define VECREFACTORINGTOOL_H value
-#include "../OPParLoopData.h"
-#include "GeneratorBase.hpp"
-#include "SeqKernelHandler.h"
-#include "VecKernelHandler.h"
+#include "core/OPParLoopData.h"
+#include "generators/common/GeneratorBase.hpp"
+#include "generators/sequential/SeqKernelHandler.h"
+#include "generators/vectorization/VecKernelHandler.h"
 
 namespace OP2 {
 

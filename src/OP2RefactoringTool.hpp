@@ -2,11 +2,11 @@
 #define OP2REFACTORINGTOOL_HPP
 
 // OP2 includes
-#include "OP2WriteableRefactoringTool.hpp"
+#include "core/OP2WriteableRefactoringTool.hpp"
 #include "OPDataRegister.hpp"
 #include "ParLoopHandler.h"
 
-#include "generator/MasterkernelGenerator.hpp"
+#include "generators/MasterkernelGenerator.hpp"
 
 namespace OP2 {
 

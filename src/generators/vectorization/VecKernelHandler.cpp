@@ -1,6 +1,6 @@
 #include "VecKernelHandler.h"
-#include "VecDirectUserFuncRefTool.hpp"
-#include "handler.hpp"
+#include "generators/common/handler.hpp"
+#include "generators/vectorization/VecDirectUserFuncRefTool.hpp"
 #include <fstream>
 
 namespace {

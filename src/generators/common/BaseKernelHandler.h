@@ -1,6 +1,6 @@
 #ifndef BASEKERNELHANDLER_H
 #define BASEKERNELHANDLER_H
-#include "../OPParLoopData.h"
+#include "core/OPParLoopData.h"
 #include "clang/ASTMatchers/ASTMatchFinder.h"
 #include "clang/Tooling/Refactoring.h"
 

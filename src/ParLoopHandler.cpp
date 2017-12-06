@@ -1,5 +1,5 @@
 #include "ParLoopHandler.h"
-#include "utils.h"
+#include "core/utils.h"
 #include <sstream>
 
 namespace OP2 {
