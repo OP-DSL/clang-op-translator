@@ -1,6 +1,7 @@
 #ifndef OPPARLOOP_H
 #define OPPARLOOP_H
 #include "clang/AST/Decl.h"
+#include <set>
 #include <vector>
 
 namespace OP2 {
@@ -94,6 +95,21 @@ public:
 };
 
 typedef DummyParLoop ParLoop;
+
+struct OP2Application {
+  std::vector<ParLoop> loops;
+  std::set<op_global_const> constants;
+  std::map<std::string, std::string> sets;
+  std::map<std::string, const op_map> mappings;
+  std::string applicationName;
+
+  OP2Application() = default;
+  OP2Application(const OP2Application &) = delete;
+
+  void setName(std::string);
+  std::vector<ParLoop> &getParLoops();
+  const std::vector<ParLoop> &getParLoops() const;
+};
 
 } // namespace OP2
 

@@ -16,7 +16,8 @@ namespace matchers = clang::ast_matchers;
 class SeqKernelHandler : public matchers::MatchFinder::MatchCallback {
 protected:
   std::map<std::string, clang::tooling::Replacements> *Replace;
-  const ParLoop &loop;
+  const OP2Application &application;
+  const size_t loopIdx;
 
 public:
   /// @brief Construct a SeqKernelHandler
@@ -26,7 +27,7 @@ public:
   ///
   /// @param loop The ParLoop that the file is currently generated.
   SeqKernelHandler(std::map<std::string, clang::tooling::Replacements> *Replace,
-                   const ParLoop &loop);
+                   const OP2Application &app, size_t idx);
   // Static matchers handled by this class
   /// @brief Matcher for the placeholder of the user funciton
   static const matchers::DeclarationMatcher userFuncMatcher;

@@ -26,13 +26,13 @@ public:
   // TODO: Modify to get right skeletons... and Database..
   SeqRefactoringTool(
       const clang::tooling::CompilationDatabase &Compilations,
-      const ParLoop &loop,
+      const OP2Application &app, size_t idx,
       std::shared_ptr<clang::PCHContainerOperations> PCHContainerOps =
           std::make_shared<clang::PCHContainerOperations>())
       : OP2KernelGeneratorBase(
-            Compilations, {std::string(SKELETONS_DIR) + skeletons[0]}, loop,
+            Compilations, {std::string(SKELETONS_DIR) + skeletons[0]}, app, idx,
             SeqRefactoringTool::_postfix, PCHContainerOps),
-        seqKernelHandler(&getReplacements(), loop) {}
+        seqKernelHandler(&getReplacements(), app, idx) {}
 
   /// @brief Adding Sequential specific MAtchers and handlers.
   ///   Called from OP2KernelGeneratorBase::GenerateKernelFile()

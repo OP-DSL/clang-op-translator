@@ -16,15 +16,16 @@ class VecRefactoringTool : public OP2KernelGeneratorBase {
 public:
   VecRefactoringTool(
       const clang::tooling::CompilationDatabase &Compilations,
-      const ParLoop &loop,
+      const OP2Application &app, size_t idx,
       std::shared_ptr<clang::PCHContainerOperations> PCHContainerOps =
           std::make_shared<clang::PCHContainerOperations>())
-      : OP2KernelGeneratorBase(
-            Compilations,
-            {std::string(SKELETONS_DIR) + skeletons[!loop.isDirect()]}, loop,
-            VecRefactoringTool::_postfix, PCHContainerOps),
-        vecKernelHandler(&getReplacements(), Compilations, loop),
-        seqKernelHandler(&getReplacements(), loop) {}
+      : OP2KernelGeneratorBase(Compilations,
+                               {std::string(SKELETONS_DIR) +
+                                skeletons[!app.getParLoops()[idx].isDirect()]},
+                               app, idx, VecRefactoringTool::_postfix,
+                               PCHContainerOps),
+        vecKernelHandler(&getReplacements(), Compilations, app, idx),
+        seqKernelHandler(&getReplacements(), app, idx) {}
 
   virtual void
   addGeneratorSpecificMatchers(clang::ast_matchers::MatchFinder &Finder) {

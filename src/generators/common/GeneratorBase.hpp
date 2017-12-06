@@ -13,8 +13,10 @@ class OP2KernelGeneratorBase : public OP2WriteableRefactoringTool {
 protected:
   /// @brief postfix to generate output filename
   const std::string postfix;
-  /// @brief op_par_loop processed
-  const ParLoop &loop;
+  /// @brief data about application processed
+  const OP2Application &application;
+  /// @brief Index of currently processed loop
+  const size_t loopIdx;
   /// @brief Handler for common modifications
   BaseKernelHandler baseKernelHandler;
 
@@ -54,13 +56,13 @@ protected:
 public:
   OP2KernelGeneratorBase(
       const clang::tooling::CompilationDatabase &Compilations,
-      const std::vector<std::string> &Sources, const ParLoop &loop,
-      std::string postfix,
+      const std::vector<std::string> &Sources, const OP2Application &app,
+      size_t idx, std::string postfix,
       std::shared_ptr<clang::PCHContainerOperations> PCHContainerOps =
           std::make_shared<clang::PCHContainerOperations>())
       : OP2WriteableRefactoringTool(Compilations, Sources, PCHContainerOps),
-        postfix(postfix), loop(loop),
-        baseKernelHandler(&getReplacements(), loop) {}
+        postfix(postfix), application(app), loopIdx(idx),
+        baseKernelHandler(&getReplacements(), application.getParLoops()[idx]) {}
 
   /// @brief Generate the kernel to <loopname>_xxkernel.cpp
   ///
@@ -94,7 +96,8 @@ public:
   ///   Default implementation gives: <loopname>_<postfix>.cpp
   virtual std::string
   getOutputFileName(const clang::FileEntry *f = nullptr) const {
-    return loop.getName() + "_" + postfix + ".cpp";
+    return application.getParLoops()[loopIdx].getName() + "_" + postfix +
+           ".cpp";
   }
 
   virtual ~OP2KernelGeneratorBase() = default;

@@ -2,9 +2,9 @@
 #define OP2REFACTORINGTOOL_HPP
 
 // OP2 includes
-#include "core/OP2WriteableRefactoringTool.hpp"
 #include "OPDataRegister.hpp"
 #include "ParLoopHandler.h"
+#include "core/OP2WriteableRefactoringTool.hpp"
 
 #include "generators/MasterkernelGenerator.hpp"
 
@@ -18,11 +18,7 @@ protected:
   std::vector<std::string> &commandLineArgs;
   clang::tooling::FixedCompilationDatabase &Compilations;
   // We can collect all data about kernels
-  std::vector<ParLoop> loops;
-  std::set<op_global_const> constants;
-  std::map<std::string, std::string> sets;
-  std::map<std::string, const op_map> mappings;
-  std::string applicationName;
+  OP2Application application;
 
 public:
   OP2RefactoringTool(
@@ -34,8 +30,8 @@ public:
       : OP2WriteableRefactoringTool(
             compilations, optionsParser.getSourcePathList(), PCHContainerOps),
         opTarget(opTarget), commandLineArgs(commandLineArgs),
-        Compilations(compilations) {
-    applicationName = optionsParser.getSourcePathList()[0];
+        Compilations(compilations), application() {
+    std::string applicationName = optionsParser.getSourcePathList()[0];
     size_t basename_start = applicationName.rfind("/"),
            basename_end = applicationName.rfind(".");
     if (basename_start == std::string::npos) {
@@ -47,28 +43,26 @@ public:
       llvm::errs() << "Invalid applicationName: " << applicationName << "\n";
     applicationName =
         applicationName.substr(basename_start, basename_end - basename_start);
+    application.setName(applicationName);
   }
 
-  std::vector<ParLoop> &getParLoops() { return loops; }
+  std::vector<ParLoop> &getParLoops() { return application.getParLoops(); }
 
   /// @brief Generates kernelfiles for all parLoop
   void generateKernelFiles() {
     if (opTarget == none)
       return;
     if (opTarget == seq || opTarget == all) {
-      SeqGenerator generator(loops, constants, applicationName, commandLineArgs,
-                             Compilations);
+      SeqGenerator generator(application, commandLineArgs, Compilations);
       generator.generateKernelFiles();
     }
     if (opTarget == openmp || opTarget == all) {
-      OpenMPGenerator generator(loops, constants, applicationName,
-                                commandLineArgs, Compilations);
+      OpenMPGenerator generator(application, commandLineArgs, Compilations);
       generator.generateKernelFiles();
     }
     if (opTarget == vec || opTarget == all) {
-      VectorizedGenerator generator(loops, constants, applicationName,
-                                    "skeleton_veckernels.cpp", commandLineArgs,
-                                    Compilations);
+      VectorizedGenerator generator(application, "skeleton_veckernels.cpp",
+                                    commandLineArgs, Compilations);
       generator.generateKernelFiles();
     }
   }
@@ -86,7 +80,7 @@ public:
         callExpr(callee(functionDecl(hasName("op_par_loop")))).bind("par_loop"),
         &parLoopHandlerCallback);
 
-    DataRegister drCallback(sets, mappings, constants);
+    DataRegister drCallback(application);
     drCallback.addToFinder(Finder);
 
     return run(clang::tooling::newFrontendActionFactory(&Finder).get());

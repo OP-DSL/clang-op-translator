@@ -72,8 +72,9 @@ const StatementMatcher VecKernelHandler::localIndRedWriteBackMatcher = forStmt(
 VecKernelHandler::VecKernelHandler(
     std::map<std::string, clang::tooling::Replacements> *Replace,
     const clang::tooling::CompilationDatabase &Compilations,
-    const ParLoop &loop)
-    : Compilations(Compilations), Replace(Replace), loop(loop) {}
+    const OP2Application &app, size_t idx)
+    : Compilations(Compilations), Replace(Replace), application(app),
+      loopIdx(idx) {}
 
 ///_______________________________GLOBAL_HANDLER_______________________________
 void VecKernelHandler::run(const matchers::MatchFinder::MatchResult &Result) {
@@ -120,6 +121,7 @@ void VecKernelHandler::run(const matchers::MatchFinder::MatchResult &Result) {
 std::string VecKernelHandler::handleRedWriteBack() {
   std::string repl;
   llvm::raw_string_ostream os(repl);
+  const ParLoop &loop = application.getParLoops()[loopIdx];
   for (size_t i = 0; i < loop.getNumArgs(); ++i) {
     if (loop.getArg(i).isReduction()) { // TODO other types of reductions
       os << "*(" << loop.getArg(i).type << "*)arg" << i << ".data += dat" << i
@@ -131,6 +133,7 @@ std::string VecKernelHandler::handleRedWriteBack() {
 std::string VecKernelHandler::handleLocalIndirectInc() {
   std::string repl;
   llvm::raw_string_ostream os(repl);
+  const ParLoop &loop = application.getParLoops()[loopIdx];
   for (size_t i = 0; i < loop.getNumArgs(); ++i) {
     if (loop.getArg(i).isDirect() ||
         loop.getArg(i).accs != OP_accs_type::OP_INC)
@@ -150,6 +153,7 @@ std::string VecKernelHandler::handleLocalIndirectInc() {
 std::string VecKernelHandler::handleLocalIndirectInit() {
   std::string repl;
   llvm::raw_string_ostream os(repl);
+  const ParLoop &loop = application.getParLoops()[loopIdx];
   for (size_t i = 0; i < loop.getNumArgs(); ++i) {
     if (loop.getArg(i).isDirect())
       continue;
@@ -170,6 +174,7 @@ std::string VecKernelHandler::handleLocalIndirectInit() {
 template <bool READS> std::string VecKernelHandler::handleIDX() {
   std::string repl;
   llvm::raw_string_ostream os(repl);
+  const ParLoop &loop = application.getParLoops()[loopIdx];
   for (size_t i = 0; i < loop.getNumArgs(); ++i) {
     if (loop.getArg(i).isDirect())
       continue;
@@ -187,6 +192,7 @@ template <bool READS> std::string VecKernelHandler::handleIDX() {
 std::string VecKernelHandler::localIndirectVarDecls() {
   std::string repl;
   llvm::raw_string_ostream os(repl);
+  const ParLoop &loop = application.getParLoops()[loopIdx];
   for (size_t i = 0; i < loop.getNumArgs(); ++i) {
     if (!loop.getArg(i).isDirect() && !loop.getArg(i).isGBL) {
       std::string type = loop.getArg(i).type;
@@ -199,6 +205,7 @@ std::string VecKernelHandler::localIndirectVarDecls() {
 
 std::string VecKernelHandler::funcDeclCopy() {
   std::vector<size_t> redIndexes;
+  const ParLoop &loop = application.getParLoops()[loopIdx];
   for (size_t i = 0; i < loop.getNumArgs(); ++i) {
     if (loop.getArg(i).isReduction()) {
       redIndexes.push_back(i);
@@ -213,6 +220,7 @@ std::string VecKernelHandler::funcDeclCopy() {
 }
 
 std::string VecKernelHandler::userFuncVecHandler() {
+  const ParLoop &loop = application.getParLoops()[loopIdx];
   if (loop.isDirect()) {
     return "";
   }
@@ -227,6 +235,7 @@ std::string VecKernelHandler::userFuncVecHandler() {
 }
 
 std::string VecKernelHandler::alignedPtrDecls() {
+  const ParLoop &loop = application.getParLoops()[loopIdx];
   std::string repl = "";
   llvm::raw_string_ostream os(repl);
   for (size_t i = 0; i < loop.getNumArgs(); ++i) {
@@ -244,6 +253,7 @@ std::string VecKernelHandler::alignedPtrDecls() {
 }
 
 std::string VecKernelHandler::vecFuncCallHandler() {
+  const ParLoop &loop = application.getParLoops()[loopIdx];
   std::string repl = loop.getName() + (loop.isDirect() ? "(" : "_vec(");
   llvm::raw_string_ostream os(repl);
   for (size_t i = 0; i < loop.getNumArgs(); ++i) {
@@ -265,6 +275,7 @@ std::string VecKernelHandler::vecFuncCallHandler() {
 }
 
 std::string VecKernelHandler::funcCallHandler() {
+  const ParLoop &loop = application.getParLoops()[loopIdx];
   std::string repl = loop.getName() + "(";
   llvm::raw_string_ostream os(repl);
   for (size_t i = 0; i < loop.getNumArgs(); ++i) {
@@ -282,6 +293,7 @@ std::string VecKernelHandler::funcCallHandler() {
   return repl.substr(0, repl.size() - 1) + ");";
 }
 std::string VecKernelHandler::localReductionVarDecls() {
+  const ParLoop &loop = application.getParLoops()[loopIdx];
   std::string repl;
   llvm::raw_string_ostream os(repl);
   for (size_t i = 0; i < loop.getNumArgs(); ++i) {
@@ -292,6 +304,7 @@ std::string VecKernelHandler::localReductionVarDecls() {
   return os.str();
 }
 std::string VecKernelHandler::reductionVecForStmt() {
+  const ParLoop &loop = application.getParLoops()[loopIdx];
   std::string repl = "for(int i = 0; i<SIMD_VEC;++i){";
   llvm::raw_string_ostream os(repl);
   bool hasRed = false;

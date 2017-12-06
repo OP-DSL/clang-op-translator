@@ -12,7 +12,8 @@ class VecKernelHandler
 protected:
   const clang::tooling::CompilationDatabase &Compilations;
   std::map<std::string, clang::tooling::Replacements> *Replace;
-  const ParLoop &loop;
+  const OP2Application &application;
+  const size_t loopIdx;
 
   std::string handleRedWriteBack();
 
@@ -41,7 +42,7 @@ protected:
 public:
   VecKernelHandler(std::map<std::string, clang::tooling::Replacements> *Replace,
                    const clang::tooling::CompilationDatabase &Compilations,
-                   const ParLoop &loop);
+                   const OP2Application &app, size_t idx);
 
   // Static matchers handled by this class
   /// @brief Matcher for the declaration of ptr0 in the skeleton

@@ -191,4 +191,11 @@ std::string DummyParLoop::getMapVarDecls() const {
 
 UserFuncData DummyParLoop::getUserFuncInfo() const { return function; }
 
+void OP2Application::setName(std::string name) { applicationName = name; }
+
+std::vector<ParLoop> &OP2Application::getParLoops() { return loops; }
+const std::vector<ParLoop> &OP2Application::getParLoops() const {
+  return loops;
+}
+
 } // namespace OP2

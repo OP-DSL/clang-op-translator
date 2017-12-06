@@ -49,35 +49,29 @@ public:
 template <typename KernelGeneratorType, typename Handler = MasterKernelHandler>
 class MasterkernelGenerator : public OP2WriteableRefactoringTool {
 protected:
-  const std::vector<ParLoop> &loops;
-  const std::set<op_global_const> &constants;
-  std::string base_name;
+  const OP2Application &application;
   std::vector<std::string> commandLineArgs;
   std::vector<std::string> generatedFiles;
 
 public:
   MasterkernelGenerator(
-      const std::vector<ParLoop> &loops,
-      const std::set<op_global_const> &consts, std::string base,
-      std::string skeleton_name, std::vector<std::string> &args,
+      const OP2Application &app, std::string skeleton_name,
+      std::vector<std::string> &args,
       clang::tooling::FixedCompilationDatabase &compilations,
       std::shared_ptr<clang::PCHContainerOperations> PCHContainerOps =
           std::make_shared<clang::PCHContainerOperations>())
       : OP2WriteableRefactoringTool(
             compilations, {std::string(SKELETONS_DIR) + skeleton_name},
             PCHContainerOps),
-        loops(loops), constants(consts), base_name(base),
-        commandLineArgs(args) {}
+        application(app), commandLineArgs(args) {}
 
   MasterkernelGenerator(
-      const std::vector<ParLoop> &loops,
-      const std::set<op_global_const> &consts, std::string base,
-      std::vector<std::string> &commandLineArgs,
+      const OP2Application &app, std::vector<std::string> &commandLineArgs,
       clang::tooling::FixedCompilationDatabase &compilations,
       std::shared_ptr<clang::PCHContainerOperations> PCHContainerOps =
           std::make_shared<clang::PCHContainerOperations>())
-      : MasterkernelGenerator(loops, consts, base, "skeleton_kernels.cpp",
-                              commandLineArgs, compilations, PCHContainerOps) {}
+      : MasterkernelGenerator(app, "skeleton_kernels.cpp", commandLineArgs,
+                              compilations, PCHContainerOps) {}
   /// @brief Generates kernelfiles for all parLoop and then the master kernel
   ///  file
   void generateKernelFiles() {
@@ -89,17 +83,19 @@ public:
     // Currently this only needed when we modify the user kernel.
     commandLineArgs.push_back(std::string("-xc++"));
 
-    std::ofstream os("/tmp/" + base_name + "_global.h");
-    for (const op_global_const &c : constants) {
+    std::ofstream os("/tmp/" + application.applicationName + "_global.h");
+    for (const op_global_const &c : application.constants) {
       os << c << ";\n";
     }
     os.close();
-    commandLineArgs.push_back("-include/tmp/" + base_name + "_global.h");
+    commandLineArgs.push_back("-include/tmp/" + application.applicationName +
+                              "_global.h");
 
     clang::tooling::FixedCompilationDatabase F(".", commandLineArgs);
-    for (const ParLoop &loop : loops) {
-      std::string name = loop.getName();
-      KernelGeneratorType tool(F, loop);
+    for (size_t i = 0; i < application.getParLoops().size(); ++i) {
+
+      std::string name = application.getParLoops()[i].getName();
+      KernelGeneratorType tool(F, application, i);
       if (tool.generateKernelFile()) {
         llvm::outs() << "Error during processing ";
       }
@@ -108,7 +104,7 @@ public:
     }
 
     clang::ast_matchers::MatchFinder Finder;
-    Handler handler(generatedFiles, constants, &getReplacements());
+    Handler handler(generatedFiles, application.constants, &getReplacements());
     Finder.addMatcher(globVarMatcher, &handler);
     if (int Result =
             run(clang::tooling::newFrontendActionFactory(&Finder).get())) {
@@ -119,7 +115,8 @@ public:
   }
 
   std::string getOutputFileName(const clang::FileEntry *) const {
-    return base_name + "_" + KernelGeneratorType::_postfix + "s.cpp";
+    return application.applicationName + "_" + KernelGeneratorType::_postfix +
+           "s.cpp";
   }
 };
 

@@ -26,21 +26,21 @@ const DeclarationMatcher SeqKernelHandler::mapIdxDeclMatcher =
 ///________________________________CONSTRUCTORS________________________________
 SeqKernelHandler::SeqKernelHandler(
     std::map<std::string, clang::tooling::Replacements> *Replace,
-    const ParLoop &loop)
-    : Replace(Replace), loop(loop) {}
+    const OP2Application &app, size_t idx)
+    : Replace(Replace), application(app), loopIdx(idx) {}
 
 ///_______________________________GLOBAL_HANDLER_______________________________
 void SeqKernelHandler::run(const MatchFinder::MatchResult &Result) {
   if (!lineReplHandler<FunctionDecl, 1>(Result, Replace, "user_func", [this]() {
-        return this->loop.getUserFuncInc();
+        return this->application.getParLoops()[loopIdx].getUserFuncInc();
       }))
     return; // if successfully handled return
   if (!lineReplHandler<CallExpr, 2>(Result, Replace, "func_call", [this]() {
-        return this->loop.getFuncCall();
+        return this->application.getParLoops()[loopIdx].getFuncCall();
       }))
     return; // if successfully handled return
   if (!lineReplHandler<VarDecl, 2>(Result, Replace, "map_idx_decl", [this]() {
-        return this->loop.getMapVarDecls();
+        return this->application.getParLoops()[loopIdx].getMapVarDecls();
       }))
     return; // if successfully handled return
 }

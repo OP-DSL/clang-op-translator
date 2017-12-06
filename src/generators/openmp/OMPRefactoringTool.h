@@ -31,15 +31,16 @@ public:
   // TODO: Modify to get right skeletons... and Database..
   OMPRefactoringTool(
       const clang::tooling::CompilationDatabase &Compilations,
-      const ParLoop &loop,
+      const OP2Application &app, size_t idx,
       std::shared_ptr<clang::PCHContainerOperations> PCHContainerOps =
           std::make_shared<clang::PCHContainerOperations>())
       : OP2KernelGeneratorBase(
             Compilations,
-            {std::string(SKELETONS_DIR) + skeletons[loop.getKernelType()]},
-            loop, OMPRefactoringTool::_postfix, PCHContainerOps),
-        ompKernelHandler(&getReplacements(), loop),
-        seqKernelHandler(&getReplacements(), loop) {}
+            {std::string(SKELETONS_DIR) +
+             skeletons[app.getParLoops()[idx].getKernelType()]},
+            app, idx, OMPRefactoringTool::_postfix, PCHContainerOps),
+        ompKernelHandler(&getReplacements(), app.getParLoops()[idx]),
+        seqKernelHandler(&getReplacements(), app, idx) {}
 
   /// @brief Adding OpenMP specific Matchers and handlers.
   ///   Called from OP2KernelGeneratorBase::GenerateKernelFile()
