@@ -1,7 +1,7 @@
 # Op2 Clang Translator
 
 ## Build Instructions
-You will need a checkout of the llvm, clang and clang-tools-extra source code first (see http://clang.llvm.org/get_started.html for instructions)
+You will need a checkout of the llvm, clang and clang-tools-extra source code first (see http://clang.llvm.org/get_started.html for instructions).
 Check out this repository (e.g. with `git clone https://github.com/bgd54/OP2-Clang.git`) then in the OP2-Clang directory:
 
 > mkdir build  
