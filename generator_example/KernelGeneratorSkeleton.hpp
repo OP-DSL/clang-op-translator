@@ -1,8 +1,8 @@
 #ifndef KERNELGENERATORSKELETON_HPP
 #define KERNELGENERATORSKELETON_HPP value
-#include "../OPParLoopData.h"
-#include "GeneratorBase.hpp"
 #include "KernelHandlerSkeleton.hpp"
+#include "core/OPParLoopData.h"
+#include "generators/common/GeneratorBase.hpp"
 
 namespace OP2 {
 
@@ -14,14 +14,15 @@ class KernelGeneratorSkeleton : public OP2KernelGeneratorBase {
 public:
   KernelGeneratorSkeleton(
       const clang::tooling::CompilationDatabase &Compilations,
-      const ParLoop &loop,
+      const OP2Application &app, size_t idx,
       std::shared_ptr<clang::PCHContainerOperations> PCHContainerOps =
           std::make_shared<clang::PCHContainerOperations>())
-      : OP2KernelGeneratorBase(
-            Compilations,
-            {std::string(SKELETONS_DIR) + skeletons[!loop.isDirect()]}, loop,
-            KernelGeneratorSkeleton::_postfix, PCHContainerOps),
-        kernelHandlerSkeleton(&getReplacements(), loop) {}
+      : OP2KernelGeneratorBase(Compilations,
+                               {std::string(SKELETONS_DIR) +
+                                skeletons[!app.getParLoops()[idx].isDirect()]},
+                               app, idx, KernelGeneratorSkeleton::_postfix,
+                               PCHContainerOps),
+        kernelHandlerSkeleton(&getReplacements(), app, idx) {}
 
   virtual void
   addGeneratorSpecificMatchers(clang::ast_matchers::MatchFinder &Finder) {
@@ -30,10 +31,12 @@ public:
   };
 
   static constexpr const char *_postfix = "mypostfix";
+  static constexpr unsigned numParams = 0;
+  static constexpr const char *commandlineParams[numParams] = {};
 };
 
-const std::string KernelGeneratorSkeleton::skeletons[2] = {"direct_skeleton.cpp",
-                                         "indirect_skeleton.cpp"};
+const std::string KernelGeneratorSkeleton::skeletons[2] = {
+    "direct_skeleton.cpp", "indirect_skeleton.cpp"};
 
 } // namespace OP2
 

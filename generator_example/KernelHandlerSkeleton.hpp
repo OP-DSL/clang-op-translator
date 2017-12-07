@@ -1,6 +1,6 @@
 #ifndef KERNELHANDLERSKELETON_HPP
 #define KERNELHANDLERSKELETON_HPP
-#include "../OPParLoopData.h"
+#include "core/OPParLoopData.h"
 #include "clang/ASTMatchers/ASTMatchFinder.h"
 #include "clang/Tooling/Refactoring.h"
 
@@ -11,12 +11,13 @@ class KernelHandlerSkeleton
     : public clang::ast_matchers::MatchFinder::MatchCallback {
 protected:
   std::map<std::string, clang::tooling::Replacements> *Replace;
-  const ParLoop &loop;
+  const OP2Application &app;
+  size_t loopIdx;
 
 public:
   KernelHandlerSkeleton(
       std::map<std::string, clang::tooling::Replacements> *Replace,
-      const ParLoop &loop);
+      const OP2Application &app, size_t loopIdx);
 
   // Static matchers handled by this class
   /// @brief static matchers
