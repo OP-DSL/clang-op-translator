@@ -1,5 +1,6 @@
 #include "OPParLoopData.h"
 #include "core/utils.h"
+#include <fstream>
 
 namespace OP2 {
 //__________________________________OP_CONST__________________________________
@@ -237,6 +238,12 @@ std::string DummyParLoop::getMapVarDecls() const {
 }
 
 UserFuncData DummyParLoop::getUserFuncInfo() const { return function; }
+
+void DummyParLoop::dumpFuncTextTo(std::string path) const {
+  std::ofstream os(path);
+  os << function.functionDecl;
+  os.close();
+}
 
 void OP2Application::setName(std::string name) { applicationName = name; }
 

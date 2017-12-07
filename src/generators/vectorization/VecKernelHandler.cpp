@@ -216,7 +216,7 @@ std::string VecKernelHandler::funcDeclCopy() {
   if (redIndexes.size() == 0) {
     return loop.getFuncText();
   }
-
+  loop.dumpFuncTextTo("/tmp/loop.h");
   return VecDirectUserFuncGenerator(Compilations, loop, redIndexes).run();
 }
 
@@ -232,6 +232,7 @@ std::string VecKernelHandler::userFuncVecHandler() {
     }
   }
 
+  loop.dumpFuncTextTo("/tmp/loop.h");
   return VecDirectUserFuncGenerator(Compilations, loop, redIndexes).run<true>();
 }
 

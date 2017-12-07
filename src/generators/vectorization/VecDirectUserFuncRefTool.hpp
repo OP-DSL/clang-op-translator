@@ -144,10 +144,10 @@ class VecDirectUserFuncGenerator : public OP2WriteableRefactoringTool {
 public:
   VecDirectUserFuncGenerator(
       const clang::tooling::CompilationDatabase &Compilations,
-      const ParLoop &_loop, const std::vector<size_t> &redIndexes)
-      : OP2WriteableRefactoringTool(Compilations,
-                                    {_loop.getUserFuncInfo().path}),
-        loop(_loop), redIndexes(redIndexes) {}
+      const ParLoop &_loop, const std::vector<size_t> &redIndexes,
+      std::vector<std::string> path = {"/tmp/loop.h"})
+      : OP2WriteableRefactoringTool(Compilations, path), loop(_loop),
+        redIndexes(redIndexes) {}
 
   template <bool VEC = false> std::string run() {
 

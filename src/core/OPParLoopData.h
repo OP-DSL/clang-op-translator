@@ -94,6 +94,7 @@ public:
   std::string getTransferData() const;
   std::string getMapVarDecls() const;
   UserFuncData getUserFuncInfo() const;
+  void dumpFuncTextTo(std::string) const;
   /// @brief imdex of mapping with idx corresponding to the arg (-1 for direct)
   std::vector<int> mapIdxs;
   std::vector<int> arg2map;
