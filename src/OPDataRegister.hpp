@@ -30,12 +30,17 @@ public:
                         .bind("op_decl_set")))
             .bind("op_set"),
         this);
-    finder.addMatcher(callExpr(callee(functionDecl(hasName("op_decl_map"))))
-                          .bind("op_decl_map"),
-                      this);
     finder.addMatcher(
-        callExpr(callee(functionDecl(hasName("op_decl_map_hdf5"))))
-            .bind("op_decl_map"),
+        varDecl(hasInitializer(
+                    callExpr(callee(functionDecl(hasName("op_decl_map"))))
+                        .bind("op_decl_map")))
+            .bind("op_map"),
+        this);
+    finder.addMatcher(
+        varDecl(hasInitializer(
+                    callExpr(callee(functionDecl(hasName("op_decl_map_hdf5"))))
+                        .bind("op_decl_map")))
+            .bind("op_map"),
         this);
   }
 
@@ -71,8 +76,10 @@ public:
       llvm::outs() << name << "\n";
     } else if ((callExpr =
                     Result.Nodes.getNodeAs<clang::CallExpr>("op_decl_map"))) {
+      std::string mapname =
+          Result.Nodes.getNodeAs<clang::VarDecl>("op_map")->getNameAsString();
       std::string name = getAsStringLiteral(callExpr->getArg(4))->getString();
-      auto it = application.mappings.find(name);
+      auto it = application.mappings.find(mapname);
       unsigned dim = getIntValFromExpr(callExpr->getArg(2));
       std::string varnameFrom =
           getExprAsDecl<clang::VarDecl>(callExpr->getArg(0))->getNameAsString();
@@ -89,11 +96,11 @@ public:
       }
       const op_map m(from, to, dim, name);
       if (it != application.mappings.end()) {
-        llvm::errs() << "Multiple mappings defined with same name:" << m
+        llvm::errs() << "Multiple mappings defined with same name:" << mapname
                      << " vs " << it->second << "\n";
       }
       application.mappings.insert(
-          std::pair<std::string, const op_map>(name, m));
+          std::pair<std::string, const op_map>(mapname, m));
       llvm::outs() << m << "\n";
     }
   }

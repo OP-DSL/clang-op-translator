@@ -59,27 +59,23 @@ std::string OMPKernelHandler::handleFuncCall() {
   std::string funcCall = "";
   llvm::raw_string_ostream ss(funcCall);
   ss << loop.getName() << "("; // TODO fix repr to store correct function data.
-  for (size_t i = 0; i < loop.getNumArgs() - 1; ++i) {
+  for (size_t i = 0; i < loop.getNumArgs(); ++i) {
     if (!loop.getArg(i).isReduction()) {
-      ss << loop.getArg(i).getArgCall(i,
-                                      loop.getArg(i).isDirect()
-                                          ? "n"
-                                          : ("map" + std::to_string(i) + "idx"))
-         << ",\n";
+      if (loop.getArg(i).isDirect()) {
+        ss << loop.getArg(i).getArgCall(i, "n");
+      } else {
+
+        ss << loop.getArg(i).getArgCall(
+            loop.dat2argIdxs[loop.dataIdxs[i]],
+            ("map" + std::to_string(loop.mapIdxs[i]) + "idx"));
+      }
+      ss << ",";
     } else {
-      ss << "&arg" << i << "_l, ";
+      ss << "&arg" << i << "_l,";
     }
   }
-  size_t n = loop.getNumArgs() - 1;
-  if (!loop.getArg(n).isReduction()) {
-    ss << loop.getArg(n).getArgCall(
-        n,
-        loop.getArg(n).isDirect() ? "n" : ("map" + std::to_string(n) + "idx"));
-  } else {
-    ss << "&arg" << n << "_l";
-  }
-  ss << "\n);";
-  return ss.str();
+  ss.str();
+  return funcCall.substr(0, funcCall.length() - 1) + ");";
 }
 
 std::string OMPKernelHandler::handleRedLocalVarDecl() {

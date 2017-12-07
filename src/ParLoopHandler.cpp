@@ -4,7 +4,8 @@
 
 namespace OP2 {
 
-void addOPArgToVector(const clang::Expr *argExpr, std::vector<OPArg> &args) {
+void addOPArgToVector(const clang::Expr *argExpr, std::vector<OPArg> &args,
+                      OP2Application &app) {
   const clang::Stmt *argStmt = llvm::dyn_cast<clang::Stmt>(argExpr);
   // ugly solution to get the op_arg_dat callExpr from from AST..
   while (!llvm::isa<clang::CallExpr>(argStmt)) {
@@ -30,10 +31,13 @@ void addOPArgToVector(const clang::Expr *argExpr, std::vector<OPArg> &args) {
   const clang::VarDecl *opDat =
       getExprAsDecl<clang::VarDecl>(argCallExpr->getArg(0));
   int idx = -2;
-  const clang::VarDecl *opMap = nullptr;
+  std::string opMap = "";
   if (!isGBL) {
     idx = getIntValFromExpr(argCallExpr->getArg(1)->IgnoreCasts());
-    opMap = getExprAsDecl<clang::VarDecl>(argCallExpr->getArg(2));
+    if (idx != -1) {
+      opMap = getExprAsDecl<clang::VarDecl>(argCallExpr->getArg(2))
+                  ->getNameAsString();
+    }
   } else {
     llvm::outs() << opDat << "\n";
   }
@@ -47,7 +51,12 @@ void addOPArgToVector(const clang::Expr *argExpr, std::vector<OPArg> &args) {
       argCallExpr->getArg(5 - (isGBL ? 2 : 0))->IgnoreCasts()));
 
   if (!isGBL) {
-    args.push_back(OPArg(opDat, idx, opMap, dim, type, accs));
+    if (idx != -1) {
+      args.push_back(
+          OPArg(opDat, idx, app.mappings.find(opMap)->second, dim, type, accs));
+    } else {
+      args.push_back(OPArg(opDat, idx, op_map::no_map, dim, type, accs));
+    }
   } else {
     args.push_back(OPArg(opDat, dim, type, accs));
   }
@@ -74,10 +83,10 @@ void ParLoopHandler::parseFunctionDecl(const clang::CallExpr *parloopExpr,
 
   for (unsigned arg_ind = 3; arg_ind < parloopExpr->getNumArgs(); ++arg_ind) {
     parLoopDataSS << "arg" << arg_ind - 3 << ":\n";
-    addOPArgToVector(parloopExpr->getArg(arg_ind), args);
+    addOPArgToVector(parloopExpr->getArg(arg_ind), args, app);
     parLoopDataSS << args.back();
   }
-  parLoops.push_back(ParLoop(fDecl, SM, name, args));
+  app.getParLoops().push_back(ParLoop(fDecl, SM, name, args));
   llvm::outs() << parLoopDataSS.str();
 }
 

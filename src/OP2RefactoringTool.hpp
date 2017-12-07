@@ -75,7 +75,7 @@ public:
   int generateOPFiles() {
     clang::ast_matchers::MatchFinder Finder;
     // creating and setting callback to handle op_par_loops
-    ParLoopHandler parLoopHandlerCallback(&getReplacements(), getParLoops());
+    ParLoopHandler parLoopHandlerCallback(&getReplacements(), application);
     Finder.addMatcher(
         callExpr(callee(functionDecl(hasName("op_par_loop")))).bind("par_loop"),
         &parLoopHandlerCallback);

@@ -98,13 +98,7 @@ void BaseKernelHandler::run(const MatchFinder::MatchResult &Result) {
     return;
   if (!lineReplHandler<clang::VarDecl, 1>(
           Result, Replace, "ninds_decl", [this]() {
-            std::set<std::string> inds;
-            for (unsigned i = 0; i < this->loop.getNumArgs(); ++i) {
-              if (!this->loop.getArg(i).isDirect()) {
-                inds.insert(this->loop.getArg(i).opDat);
-              }
-            }
-            return "int ninds = " + std::to_string(inds.size());
+            return "int ninds = " + std::to_string(loop.ninds);
           })) //handleNindsDecl
     return;
   if (!HANDLER(clang::VarDecl, 3, "inds_arr_decl",
@@ -173,19 +167,8 @@ std::string BaseKernelHandler::handleIndsArr() {
       "int inds[" + std::to_string(this->loop.getNumArgs()) + "] = {";
   llvm::raw_string_ostream os(indarr);
 
-  std::map<std::string, int> datToInd;
   for (unsigned i = 0; i < loop.getNumArgs(); ++i) {
-    if (loop.getArg(i).isDirect()) {
-      os << "-1, ";
-    } else {
-      auto it = datToInd.find(loop.getArg(i).opDat);
-      if (it != datToInd.end()) {
-        os << it->second << ", ";
-      } else {
-        os << datToInd.size() << ", ";
-        datToInd[loop.getArg(i).opDat] = datToInd.size() - 1;
-      }
-    }
+    os << loop.dataIdxs[i] << ", ";
   }
   os.str();
 

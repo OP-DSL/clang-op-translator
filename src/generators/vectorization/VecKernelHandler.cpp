@@ -124,8 +124,8 @@ std::string VecKernelHandler::handleRedWriteBack() {
   const ParLoop &loop = application.getParLoops()[loopIdx];
   for (size_t i = 0; i < loop.getNumArgs(); ++i) {
     if (loop.getArg(i).isReduction()) { // TODO other types of reductions
-      os << "*(" << loop.getArg(i).type << "*)arg" << i << ".data += dat" << i
-         << "[i];\n";
+      os << "*(" << loop.getArg(i).type << "*)arg" << loop.dat2argIdxs[i]
+         << ".data += dat" << i << "[i];\n";
     }
   }
   return os.str();
@@ -181,7 +181,8 @@ template <bool READS> std::string VecKernelHandler::handleIDX() {
     if ((READS && loop.getArg(i).accs == OP_accs_type::OP_READ) ||
         (!READS && loop.getArg(i).accs == OP_accs_type::OP_INC)) {
       int dim = loop.getArg(i).dim;
-      std::string argmap = "arg" + std::to_string(i) + ".map";
+      std::string argmap =
+          "arg" + std::to_string(loop.map2argIdxs[loop.arg2map[i]]) + ".map";
       os << "int idx" << i << "_" << dim << "=" << dim << "*" << argmap
          << "_data[(n+i)*" << argmap << "->dim+" << loop.getArg(i).idx << "];";
     }
@@ -282,7 +283,7 @@ std::string VecKernelHandler::funcCallHandler() {
     if (!loop.getArg(i).isGBL) {
       std::string mapStr = "n";
       if (!loop.getArg(i).isDirect()) {
-        mapStr = "map" + std::to_string(i) + "idx";
+        mapStr = "map" + std::to_string(loop.mapIdxs[i]) + "idx";
       }
       os << "&(ptr" << i << ")[" << loop.getArg(i).dim << "*" << mapStr << "],";
     } else {

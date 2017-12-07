@@ -18,12 +18,14 @@ std::ostream &operator<<(std::ostream &, const op_global_const &);
 typedef std::string op_set;
 
 struct op_map {
-  const op_set &from;
-  const op_set &to;
+  const op_set from;
+  const op_set to;
   const unsigned dim;
   const std::string name;
   op_map(const op_set &, const op_set &, unsigned, std::string);
   bool operator==(const op_map &) const;
+  bool operator!=(const op_map &) const;
+  const static op_map no_map;
 };
 llvm::raw_ostream &operator<<(llvm::raw_ostream &, const op_map &);
 
@@ -47,14 +49,14 @@ struct UserFuncData {
 struct DummyOPArgv2 {
   std::string opDat;
   int idx;
-  bool opMap;
+  const op_map &opMap;
   size_t dim;
   std::string type;
   OP_accs_type accs;
   const bool isGBL;
 
-  DummyOPArgv2(const clang::VarDecl *, int, const clang::VarDecl *, size_t,
-               std::string, OP_accs_type);
+  DummyOPArgv2(const clang::VarDecl *, int, const op_map &, size_t, std::string,
+               OP_accs_type);
   DummyOPArgv2(const clang::VarDecl *, size_t, std::string, OP_accs_type);
   bool isDirect() const;
   std::string getArgCall(int, std::string) const;
@@ -92,6 +94,16 @@ public:
   std::string getTransferData() const;
   std::string getMapVarDecls() const;
   UserFuncData getUserFuncInfo() const;
+  /// @brief imdex of mapping with idx corresponding to the arg (-1 for direct)
+  std::vector<int> mapIdxs;
+  std::vector<int> arg2map;
+  /// @brief index of the data corresponding to the arg (-1 for direct)
+  std::vector<int> dataIdxs;
+  int ninds;
+  /// @brief Index of first occurence of indirect op_dat
+  std::vector<int> dat2argIdxs;
+  /// @brief Index of the first occurence of a map
+  std::vector<int> map2argIdxs;
 };
 
 typedef DummyParLoop ParLoop;

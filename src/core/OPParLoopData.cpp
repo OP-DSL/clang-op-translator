@@ -28,10 +28,14 @@ op_map::op_map(const op_set &from, const op_set &to, unsigned d, std::string s)
 bool op_map::operator==(const op_map &m) const {
   return from == m.from && to == m.to && dim == m.dim && name == m.name;
 }
+bool op_map::operator!=(const op_map &m) const { return !(*this == m); }
 llvm::raw_ostream &operator<<(llvm::raw_ostream &os, const op_map &m) {
-  return os << "map:" << m.name << "::" << m.from << "-->" << m.to
-            << " dim: " << m.dim;
+  if (m != op_map::no_map)
+    return os << "map:" << m.name << "::" << m.from << "-->" << m.to
+              << " dim: " << m.dim;
+  return os << "map:OP_ID";
 }
+const op_map op_map::no_map("", "", 0, "");
 
 UserFuncData::UserFuncData(const clang::FunctionDecl *funcD,
                            const clang::SourceManager *sm)
@@ -45,30 +49,30 @@ UserFuncData::UserFuncData(const clang::FunctionDecl *funcD,
 
 //___________________________________OP_ARG___________________________________
 DummyOPArgv2::DummyOPArgv2(const clang::VarDecl *dat, int _idx,
-                           const clang::VarDecl *_map, size_t _dim,
-                           std::string _type, OP_accs_type _accs)
-    : opDat(dat->getNameAsString()), idx(_idx), opMap(!_map), dim(_dim),
+                           const op_map &_map, size_t _dim, std::string _type,
+                           OP_accs_type _accs)
+    : opDat(dat->getNameAsString()), idx(_idx), opMap(_map), dim(_dim),
       type(_type), accs(_accs), isGBL(false) {}
 
 DummyOPArgv2::DummyOPArgv2(const clang::VarDecl *dat, size_t _dim,
                            std::string _type, OP_accs_type _accs)
-    : opDat(dat->getNameAsString()), idx(0), opMap(true), dim(_dim),
+    : opDat(dat->getNameAsString()), idx(0), opMap(op_map::no_map), dim(_dim),
       type(_type), accs(_accs), isGBL(true) {}
 
 llvm::raw_ostream &operator<<(llvm::raw_ostream &os, const DummyOPArgv2 &arg) {
   os << "op_arg" << (arg.isGBL ? "_gbl" : "") << ":\n\t"
      << "op_dat: " << arg.opDat << "\n\t";
   if (!arg.isGBL) {
-    if (!arg.opMap) { // indirect argument
+    if (arg.opMap != op_map::no_map) { // indirect argument
       os << "map_idx: " << arg.idx << "\n\t";
-    } else {
-      os << "map: OP_ID\n\t";
     }
+    os << arg.opMap << "\n\t";
   }
+
   return os << "dim: " << arg.dim << "\n\ttype: " << arg.type
             << "\n\taccess: " << arg.accs << "\n";
 }
-bool DummyOPArgv2::isDirect() const { return opMap; }
+bool DummyOPArgv2::isDirect() const { return opMap == op_map::no_map; }
 
 std::string DummyOPArgv2::getArgCall(int argIdx, std::string mapStr) const {
   std::string data = "(" + type + "*)arg" + std::to_string(argIdx) + ".data";
@@ -89,7 +93,51 @@ size_t DummyParLoop::numLoops = 0;
 DummyParLoop::DummyParLoop(const clang::FunctionDecl *_function,
                            const clang::SourceManager *sm, std::string _name,
                            std::vector<OPArg> _args)
-    : loopId(numLoops++), function(_function, sm), name(_name), args(_args) {}
+    : loopId(numLoops++), function(_function, sm), name(_name), args(_args) {
+  std::map<std::string, int> datToInd;
+  std::map<std::string, std::map<int, int>> mapidxToInd;
+  std::map<std::string, int> map2ind;
+  int mapidxs = 0;
+  int nummaps = -1;
+  for (size_t i = 0; i < args.size(); ++i) {
+    OPArg &arg = args[i];
+    if (arg.isDirect() || arg.isGBL) {
+      dataIdxs.push_back(-1);
+      mapIdxs.push_back(-1);
+      arg2map.push_back(-1);
+    } else {
+      auto it = datToInd.find(arg.opDat);
+      if (it != datToInd.end()) {
+        dataIdxs.push_back(it->second);
+      } else {
+        dat2argIdxs.push_back(i);
+        ninds = datToInd.size();
+        dataIdxs.push_back(ninds);
+        datToInd[arg.opDat] = ninds;
+        ninds++;
+      }
+      auto mapIt = mapidxToInd.find(arg.opMap.name);
+      if (mapIt == mapidxToInd.end()) {
+        std::map<int, int> tmp;
+        mapIdxs.push_back(mapidxs);
+        map2argIdxs.push_back(i);
+        arg2map.push_back(++nummaps);
+        map2ind[arg.opMap.name] = nummaps;
+        tmp[arg.idx] = mapidxs++;
+        mapidxToInd[arg.opMap.name] = tmp;
+      } else {
+        arg2map.push_back(map2ind[arg.opMap.name]);
+        auto idxit = mapIt->second.find(arg.idx);
+        if (idxit == mapIt->second.end()) {
+          mapIdxs.push_back(mapidxs);
+          mapIt->second[arg.idx] = mapidxs++;
+        } else {
+          mapIdxs.push_back(idxit->second);
+        }
+      }
+    }
+  }
+}
 
 bool DummyParLoop::isDirect() const {
   return std::all_of(args.begin(), args.end(),
@@ -120,31 +168,24 @@ size_t DummyParLoop::getNumArgs() const { return args.size(); }
 
 const OPArg &DummyParLoop::getArg(size_t ind) const { return args[ind]; }
 
-unsigned DummyParLoop::getKernelType() const {
-  if (isDirect()) {
-    return 0;
-  }
-  // TODO other kernel types maybe an enum;
-  return 1;
-}
+unsigned DummyParLoop::getKernelType() const { return !isDirect(); }
 
 std::string DummyParLoop::getFuncCall() const {
   std::string funcCall = "";
   llvm::raw_string_ostream ss(funcCall);
   ss << name << "("; // TODO fix repr to store correct function data.
-  for (size_t i = 0; i < args.size() - 1; ++i) {
-    ss << args[i].getArgCall(
-              i, args[i].isDirect() ? "n" : ("map" + std::to_string(i) + "idx"))
-       << ",\n";
+  for (size_t i = 0; i < args.size(); ++i) {
+    if (args[i].isDirect()) {
+      ss << args[i].getArgCall(i, "n");
+    } else {
+      ss << args[i].getArgCall(dat2argIdxs[dataIdxs[i]],
+                               ("map" + std::to_string(mapIdxs[i]) + "idx"));
+    }
+    ss << ",";
   }
-  ss << args[args.size() - 1].getArgCall(
-            args.size() - 1,
-            args[args.size() - 1].isDirect()
-                ? "n"
-                : ("map" + std::to_string(args.size() - 1) + "idx"))
-     << "\n";
-  ss << ");";
-  return ss.str();
+  ss.str();
+
+  return funcCall.substr(0, funcCall.length() - 1) + ");";
 }
 
 std::string DummyParLoop::getMPIReduceCall() const {
@@ -179,12 +220,18 @@ std::string DummyParLoop::getTransferData() const {
 std::string DummyParLoop::getMapVarDecls() const {
   std::string mapDecls = "";
   llvm::raw_string_ostream ss(mapDecls);
+  std::vector<int> mapinds(args.size(), -1);
+  std::map<std::string, int> mapToArg;
   for (size_t i = 0; i < args.size(); ++i) {
     if (args[i].isDirect() || args[i].isGBL) {
       continue;
     }
-    ss << "int map" << i << "idx = arg" << i << ".map_data[n * arg" << i
-       << ".map->dim + " << args[i].idx << "];\n";
+    if (mapinds[mapIdxs[i]] == -1) {
+      mapinds[mapIdxs[i]] = i;
+      ss << "int map" << mapIdxs[i] << "idx = arg" << map2argIdxs[arg2map[i]]
+         << ".map_data[n * arg" << map2argIdxs[arg2map[i]] << ".map->dim + "
+         << args[i].idx << "];\n";
+    }
   }
   return ss.str();
 }
