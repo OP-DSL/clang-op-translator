@@ -41,11 +41,15 @@ const op_map op_map::no_map("", "", 0, "");
 UserFuncData::UserFuncData(const clang::FunctionDecl *funcD,
                            const clang::SourceManager *sm)
     : functionDecl(decl2str(funcD, sm)), funcName(funcD->getNameAsString()) {
+  isInlineSpecified = funcD->isInlineSpecified();
   path = funcD->getLocStart().printToString(*sm);
   path = path.substr(0, path.find(":"));
   for (size_t i = 0; i < funcD->getNumParams(); ++i) {
     paramNames.push_back(funcD->getParamDecl(i)->getNameAsString());
   }
+}
+std::string UserFuncData::getInlinedFuncDecl() const {
+  return (isInlineSpecified ? "" : "inline ") + functionDecl;
 }
 
 //___________________________________OP_ARG___________________________________
@@ -151,8 +155,7 @@ std::string DummyParLoop::getFuncText() const { return function.functionDecl; }
 size_t DummyParLoop::getLoopID() const { return loopId; }
 
 std::string DummyParLoop::getUserFuncInc() const {
-  // TODO get proper include
-  return "#include \"" + name + ".h\"";
+  return function.getInlinedFuncDecl();
 }
 
 std::string DummyParLoop::getParLoopDef() const {

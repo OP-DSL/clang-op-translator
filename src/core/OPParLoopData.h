@@ -41,9 +41,11 @@ inline llvm::raw_ostream &operator<<(llvm::raw_ostream &os,
 struct UserFuncData {
   std::string functionDecl;
   std::string funcName;
+  bool isInlineSpecified;
   std::string path;
   std::vector<std::string> paramNames;
   UserFuncData(const clang::FunctionDecl *, const clang::SourceManager *);
+  std::string getInlinedFuncDecl() const;
 };
 
 struct DummyOPArgv2 {
