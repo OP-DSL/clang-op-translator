@@ -1,4 +1,4 @@
-# Op2 Clang Translator
+# OP2 Clang Translator
 
 ## Build Instructions
 You will need a checkout of the llvm, clang and clang-tools-extra source code first (see http://clang.llvm.org/get_started.html for instructions).
