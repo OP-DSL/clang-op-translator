@@ -1,0 +1,81 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+
+%for source codes
+\usepackage{listings}
+\usepackage{color}
+\usepackage{hyperref}
+\title{OP2-clang}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\newcommand{\optarget}{\textbf{OPTarget} }
+\newcommand{\opRefToolHpp}{\textbf{OP2RefactoringTool.hpp} }
+\newcommand{\opRefToolHppN}{\textbf{OP2RefactoringTool.hpp}}
+\newcommand{\omp}{OpenMP }
+\newcommand{\ompN}{OpenMP}
+\tableofcontents
+
+\section{Introduction}
+
+OP2 is a high level framework with associate libraries and preprocessors to generate parallel executables for unstructured mesh applications. This document describes the usage and implementation of the clang based C++ preprocessor for OP2.
+
+%OP2-ről általában - probléma felbontása/abstraction
+%preprocesszor szerepe általánosan - generálás
+
+
+\section{Overview}
+OP2-clang is a clang based preprocessor using clang's LibTooling to generate parallel executables. 
+Currently OP2-clang enables users to write single program which can be built into three executables:
+\begin{itemize}
+    \item Single-threaded on a CPU
+    \item Multi-threaded using \omp for multicore CPU systems
+    \item AVX vectorized for x86 CPU systems
+\end{itemize}
+
+OP2-clang is a clang based "source-to-source translator" tool. It's purpose is to generate parallelised and optimised source code for unstructured-mesh applications using OP2's abstractions. OP2-clang provides a modular abstraction to perform the translation and gives a convenient interface to extend it with new optimisations and parallelisation approaches.
+This tool is operating on the AST of the application. It collects data about the application from based on the OP2 library calls and with simple replacement on the main sources it generates copies for parallel execution. Then based on the collected data the tool generates optimised sources for the parallel loops. The kernel generation is operating on parallelisation approach specific simple skeleton codes. The generator parse the skeletons for each parallel loop and alter the source code through replacements to get the corresponding kernel used to get parallel executables.
+
+\section{Build}
+You will need a checkout of the llvm, clang and clang-tools-extra source code first (see \url{http://clang.llvm.org/get_started.html} for instructions). Check out the OP2-Clang repository and set {\tt OP2\_INSTALL\_PATH} e.g. with:\\
+\begin{lstlisting}
+git clone https://github.com/bgd54/OP2-Clang.git;
+export OP2_INSTALL_PATH="/path/to/op2/"
+\end{lstlisting}
+Then in the OP2-Clang directory:
+\begin{lstlisting}
+mkdir build
+cd build
+cmake ..
+make
+\end{lstlisting}
+
+\section{Usage}
+The tool can be run on the command-line with the command:
+\begin{lstlisting}
+./op2-clang main.cpp sub1.cpp -- clang++ --app-spec-flags
+\end{lstlisting}
+Assuming that the application is split over several files. This will lead to the output of the following files {\tt main\_op.cpp, sub1\_op.cpp, sub2\_op.cpp} and a master kernel file ({\tt main\_xxxkernels.cpp}) for each approach generated where xxx is differ between executables, and an individual kernel file for each parallel loop.
+\begin{itemize}
+    \item The {\tt main\_op.cpp} file is used for all versions (sequential, \omp and vectorized) executables.
+    \item The {\tt main\_xxxkernels.cpp} files are including the individual kernel files ({\tt <loop\_name>\_xxxkernel.cpp}).
+    \item The individual kernel files ({\tt <loop\_name>\_xxxkernel.cpp}) containing the efficient parallelised versions of the parallel loops. These files generated from the corresponding skeletons with modifications based on the information collected from {\tt main.cpp} (and from other files parsed during the invocation of the tool) about the loop.
+\end{itemize}
+The code generation can be controlled through {\tt optarget} flag:
+\begin{lstlisting}
+./op2-clang -optarget=vec main.cpp -- clang++
+\end{lstlisting}
+In this case only the version specified by the value of {\tt optarget} will be generated.
+
+\section{Implementation}
+
+4 layer arch
+layers: data collect
+version generators
+kernel generators
+userfunction modifiers
+
+\end{document}
