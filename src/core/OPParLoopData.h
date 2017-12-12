@@ -91,7 +91,6 @@ public:
   size_t getNumArgs() const;
   const OPArg &getArg(size_t) const;
   size_t getLoopID() const;
-  unsigned getKernelType() const;
   std::string getMPIReduceCall() const;
   std::string getTransferData() const;
   std::string getMapVarDecls() const;

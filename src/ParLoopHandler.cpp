@@ -21,8 +21,7 @@ void addOPArgToVector(const clang::Expr *argExpr, std::vector<OPArg> &args,
   // argCallExpr->dump();
   std::string fname =
       llvm::dyn_cast<clang::NamedDecl>(argCallExpr->getCalleeDecl())
-          ->getName()
-          .str();
+          ->getNameAsString();
   bool isGBL = fname == "op_arg_gbl";
   if (!isGBL && fname != "op_arg_dat") {
     llvm::errs() << "Unknown arg declaration: " << fname << "\n";
@@ -91,7 +90,6 @@ void ParLoopHandler::parseFunctionDecl(const clang::CallExpr *parloopExpr,
 }
 
 void ParLoopHandler::run(const matchers::MatchFinder::MatchResult &Result) {
-  // TODO collect data about kernel.
   const clang::CallExpr *function =
       Result.Nodes.getNodeAs<clang::CallExpr>("par_loop");
   if (function->getNumArgs() < 3) {
@@ -146,7 +144,6 @@ void ParLoopHandler::run(const matchers::MatchFinder::MatchResult &Result) {
 
   (*Replace)[fname] = Rpls.merge(clang::tooling::Replacements(Rep));
   // Add replacement for func call
-  // TODO try with SourceRange instead of length
   unsigned length =
       sourceManager->getFileOffset(function->getArg(1)->getLocStart()) -
       sourceManager->getFileOffset(
@@ -160,8 +157,8 @@ void ParLoopHandler::run(const matchers::MatchFinder::MatchResult &Result) {
     llvm::outs()
         << "Some Error occured during adding replacement for func_call\n";
   }
-
   // End adding Replacements
+
   // parse func decl test
   parseFunctionDecl(function, Result.SourceManager);
 }

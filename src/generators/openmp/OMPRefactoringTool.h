@@ -37,7 +37,7 @@ public:
       : OP2KernelGeneratorBase(
             Compilations,
             {std::string(SKELETONS_DIR) +
-             skeletons[app.getParLoops()[idx].getKernelType()]},
+             skeletons[!app.getParLoops()[idx].isDirect()]},
             app, idx, OMPRefactoringTool::_postfix, PCHContainerOps),
         ompKernelHandler(&getReplacements(), app.getParLoops()[idx]),
         seqKernelHandler(&getReplacements(), app, idx) {}

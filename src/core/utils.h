@@ -151,7 +151,5 @@ const T *findParent(const clang::Stmt &stmt, clang::ASTContext &context) {
   return nullptr;
 }
 
-std::unique_ptr<clang::CompilerInstance> createCompilerInstance();
-
 } // namespace OP2
 #endif // end of header guard

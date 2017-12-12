@@ -10,7 +10,7 @@ namespace OP2 {
 using namespace clang::ast_matchers;
 
 template <bool VEC = false>
-class VecDirUserFuncHandler
+class VecUserFuncHandler
     : public clang::ast_matchers::MatchFinder::MatchCallback {
 
   const ParLoop &loop;
@@ -106,7 +106,7 @@ class VecDirUserFuncHandler
   }
 
 public:
-  VecDirUserFuncHandler(
+  VecUserFuncHandler(
       const ParLoop &_loop, const std::vector<size_t> &redIndexes,
       std::map<std::string, clang::tooling::Replacements> *Replace)
       : loop(_loop), redIndexes(redIndexes), Replace(Replace) {}
@@ -137,12 +137,12 @@ public:
   }
 };
 
-class VecDirectUserFuncGenerator : public OP2WriteableRefactoringTool {
+class VecUserFuncGenerator : public OP2WriteableRefactoringTool {
   const ParLoop &loop;
   const std::vector<size_t> &redIndexes;
 
 public:
-  VecDirectUserFuncGenerator(
+  VecUserFuncGenerator(
       const clang::tooling::CompilationDatabase &Compilations,
       const ParLoop &_loop, const std::vector<size_t> &redIndexes,
       std::vector<std::string> path = {"/tmp/loop.h"})
@@ -152,7 +152,7 @@ public:
   template <bool VEC = false> std::string run() {
 
     clang::ast_matchers::MatchFinder Finder;
-    VecDirUserFuncHandler<VEC> handler(loop, redIndexes, &getReplacements());
+    VecUserFuncHandler<VEC> handler(loop, redIndexes, &getReplacements());
 
     Finder.addMatcher(functionDecl(isDefinition(),
                                    hasName(loop.getUserFuncInfo().funcName),

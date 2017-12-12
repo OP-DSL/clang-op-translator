@@ -1,6 +1,6 @@
 #include "VecKernelHandler.h"
 #include "generators/common/handler.hpp"
-#include "generators/vectorization/VecDirectUserFuncRefTool.hpp"
+#include "generators/vectorization/VecUserFuncRefTool.hpp"
 #include <fstream>
 
 namespace {
@@ -79,7 +79,7 @@ VecKernelHandler::VecKernelHandler(
 ///_______________________________GLOBAL_HANDLER_______________________________
 void VecKernelHandler::run(const matchers::MatchFinder::MatchResult &Result) {
   if (!HANDLER(clang::FunctionDecl, 1, "user_func",
-               VecKernelHandler::funcDeclCopy))
+               VecKernelHandler::userFuncHandler<false>))
     return;
   if (!HANDLER(clang::DeclStmt, 2, "ptr0_decl",
                VecKernelHandler::alignedPtrDecls))
@@ -90,7 +90,7 @@ void VecKernelHandler::run(const matchers::MatchFinder::MatchResult &Result) {
                VecKernelHandler::vecFuncCallHandler))
     return; // if successfully handled return
   if (!HANDLER(FunctionDecl, 2, "user_func_vec",
-               VecKernelHandler::userFuncVecHandler))
+               VecKernelHandler::userFuncHandler<true>))
     return; // if successfully handled return
   if (!HANDLER(VarDecl, 3, "red_dat_decl",
                VecKernelHandler::localReductionVarDecls))
@@ -204,25 +204,9 @@ std::string VecKernelHandler::localIndirectVarDecls() {
   return os.str();
 }
 
-std::string VecKernelHandler::funcDeclCopy() {
-  std::vector<size_t> redIndexes;
+template <bool VEC> std::string VecKernelHandler::userFuncHandler() {
   const ParLoop &loop = application.getParLoops()[loopIdx];
-  for (size_t i = 0; i < loop.getNumArgs(); ++i) {
-    if (loop.getArg(i).isReduction()) {
-      redIndexes.push_back(i);
-    }
-  }
-
-  if (redIndexes.size() == 0) {
-    return loop.getFuncText();
-  }
-  loop.dumpFuncTextTo("/tmp/loop.h");
-  return VecDirectUserFuncGenerator(Compilations, loop, redIndexes).run();
-}
-
-std::string VecKernelHandler::userFuncVecHandler() {
-  const ParLoop &loop = application.getParLoops()[loopIdx];
-  if (loop.isDirect()) {
+  if (VEC && loop.isDirect()) {
     return "";
   }
   std::vector<size_t> redIndexes;
@@ -231,9 +215,12 @@ std::string VecKernelHandler::userFuncVecHandler() {
       redIndexes.push_back(i);
     }
   }
+  if (!VEC && redIndexes.size() == 0) {
+    return loop.getFuncText();
+  }
 
   loop.dumpFuncTextTo("/tmp/loop.h");
-  return VecDirectUserFuncGenerator(Compilations, loop, redIndexes).run<true>();
+  return VecUserFuncGenerator(Compilations, loop, redIndexes).run<VEC>();
 }
 
 std::string VecKernelHandler::alignedPtrDecls() {

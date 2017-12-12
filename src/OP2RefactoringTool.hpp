@@ -46,8 +46,6 @@ public:
     application.setName(applicationName);
   }
 
-  std::vector<ParLoop> &getParLoops() { return application.getParLoops(); }
-
   /// @brief Generates kernelfiles for all parLoop
   void generateKernelFiles() {
     if (opTarget == none)
@@ -61,8 +59,8 @@ public:
       generator.generateKernelFiles();
     }
     if (opTarget == vec || opTarget == all) {
-      VectorizedGenerator generator(application, "skeleton_veckernels.cpp",
-                                    commandLineArgs, Compilations);
+      VectorizedGenerator generator(application, commandLineArgs, Compilations,
+                                    "skeleton_veckernels.cpp");
       generator.generateKernelFiles();
     }
   }

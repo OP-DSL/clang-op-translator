@@ -172,8 +172,6 @@ size_t DummyParLoop::getNumArgs() const { return args.size(); }
 
 const OPArg &DummyParLoop::getArg(size_t ind) const { return args[ind]; }
 
-unsigned DummyParLoop::getKernelType() const { return !isDirect(); }
-
 std::string DummyParLoop::getFuncCall() const {
   std::string funcCall = "";
   llvm::raw_string_ostream ss(funcCall);

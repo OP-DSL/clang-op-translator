@@ -25,9 +25,7 @@ protected:
 
   std::string localIndirectVarDecls();
 
-  std::string funcDeclCopy();
-
-  std::string userFuncVecHandler();
+  template <bool VEC> std::string userFuncHandler();
 
   std::string alignedPtrDecls();
 

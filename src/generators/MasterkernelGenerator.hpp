@@ -9,9 +9,10 @@
 #include <fstream>
 
 namespace OP2 {
-
+namespace {
 const DeclarationMatcher globVarMatcher =
     varDecl(hasName("global_var")).bind("global_var");
+}
 
 namespace matchers = clang::ast_matchers;
 class MasterKernelHandler : public matchers::MatchFinder::MatchCallback {
@@ -54,24 +55,14 @@ protected:
   std::vector<std::string> generatedFiles;
 
 public:
-  MasterkernelGenerator(
-      const OP2Application &app, std::string skeleton_name,
-      std::vector<std::string> &args,
-      clang::tooling::FixedCompilationDatabase &compilations,
-      std::shared_ptr<clang::PCHContainerOperations> PCHContainerOps =
-          std::make_shared<clang::PCHContainerOperations>())
+  MasterkernelGenerator(const OP2Application &app,
+                        std::vector<std::string> &args,
+                        clang::tooling::FixedCompilationDatabase &compilations,
+                        std::string skeleton_name = "skeleton_kernels.cpp")
       : OP2WriteableRefactoringTool(
-            compilations, {std::string(SKELETONS_DIR) + skeleton_name},
-            PCHContainerOps),
+            compilations, {std::string(SKELETONS_DIR) + skeleton_name}),
         application(app), commandLineArgs(args) {}
 
-  MasterkernelGenerator(
-      const OP2Application &app, std::vector<std::string> &commandLineArgs,
-      clang::tooling::FixedCompilationDatabase &compilations,
-      std::shared_ptr<clang::PCHContainerOperations> PCHContainerOps =
-          std::make_shared<clang::PCHContainerOperations>())
-      : MasterkernelGenerator(app, "skeleton_kernels.cpp", commandLineArgs,
-                              compilations, PCHContainerOps) {}
   /// @brief Generates kernelfiles for all parLoop and then the master kernel
   ///  file
   void generateKernelFiles() {
@@ -94,12 +85,11 @@ public:
     clang::tooling::FixedCompilationDatabase F(".", commandLineArgs);
     for (size_t i = 0; i < application.getParLoops().size(); ++i) {
 
-      std::string name = application.getParLoops()[i].getName();
       KernelGeneratorType tool(F, application, i);
       if (tool.generateKernelFile()) {
         llvm::outs() << "Error during processing ";
       }
-      llvm::outs() << name << "\n";
+      llvm::outs() << application.getParLoops()[i].getName() << "\n";
       generatedFiles.push_back(tool.getOutputFileName());
     }
 

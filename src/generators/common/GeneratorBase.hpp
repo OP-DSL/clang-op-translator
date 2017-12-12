@@ -70,7 +70,6 @@ public:
   int generateKernelFile() {
 
     // Create Callbacks
-    // TODO Finder to Refactoring tool?
     clang::ast_matchers::MatchFinder Finder;
     addBaseKernelMatchers(Finder);
     // end of Base modifications
