@@ -10,7 +10,7 @@ const DeclarationMatcher parLoopSkeletonMatcher =
 
 namespace OP2 {
 using namespace clang::ast_matchers;
-///__________________________________MATCHERS__________________________________
+//___________________________________MATCHERS__________________________________
 // Static Matchers of BaseKernelHandler
 const DeclarationMatcher BaseKernelHandler::parLoopDeclMatcher =
     functionDecl(hasName("op_par_loop_skeleton")).bind("par_loop_decl");
@@ -63,13 +63,13 @@ const StatementMatcher BaseKernelHandler::opMPIWaitAllIfStmtMatcher =
                                     hasName("op_mpi_wait_all"))))))))
         .bind("wait_all_if");
 
-///________________________________CONSTRUCTORS________________________________
+//_________________________________CONSTRUCTORS________________________________
 BaseKernelHandler::BaseKernelHandler(
     std::map<std::string, clang::tooling::Replacements> *Replace,
     const ParLoop &loop)
     : Replace(Replace), loop(loop) {}
 
-///_______________________________GLOBAL_HANDLER_______________________________
+//________________________________GLOBAL_HANDLER_______________________________
 void BaseKernelHandler::run(const MatchFinder::MatchResult &Result) {
   if (!handleParLoopDecl(Result))
     return; // if successfully handled return
@@ -112,7 +112,7 @@ void BaseKernelHandler::run(const MatchFinder::MatchResult &Result) {
     return; // if successfully handled return
 }
 
-///__________________________________HANDLERS__________________________________
+//___________________________________HANDLERS__________________________________
 int BaseKernelHandler::handleParLoopDecl(
     const MatchFinder::MatchResult &Result) {
   const clang::FunctionDecl *function =

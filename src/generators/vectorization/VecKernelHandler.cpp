@@ -12,7 +12,7 @@ const auto parLoopSkeletonCompStmtMatcher =
 namespace OP2 {
 using namespace clang::ast_matchers;
 using namespace clang;
-///__________________________________MATCHERS__________________________________
+//___________________________________MATCHERS__________________________________
 const matchers::StatementMatcher VecKernelHandler::alignedPtrMatcher =
     declStmt(containsDeclaration(0, varDecl(hasName("ptr0"), isDefinition())))
         .bind("ptr0_decl");
@@ -68,7 +68,7 @@ const StatementMatcher VecKernelHandler::localIndRedWriteBackMatcher = forStmt(
                                .bind("red_write_back")))),
     hasAncestor(functionDecl(hasName("op_par_loop_skeleton"))));
 
-///________________________________CONSTRUCTORS________________________________
+//_________________________________CONSTRUCTORS________________________________
 VecKernelHandler::VecKernelHandler(
     std::map<std::string, clang::tooling::Replacements> *Replace,
     const clang::tooling::CompilationDatabase &Compilations,
@@ -76,7 +76,7 @@ VecKernelHandler::VecKernelHandler(
     : Compilations(Compilations), Replace(Replace), application(app),
       loopIdx(idx) {}
 
-///_______________________________GLOBAL_HANDLER_______________________________
+//________________________________GLOBAL_HANDLER_______________________________
 void VecKernelHandler::run(const matchers::MatchFinder::MatchResult &Result) {
   if (!HANDLER(clang::FunctionDecl, 1, "user_func",
                VecKernelHandler::userFuncHandler<false>))
@@ -116,7 +116,7 @@ void VecKernelHandler::run(const matchers::MatchFinder::MatchResult &Result) {
     return;
 }
 
-///__________________________________HANDLERS__________________________________
+//___________________________________HANDLERS__________________________________
 
 std::string VecKernelHandler::handleRedWriteBack() {
   std::string repl;

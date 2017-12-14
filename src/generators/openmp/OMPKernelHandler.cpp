@@ -12,7 +12,7 @@ const auto parLoopSkeletonCompStmtMatcher =
 namespace OP2 {
 using namespace clang::ast_matchers;
 using namespace clang;
-///__________________________________MATCHERS__________________________________
+//___________________________________MATCHERS__________________________________
 
 const StatementMatcher OMPKernelHandler::locRedVarMatcher =
     declStmt(containsDeclaration(0, varDecl(hasName("arg0_l"))),
@@ -30,13 +30,13 @@ const StatementMatcher OMPKernelHandler::ompParForMatcher =
     ompParallelForDirective().bind(
         "ompParForDir"); // FIXME check if it is in the main file.
 
-///________________________________CONSTRUCTORS________________________________
+//_________________________________CONSTRUCTORS________________________________
 OMPKernelHandler::OMPKernelHandler(
     std::map<std::string, clang::tooling::Replacements> *Replace,
     const ParLoop &loop)
     : Replace(Replace), loop(loop) {}
 
-///_______________________________GLOBAL_HANDLER_______________________________
+//________________________________GLOBAL_HANDLER_______________________________
 void OMPKernelHandler::run(const MatchFinder::MatchResult &Result) {
   if (!lineReplHandler<DeclStmt, 1>(
           Result, Replace, "local_reduction_variable",
@@ -53,7 +53,7 @@ void OMPKernelHandler::run(const MatchFinder::MatchResult &Result) {
     return;
   }
 }
-///__________________________________HANDLERS__________________________________
+//___________________________________HANDLERS__________________________________
 
 std::string OMPKernelHandler::handleFuncCall() {
   std::string funcCall = "";
