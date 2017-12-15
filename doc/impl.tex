@@ -1,0 +1,37 @@
+OP2-Clang performs the source-to-source translation with multiple RefactoringTools. The RefactoringTools are using clang's AST matcher API, to find interesting parts of the application in the AST and generating replacements based on the matches.\\
+The translator consists of two main part the processing of the OP2 application and the generation of target specific codes.
+
+\subsection{Processing OP2 Applications}
+The  first part is responsible for collecting information about the OP2 application and the generation of the modified application files, which are used to compile the target specific executables.\\
+The information collection and the modifications are performed along the OP2 API calls in the application. With matchers on the API calls we can register declaration of sets, mappings, global variables, etc. Also the information (the operation set, the arguments, the function that applied to each set element) about all parallel loops are collected along the \textbf{op\_par\_loop} calls and these calls are substituted with the calls of the \textbf{op\_par\_loop\_[loop\_name]} functions that are generated for each target. The modified application files are saved to separate files with names \textbf{[filename]\_op.cpp}.\\
+After finishing the Data collection this layer invokes the target specific code generators.
+
+\subsection{Target Specific Code Generation}
+
+The second part of the translation is responsible for generating two types of target specific files:
+\begin{itemize}
+    \item \textbf{[application\_name]\_[target]kernels.cpp}: one file for each target generated (referred to as master kernel file)
+    \item \textbf{[loop\_name]\_[target]kernel.cpp}: for each parallel loop for each target generated (referred to as kernel files)
+\end{itemize}
+The generation of these files are also performed with RefactoringTools and replacements. The basic structure of these files are independent from the application. It only depends on the target that the file generated for, therefore we can use skeletons as an input for the RefactoringTools. The generation of code generation for one target can be break down to three layers:
+\begin{itemize}
+    \item Generation of the master kernel file.
+    \item Generation of separate kernel files.
+    \item Generation modified versions of the user function for kernel files.
+\end{itemize}
+
+\subsubsection{Master Kernel Generator}
+The master kernel file contains target specific defines, the declarations of global variables or the definition of \textbf{op\_decl\_const\_char} function and includes the kernel files.\\ The master kernel generators is responsible for generate this file and invoke the kernel generators for each loop.
+
+\subsubsection{Kernel Generator}
+The kernel generators are transforming the target specific skeletons (usually there are two skeletons for a target one for generating direct kernels and one for generate indirect kernels) based on the information about the loop that currently processed in a similar way as above. Each skeleton is used as a pseudo code for the loop and the translation is basically just change the code to the data in the loop. The generator builds the AST of the skeleton and using matchers it changes the specific parts.\\
+To use optimised versions of the user the kernel generators invoke a RefactoringTool on the user function to get a modified copy of it, which is used in the generated kernel file.
+
+\subsubsection{Modification of the user function}
+This layer of RefactoringTools is operating on the definition of the user function. For this a temporary header is generated with the global variables, and another file containing the original user function. Then the tool build the AST for the user function and pass the resulting string back to the kernel generator.
+
+%4 layer arch
+%layers: data collect
+%version generators
+%kernel generators
+%userfunction modifiers
