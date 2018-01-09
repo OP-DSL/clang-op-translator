@@ -28,7 +28,6 @@ public:
   /// @param loop The ParLoop containing informations about the op_par_loop.
   /// @param PCHContainerOps The PCHContainerOperation for loading and creating
   /// clang modules
-  // TODO: Modify to get right skeletons... and Database..
   OMPRefactoringTool(
       const clang::tooling::CompilationDatabase &Compilations,
       const OP2Application &app, size_t idx,

@@ -201,7 +201,8 @@ int BaseKernelHandler::handleOPKernels(const MatchFinder::MatchResult &Result) {
           ->getNameAsString() == "transfer") {
     const clang::BinaryOperator *bop =
         Result.Nodes.getNodeAs<clang::BinaryOperator>("op_kernels_assignment");
-    if (getIntValFromExpr(bop->getRHS()->IgnoreImpCasts()) == 0) {
+    if (llvm::dyn_cast<clang::IntegerLiteral>(
+            bop->getRHS()->IgnoreImpCasts())) {
       clang::SourceRange replRange(
           bop->getLocStart(),
           bop->getLocEnd().getLocWithOffset(3)); // TODO proper end
@@ -222,7 +223,7 @@ int BaseKernelHandler::handleOPKernels(const MatchFinder::MatchResult &Result) {
       std::to_string(loop.getLoopID()));
   if (llvm::Error err = (*Replace)[filename].add(repl)) {
     // TODO diagnostics..
-    llvm::errs() << "Set looID in for index OP_kernels failed in: " << filename
+    llvm::errs() << "Set loopID in for index OP_kernels failed in: " << filename
                  << "\n";
   }
 

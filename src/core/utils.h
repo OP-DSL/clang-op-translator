@@ -1,5 +1,6 @@
 #ifndef UTILS_H_INCLUDED
 #define UTILS_H_INCLUDED
+#include <cassert>
 #include <clang/AST/ASTContext.h>
 #include <clang/AST/Expr.h>
 #include <clang/ASTMatchers/ASTMatchFinder.h>
@@ -7,6 +8,7 @@
 #include <clang/Frontend/CompilerInstance.h>
 #include <clang/Lex/Lexer.h>
 #include <clang/Tooling/CommonOptionsParser.h>
+
 namespace OP2 {
 
 inline std::string decl2str(const clang::Decl *d,
@@ -50,33 +52,36 @@ inline int getIntValFromExpr(const clang::Expr *expr) {
         llvm::errs() << "Minus applied to Non-IntegerLiteral\n";
       }
     } else {
-      llvm::errs() << "Unexpected Unary OP";
+      llvm::errs() << "Unexpected Unary OP\n";
     }
 
   } else if (const clang::IntegerLiteral *intLit =
                  llvm::dyn_cast<clang::IntegerLiteral>(expr)) {
     int val = intLit->getValue().getLimitedValue(INT_MAX);
     if (val == INT_MAX) {
-      llvm::errs() << "IntegerLiteral exceeds INT_MAX";
+      llvm::errs() << "IntegerLiteral exceeds INT_MAX\n";
     }
     return val;
   }
+  assert(false && "Failed to get integer literal from expression.");
   return INT_MAX;
 }
 
 template <typename T> inline const T *getExprAsDecl(const clang::Expr *expr) {
   if (const clang::DeclRefExpr *declRefExpr =
           llvm::dyn_cast<clang::DeclRefExpr>(expr->IgnoreCasts())) {
-    return llvm::dyn_cast<T>(declRefExpr->getFoundDecl());
-  } else {
-    llvm::errs() << "Warning getExprAsDecl called with a parameter which is "
-                    "not a DeclRefExpr. Try get a DeclRefExpr child.\n";
-    // expr->dumpColor();
-    if (const clang::DeclRefExpr *declRefExpr =
-            llvm::dyn_cast<clang::DeclRefExpr>(*(expr->child_begin()))) {
-      return llvm::dyn_cast<T>(declRefExpr->getFoundDecl());
-    }
+    const T *decl = llvm::dyn_cast<T>(declRefExpr->getFoundDecl());
+    assert(decl);
+    return decl;
   }
+  if (const clang::DeclRefExpr *declRefExpr =
+          llvm::dyn_cast<clang::DeclRefExpr>(*(expr->child_begin()))) {
+    const T *decl = llvm::dyn_cast<T>(declRefExpr->getFoundDecl());
+    assert(decl);
+    return decl;
+  }
+  expr->dumpColor();
+  assert(false && "Failed to get Decl from Expr.");
   return nullptr;
 }
 

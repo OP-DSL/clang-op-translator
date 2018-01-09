@@ -175,7 +175,7 @@ const OPArg &DummyParLoop::getArg(size_t ind) const { return args[ind]; }
 std::string DummyParLoop::getFuncCall() const {
   std::string funcCall = "";
   llvm::raw_string_ostream ss(funcCall);
-  ss << name << "("; // TODO fix repr to store correct function data.
+  ss << function.funcName << "(";
   for (size_t i = 0; i < args.size(); ++i) {
     if (args[i].isDirect()) {
       ss << args[i].getArgCall(i, "n");

@@ -58,7 +58,7 @@ void OMPKernelHandler::run(const MatchFinder::MatchResult &Result) {
 std::string OMPKernelHandler::handleFuncCall() {
   std::string funcCall = "";
   llvm::raw_string_ostream ss(funcCall);
-  ss << loop.getName() << "("; // TODO fix repr to store correct function data.
+  ss << loop.getUserFuncInfo().funcName << "(";
   for (size_t i = 0; i < loop.getNumArgs(); ++i) {
     if (!loop.getArg(i).isReduction()) {
       if (loop.getArg(i).isDirect()) {
