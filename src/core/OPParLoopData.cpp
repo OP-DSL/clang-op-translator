@@ -38,6 +38,7 @@ llvm::raw_ostream &operator<<(llvm::raw_ostream &os, const op_map &m) {
 }
 const op_map op_map::no_map("", "", 0, "");
 
+//_________________________________USER_FUNC__________________________________
 UserFuncData::UserFuncData(const clang::FunctionDecl *funcD,
                            const clang::SourceManager *sm)
     : functionDecl(decl2str(funcD, sm)), funcName(funcD->getNameAsString()) {

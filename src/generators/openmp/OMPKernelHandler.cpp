@@ -105,19 +105,43 @@ std::string OMPKernelHandler::handlelocRedToArgAssignment() {
 }
 
 std::string OMPKernelHandler::handleOMPParLoop() {
-
-  std::string s;
-  llvm::raw_string_ostream os(s);
+  std::string plusReds, minReds, maxReds;
+  llvm::raw_string_ostream os(plusReds);
+  llvm::raw_string_ostream osMin(minReds);
+  llvm::raw_string_ostream osMax(maxReds);
   for (size_t ind = 0; ind < loop.getNumArgs(); ++ind) {
     const OPArg &arg = loop.getArg(ind);
-    if (arg.isReduction()) { // FIXME min max reductions
-      os << "arg" << ind << "_l, ";
+    if (arg.isReduction()) {
+      switch (arg.accs) {
+      case OP2::OP_INC:
+        os << "arg" << ind << "_l, ";
+        break;
+      case OP2::OP_MAX:
+        osMax << "arg" << ind << "_l, ";
+        break;
+      case OP2::OP_MIN:
+        osMin << "arg" << ind << "_l, ";
+        break;
+      default:
+        // error if this is a reduction it must be one of OP_MIN, OP_MAX or
+        // OP_INC
+        assert(!arg.isReduction() ||
+               (arg.accs == OP2::OP_INC || arg.accs == OP2::OP_MAX ||
+                arg.accs == OP2::OP_MIN));
+      }
     }
   }
   if (os.str().length() > 0) {
-    s = " reduction(+:" + s.substr(0, s.length() - 2) + ")";
+    plusReds =
+        " reduction(+:" + plusReds.substr(0, plusReds.length() - 2) + ")";
   }
-  return "omp parallel for " + s;
+  if (osMin.str().length() > 0) {
+    minReds = " reduction(min:" + minReds.substr(0, minReds.length() - 2) + ")";
+  }
+  if (osMax.str().length() > 0) {
+    maxReds = " reduction(max:" + maxReds.substr(0, maxReds.length() - 2) + ")";
+  }
+  return "omp parallel for " + plusReds + " " + minReds + " " + maxReds;
 }
 
 } // namespace OP2

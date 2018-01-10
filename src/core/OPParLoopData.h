@@ -29,7 +29,7 @@ struct op_map {
 };
 llvm::raw_ostream &operator<<(llvm::raw_ostream &, const op_map &);
 
-enum OP_accs_type { OP_READ = 0, OP_WRITE, OP_RW, OP_INC, OP_MAX, OP_MIN };
+enum OP_accs_type { OP_READ = 0, OP_WRITE, OP_RW, OP_INC, OP_MIN, OP_MAX };
 
 inline llvm::raw_ostream &operator<<(llvm::raw_ostream &os,
                                      const OP_accs_type &accs) {
