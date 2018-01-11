@@ -55,21 +55,21 @@ std::string UserFuncData::getInlinedFuncDecl() const {
 
 //___________________________________OP_ARG___________________________________
 DummyOPArgv2::DummyOPArgv2(const clang::VarDecl *dat, int _idx,
-                           const op_map &_map, size_t _dim, std::string _type,
+                           const std::string &_map, size_t _dim, std::string _type,
                            OP_accs_type _accs)
     : opDat(dat->getNameAsString()), idx(_idx), opMap(_map), dim(_dim),
       type(_type), accs(_accs), isGBL(false) {}
 
 DummyOPArgv2::DummyOPArgv2(const clang::VarDecl *dat, size_t _dim,
                            std::string _type, OP_accs_type _accs)
-    : opDat(dat->getNameAsString()), idx(0), opMap(op_map::no_map), dim(_dim),
+    : opDat(dat->getNameAsString()), idx(0), opMap(""), dim(_dim),
       type(_type), accs(_accs), isGBL(true) {}
 
 llvm::raw_ostream &operator<<(llvm::raw_ostream &os, const DummyOPArgv2 &arg) {
   os << "op_arg" << (arg.isGBL ? "_gbl" : "") << ":\n\t"
      << "op_dat: " << arg.opDat << "\n\t";
   if (!arg.isGBL) {
-    if (arg.opMap != op_map::no_map) { // indirect argument
+    if (arg.opMap != "") { // indirect argument
       os << "map_idx: " << arg.idx << "\n\t";
     }
     os << arg.opMap << "\n\t";
@@ -78,7 +78,7 @@ llvm::raw_ostream &operator<<(llvm::raw_ostream &os, const DummyOPArgv2 &arg) {
   return os << "dim: " << arg.dim << "\n\ttype: " << arg.type
             << "\n\taccess: " << arg.accs << "\n";
 }
-bool DummyOPArgv2::isDirect() const { return opMap == op_map::no_map; }
+bool DummyOPArgv2::isDirect() const { return opMap == ""; }
 
 std::string DummyOPArgv2::getArgCall(int argIdx, std::string mapStr) const {
   std::string data = "(" + type + "*)arg" + std::to_string(argIdx) + ".data";
@@ -122,17 +122,17 @@ DummyParLoop::DummyParLoop(const clang::FunctionDecl *_function,
         datToInd[arg.opDat] = ninds;
         ninds++;
       }
-      auto mapIt = mapidxToInd.find(arg.opMap.name);
+      auto mapIt = mapidxToInd.find(arg.opMap);
       if (mapIt == mapidxToInd.end()) {
         std::map<int, int> tmp;
         mapIdxs.push_back(mapidxs);
         map2argIdxs.push_back(i);
         arg2map.push_back(++nummaps);
-        map2ind[arg.opMap.name] = nummaps;
+        map2ind[arg.opMap] = nummaps;
         tmp[arg.idx] = mapidxs++;
-        mapidxToInd[arg.opMap.name] = tmp;
+        mapidxToInd[arg.opMap] = tmp;
       } else {
-        arg2map.push_back(map2ind[arg.opMap.name]);
+        arg2map.push_back(map2ind[arg.opMap]);
         auto idxit = mapIt->second.find(arg.idx);
         if (idxit == mapIt->second.end()) {
           mapIdxs.push_back(mapidxs);

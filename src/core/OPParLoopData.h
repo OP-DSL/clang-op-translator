@@ -51,14 +51,14 @@ struct UserFuncData {
 struct DummyOPArgv2 {
   std::string opDat;
   int idx;
-  const op_map &opMap;
+  std::string opMap;
   size_t dim;
   std::string type;
   OP_accs_type accs;
   const bool isGBL;
 
-  DummyOPArgv2(const clang::VarDecl *, int, const op_map &, size_t, std::string,
-               OP_accs_type);
+  DummyOPArgv2(const clang::VarDecl *, int, const std::string &, size_t,
+               std::string, OP_accs_type);
   DummyOPArgv2(const clang::VarDecl *, size_t, std::string, OP_accs_type);
   bool isDirect() const;
   std::string getArgCall(int, std::string) const;
@@ -96,7 +96,7 @@ public:
   std::string getMapVarDecls() const;
   UserFuncData getUserFuncInfo() const;
   void dumpFuncTextTo(std::string) const;
-  /// @brief imdex of mapping with idx corresponding to the arg (-1 for direct)
+  /// @brief index of mapping with idx corresponding to the arg (-1 for direct)
   std::vector<int> mapIdxs;
   std::vector<int> arg2map;
   /// @brief index of the data corresponding to the arg (-1 for direct)
@@ -113,6 +113,8 @@ typedef DummyParLoop ParLoop;
 struct OP2Application {
   std::vector<ParLoop> loops;
   std::set<op_global_const> constants;
+  // sets and mappings data currently only collected but not used for code
+  // generation
   std::map<std::string, std::string> sets;
   std::map<std::string, const op_map> mappings;
   std::string applicationName;
