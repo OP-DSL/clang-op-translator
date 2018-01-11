@@ -11,13 +11,18 @@
 
 namespace OP2 {
 
-inline std::string decl2str(const clang::Decl *d,
-                            const clang::SourceManager *sm) {
-  clang::SourceLocation b(d->getLocStart()), _e(d->getLocEnd());
-  clang::SourceLocation e(
-      clang::Lexer::getLocForEndOfToken(_e, 0, *sm, clang::LangOptions()));
+inline std::string getSourceAsString(const clang::SourceRange d,
+                                     const clang::SourceManager *sm) {
+  clang::SourceLocation b(d.getBegin());
+  clang::SourceLocation e(clang::Lexer::getLocForEndOfToken(
+      d.getEnd(), 0, *sm, clang::LangOptions()));
   return std::string(sm->getCharacterData(b),
                      sm->getCharacterData(e) - sm->getCharacterData(b));
+}
+
+inline std::string decl2str(const clang::Decl *d,
+                            const clang::SourceManager *sm) {
+  return getSourceAsString(d->getSourceRange(), sm);
 }
 
 inline std::vector<std::string>

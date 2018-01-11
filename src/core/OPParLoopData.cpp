@@ -54,16 +54,15 @@ std::string UserFuncData::getInlinedFuncDecl() const {
 }
 
 //___________________________________OP_ARG___________________________________
-DummyOPArgv2::DummyOPArgv2(const clang::VarDecl *dat, int _idx,
-                           const std::string &_map, size_t _dim, std::string _type,
-                           OP_accs_type _accs)
-    : opDat(dat->getNameAsString()), idx(_idx), opMap(_map), dim(_dim),
-      type(_type), accs(_accs), isGBL(false) {}
+DummyOPArgv2::DummyOPArgv2(std::string dat, int _idx, const std::string &_map,
+                           size_t _dim, std::string _type, OP_accs_type _accs)
+    : opDat(dat), idx(_idx), opMap(_map), dim(_dim), type(_type), accs(_accs),
+      isGBL(false) {}
 
-DummyOPArgv2::DummyOPArgv2(const clang::VarDecl *dat, size_t _dim,
-                           std::string _type, OP_accs_type _accs)
-    : opDat(dat->getNameAsString()), idx(0), opMap(""), dim(_dim),
-      type(_type), accs(_accs), isGBL(true) {}
+DummyOPArgv2::DummyOPArgv2(std::string dat, size_t _dim, std::string _type,
+                           OP_accs_type _accs)
+    : opDat(dat), idx(0), opMap(""), dim(_dim), type(_type), accs(_accs),
+      isGBL(true) {}
 
 llvm::raw_ostream &operator<<(llvm::raw_ostream &os, const DummyOPArgv2 &arg) {
   os << "op_arg" << (arg.isGBL ? "_gbl" : "") << ":\n\t"

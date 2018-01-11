@@ -57,9 +57,9 @@ struct DummyOPArgv2 {
   OP_accs_type accs;
   const bool isGBL;
 
-  DummyOPArgv2(const clang::VarDecl *, int, const std::string &, size_t,
-               std::string, OP_accs_type);
-  DummyOPArgv2(const clang::VarDecl *, size_t, std::string, OP_accs_type);
+  DummyOPArgv2(std::string, int, const std::string &, size_t, std::string,
+               OP_accs_type);
+  DummyOPArgv2(std::string, size_t, std::string, OP_accs_type);
   bool isDirect() const;
   std::string getArgCall(int, std::string) const;
   bool isReduction() const;
