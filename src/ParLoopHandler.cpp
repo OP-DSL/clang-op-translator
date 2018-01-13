@@ -1,3 +1,4 @@
+#include "OP2RefactoringTool.hpp"
 #include "ParLoopHandler.h"
 #include "core/utils.h"
 #include <sstream>
@@ -51,6 +52,9 @@ void addOPArgToVector(const clang::Expr *argExpr, std::vector<OPArg> &args,
     args.push_back(OPArg(opDat, dim, type, accs));
   }
 }
+ParLoopHandler::ParLoopHandler(OP2RefactoringTool &tool, OP2Application &app,
+                               OPParLoopDeclarator &declarator)
+    : tool(tool), app(app), declarator(declarator) {}
 
 void ParLoopHandler::parseFunctionDecl(const clang::CallExpr *parloopExpr,
                                        const clang::SourceManager *SM) {
@@ -120,6 +124,8 @@ void ParLoopHandler::run(const matchers::MatchFinder::MatchResult &Result) {
   ss << ");\n\n";
   std::string func_signature = ss.str();
 
+  declarator.addFunction(func_signature);
+
   // Reset the stringstream;
   ss.str({});
   ss << "_" << name->getString().str() << "(";
@@ -129,11 +135,11 @@ void ParLoopHandler::run(const matchers::MatchFinder::MatchResult &Result) {
   const std::string fname =
       getFileNameFromSourceLoc(function->getLocStart(), sourceManager);
 
-  clang::tooling::Replacements &Rpls = (*Replace)[fname];
+  //  clang::tooling::Replacements &Rpls = (*Replace)[fname];
   clang::tooling::Replacement Rep(*sourceManager, parent->getLocStart(), 0,
                                   func_signature);
 
-  (*Replace)[fname] = Rpls.merge(clang::tooling::Replacements(Rep));
+  //  (*Replace)[fname] = Rpls.merge(clang::tooling::Replacements(Rep));
   // Add replacement for func call
   unsigned length =
       sourceManager->getFileOffset(function->getArg(1)->getLocStart()) -
@@ -143,11 +149,7 @@ void ParLoopHandler::run(const matchers::MatchFinder::MatchResult &Result) {
       *sourceManager, function->getLocStart().getLocWithOffset(11), length,
       ss.str());
 
-  llvm::Error err = (*Replace)[fname].add(func_Rep);
-  if (err) { // TODO proper error checking
-    llvm::outs()
-        << "Some Error occured during adding replacement for func_call\n";
-  }
+  tool.addReplacementTo(fname, func_Rep, "func_call");
   // End adding Replacements
 
   // parse func decl test

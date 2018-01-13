@@ -3,7 +3,7 @@
 
 // OP2 includes
 #include "OPDataRegister.hpp"
-#include "ParLoopHandler.h"
+#include "ParLoopHandler.hpp"
 #include "core/OP2WriteableRefactoringTool.hpp"
 
 #include "generators/MasterkernelGenerator.hpp"

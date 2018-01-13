@@ -91,6 +91,15 @@ public:
     }
   }
 
+  void addReplacementTo(std::string fileName, clang::tooling::Replacement repl,
+                        std::string diagMessage) {
+    llvm::Error err = getReplacements()[fileName].add(repl);
+    if (err) { // TODO proper error checking
+      llvm::outs() << "Some Error occured during adding replacement for "
+                   << diagMessage << "\n";
+    }
+  }
+
   virtual ~OP2WriteableRefactoringTool() = default;
 };
 
