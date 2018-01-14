@@ -126,8 +126,18 @@ void ParLoopHandler::parseFunctionDecl(const clang::CallExpr *parloopExpr,
     args.push_back(parseOPArg(parloopExpr->getArg(arg_ind), SM));
     parLoopDataSS << "arg" << arg_ind - 3 << ": " << args.back() << "\n";
   }
-  app.getParLoops().push_back(ParLoop(fDecl, SM, name, args));
-  llvm::outs() << parLoopDataSS.str();
+
+  if (app.addParLoop(ParLoop(fDecl, SM, name, args))) {
+    std::stringstream ss;
+    ss << "void op_par_loop_" << name << "(const char*, op_set";
+    for (unsigned i = 0; i < parloopExpr->getNumArgs() - 3; ++i) {
+      ss << ", op_arg";
+    }
+    ss << ");\n\n";
+    declarator.addFunction(ss.str());
+
+    llvm::outs() << parLoopDataSS.str();
+  }
 }
 
 void ParLoopHandler::run(const matchers::MatchFinder::MatchResult &Result) {
@@ -158,15 +168,6 @@ void ParLoopHandler::run(const matchers::MatchFinder::MatchResult &Result) {
                      "op_par_loop called with non-string literal kernel name",
                      clang::DiagnosticsEngine::Warning);
   }
-
-  std::stringstream ss;
-  ss << "void op_par_loop_" << name->getString().str()
-     << "(const char*, op_set";
-  for (unsigned i = 0; i < function->getNumArgs() - 3; ++i) {
-    ss << ", op_arg";
-  }
-  ss << ");\n\n";
-  declarator.addFunction(ss.str());
 
   // Add replacement for func call
   clang::SourceRange replRange(function->getLocStart().getLocWithOffset(11),

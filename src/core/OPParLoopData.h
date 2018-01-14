@@ -82,6 +82,7 @@ public:
                const clang::SourceManager *sm, std::string _name,
                std::vector<OPArg> _args);
 
+  void generateID();
   bool isDirect() const;
   std::string getName() const;
   std::string getFuncCall() const;
@@ -125,6 +126,7 @@ struct OP2Application {
   void setName(std::string);
   std::vector<ParLoop> &getParLoops();
   const std::vector<ParLoop> &getParLoops() const;
+  bool addParLoop(ParLoop);
 };
 
 } // namespace OP2

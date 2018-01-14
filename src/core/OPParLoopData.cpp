@@ -93,7 +93,7 @@ size_t DummyParLoop::numLoops = 0;
 DummyParLoop::DummyParLoop(const clang::FunctionDecl *_function,
                            const clang::SourceManager *sm, std::string _name,
                            std::vector<OPArg> _args)
-    : loopId(numLoops++), function(_function, sm), name(_name), args(_args) {
+    : loopId(-1), function(_function, sm), name(_name), args(_args) {
   std::map<std::string, int> datToInd;
   std::map<std::string, std::map<int, int>> mapidxToInd;
   std::map<std::string, int> map2ind;
@@ -137,6 +137,11 @@ DummyParLoop::DummyParLoop(const clang::FunctionDecl *_function,
       }
     }
   }
+}
+
+void DummyParLoop::generateID() {
+  if (loopId == -1)
+    loopId = numLoops++;
 }
 
 bool DummyParLoop::isDirect() const {
@@ -246,6 +251,24 @@ void OP2Application::setName(std::string name) { applicationName = name; }
 std::vector<ParLoop> &OP2Application::getParLoops() { return loops; }
 const std::vector<ParLoop> &OP2Application::getParLoops() const {
   return loops;
+}
+
+bool OP2Application::addParLoop(ParLoop newLoop) {
+  // FIXME maybe set of loops would be better
+  for (const ParLoop &loop : loops) {
+    if (newLoop.getName() == loop.getName()) {
+      assert(newLoop.getNumArgs() == loop.getNumArgs() &&
+             "Loops with the same name but different param numbers");
+      assert(newLoop.getUserFuncInfo().funcName ==
+                 loop.getUserFuncInfo().funcName &&
+             "Loops with the same name but different userfunctions");
+      llvm::outs() << "\n\n\n" << loop.getName() << "\n\n\n\n";
+      return false;
+    }
+  }
+  newLoop.generateID();
+  loops.push_back(newLoop);
+  return true;
 }
 
 } // namespace OP2
