@@ -29,7 +29,8 @@ void OPParLoopDeclarator::handleEndSource() {
 }
 
 void OPParLoopDeclarator::addFunction(std::string funcDeclaration) {
-  functionDeclarations += funcDeclaration;
+  if (functionDeclarations.find(funcDeclaration) == std::string::npos)
+    functionDeclarations += funcDeclaration;
 }
 void OPParLoopDeclarator::setCurrentFile(std::string fName,
                                          clang::SourceRange sr,
@@ -127,15 +128,15 @@ void ParLoopHandler::parseFunctionDecl(const clang::CallExpr *parloopExpr,
     parLoopDataSS << "arg" << arg_ind - 3 << ": " << args.back() << "\n";
   }
 
-  if (app.addParLoop(ParLoop(fDecl, SM, name, args))) {
-    std::stringstream ss;
-    ss << "void op_par_loop_" << name << "(const char*, op_set";
-    for (unsigned i = 0; i < parloopExpr->getNumArgs() - 3; ++i) {
-      ss << ", op_arg";
-    }
-    ss << ");\n\n";
-    declarator.addFunction(ss.str());
+  std::stringstream ss;
+  ss << "void op_par_loop_" << name << "(const char*, op_set";
+  for (unsigned i = 0; i < parloopExpr->getNumArgs() - 3; ++i) {
+    ss << ", op_arg";
+  }
+  ss << ");\n\n";
+  declarator.addFunction(ss.str());
 
+  if (app.addParLoop(ParLoop(fDecl, SM, name, args))) {
     llvm::outs() << parLoopDataSS.str();
   }
 }
