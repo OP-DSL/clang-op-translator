@@ -1,10 +1,66 @@
+#include "ParLoopHandler.hpp"
 #include "OP2RefactoringTool.hpp"
-#include "ParLoopHandler.h"
 #include "core/utils.h"
+#include <clang/Tooling/Tooling.h>
 #include <sstream>
 
 namespace OP2 {
 
+//_____________________________PARLOOPDECLARATOR_______________________________
+OPParLoopDeclarator::OPParLoopDeclarator(OP2RefactoringTool &tool)
+    : functionDeclarations("#include \"op_lib_cpp.h\"\n"), tool(tool) {}
+
+bool OPParLoopDeclarator::handleBeginSource(clang::CompilerInstance &CI) {
+  std::unique_ptr<IncludeFinderPPCallback> find_includes_callback(
+      new IncludeFinderPPCallback(&CI, this));
+  clang::Preprocessor &pp = CI.getPreprocessor();
+  pp.addPPCallbacks(std::move(find_includes_callback));
+  return true;
+}
+
+void OPParLoopDeclarator::handleEndSource() {
+  assert(fileName != "" && replRange != clang::SourceRange() && SM);
+  llvm::outs() << functionDeclarations << "\n";
+  clang::tooling::Replacement repl(
+      *SM, clang::CharSourceRange(replRange, false), functionDeclarations);
+  tool.addReplacementTo(fileName, repl, "op_lib_cpp.h include");
+  functionDeclarations = "#include \"op_lib_cpp.h\"\n";
+  replRange = clang::SourceRange();
+  fileName = "";
+}
+
+void OPParLoopDeclarator::addFunction(std::string funcDeclaration) {
+  functionDeclarations += funcDeclaration;
+}
+void OPParLoopDeclarator::setCurrentFile(std::string fName,
+                                         clang::SourceRange sr,
+                                         clang::SourceManager *SM) {
+  if (fileName == "") {
+    fileName = fName;
+    replRange = sr;
+    this->SM = SM;
+  } else {
+    llvm::errs()
+        << "Warning multiple #include \"op_seq.h\" in the processed file\n";
+  }
+}
+OPParLoopDeclarator::IncludeFinderPPCallback::IncludeFinderPPCallback(
+    clang::CompilerInstance *CI, OPParLoopDeclarator *callback)
+    : CI(CI), callback(callback) {}
+void OPParLoopDeclarator::IncludeFinderPPCallback::InclusionDirective(
+    clang::SourceLocation HashLoc, const clang::Token &, StringRef FileName,
+    bool, clang::CharSourceRange FilenameRange, const clang::FileEntry *,
+    StringRef, StringRef, const clang::Module *) {
+
+  if (FileName == "op_seq.h" && CI->getSourceManager().isInMainFile(HashLoc)) {
+    callback->setCurrentFile(
+        CI->getSourceManager().getFilename(HashLoc).str(),
+        clang::SourceRange(HashLoc, FilenameRange.getEnd().getLocWithOffset(2)),
+        &CI->getSourceManager());
+  }
+}
+
+//_______________________________PARLOOPHANDLER________________________________
 void addOPArgToVector(const clang::Expr *argExpr, std::vector<OPArg> &args,
                       const clang::SourceManager *SM) {
   const clang::Stmt *argStmt = llvm::dyn_cast<clang::Stmt>(argExpr);
@@ -52,6 +108,7 @@ void addOPArgToVector(const clang::Expr *argExpr, std::vector<OPArg> &args,
     args.push_back(OPArg(opDat, dim, type, accs));
   }
 }
+
 ParLoopHandler::ParLoopHandler(OP2RefactoringTool &tool, OP2Application &app,
                                OPParLoopDeclarator &declarator)
     : tool(tool), app(app), declarator(declarator) {}

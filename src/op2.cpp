@@ -1,5 +1,6 @@
 //------------------------------
 #include "OP2RefactoringTool.hpp"
+#include "core/utils.h"
 //-----------------------------
 
 static llvm::cl::OptionCategory Op2Category("OP2 Options");

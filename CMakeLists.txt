@@ -52,6 +52,7 @@ add_definitions(
 add_executable(${PROJECT_NAME}
   src/op2.cpp
   src/ParLoopHandler.cpp
+  src/OP2RefactoringTool.cpp
   src/core/OPParLoopData.cpp
   src/generators/common/BaseKernelHandler.cpp
   src/generators/sequential/SeqKernelHandler.cpp

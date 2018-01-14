@@ -21,19 +21,13 @@ public:
   getOutputFileName(const clang::FileEntry *Entry) const = 0;
 
   OP2WriteableRefactoringTool(
-      clang::tooling::CommonOptionsParser &optionsParser,
-      std::shared_ptr<clang::PCHContainerOperations> PCHContainerOps =
-          std::make_shared<clang::PCHContainerOperations>())
+      clang::tooling::CommonOptionsParser &optionsParser)
       : clang::tooling::RefactoringTool(optionsParser.getCompilations(),
-                                        optionsParser.getSourcePathList(),
-                                        PCHContainerOps) {}
+                                        optionsParser.getSourcePathList()) {}
   OP2WriteableRefactoringTool(
       const clang::tooling::CompilationDatabase &Compilations,
-      const std::vector<std::string> Sources,
-      std::shared_ptr<clang::PCHContainerOperations> PCHContainerOps =
-          std::make_shared<clang::PCHContainerOperations>())
-      : clang::tooling::RefactoringTool(Compilations, Sources,
-                                        PCHContainerOps) {}
+      const std::vector<std::string> Sources)
+      : clang::tooling::RefactoringTool(Compilations, Sources) {}
 
   /// @brief Create the output files based on the replacements.
   virtual void writeOutReplacements() {

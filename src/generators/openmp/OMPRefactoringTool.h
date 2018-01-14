@@ -28,16 +28,12 @@ public:
   /// @param loop The ParLoop containing informations about the op_par_loop.
   /// @param PCHContainerOps The PCHContainerOperation for loading and creating
   /// clang modules
-  OMPRefactoringTool(
-      const clang::tooling::CompilationDatabase &Compilations,
-      const OP2Application &app, size_t idx,
-      std::shared_ptr<clang::PCHContainerOperations> PCHContainerOps =
-          std::make_shared<clang::PCHContainerOperations>())
-      : OP2KernelGeneratorBase(
-            Compilations,
-            {std::string(SKELETONS_DIR) +
-             skeletons[!app.getParLoops()[idx].isDirect()]},
-            app, idx, OMPRefactoringTool::_postfix, PCHContainerOps),
+  OMPRefactoringTool(const clang::tooling::CompilationDatabase &Compilations,
+                     const OP2Application &app, size_t idx)
+      : OP2KernelGeneratorBase(Compilations,
+                               {std::string(SKELETONS_DIR) +
+                                skeletons[!app.getParLoops()[idx].isDirect()]},
+                               app, idx, OMPRefactoringTool::_postfix),
         ompKernelHandler(&getReplacements(), app.getParLoops()[idx]),
         seqKernelHandler(&getReplacements(), app, idx) {}
 
