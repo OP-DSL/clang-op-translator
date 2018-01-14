@@ -262,7 +262,6 @@ bool OP2Application::addParLoop(ParLoop newLoop) {
       assert(newLoop.getUserFuncInfo().funcName ==
                  loop.getUserFuncInfo().funcName &&
              "Loops with the same name but different userfunctions");
-      llvm::outs() << "\n\n\n" << loop.getName() << "\n\n\n\n";
       return false;
     }
   }
