@@ -65,17 +65,12 @@ DummyOPArgv2::DummyOPArgv2(std::string dat, size_t _dim, std::string _type,
       isGBL(true) {}
 
 llvm::raw_ostream &operator<<(llvm::raw_ostream &os, const DummyOPArgv2 &arg) {
-  os << "op_arg" << (arg.isGBL ? "_gbl" : "") << ":\n\t"
-     << "op_dat: " << arg.opDat << "\n\t";
+  os << "op_arg" << (arg.isGBL ? "_gbl(" : "(dat: ") << arg.opDat << ", ";
   if (!arg.isGBL) {
-    if (arg.opMap != "") { // indirect argument
-      os << "map_idx: " << arg.idx << "\n\t";
-    }
-    os << arg.opMap << "\n\t";
+    os << "idx: " << arg.idx << ", map: " << arg.opMap << ", ";
   }
-
-  return os << "dim: " << arg.dim << "\n\ttype: " << arg.type
-            << "\n\taccess: " << arg.accs << "\n";
+  return os << "dim: " << arg.dim << ", type: " << arg.type
+            << ", accs: " << arg.accs << ")";
 }
 bool DummyOPArgv2::isDirect() const { return opMap == ""; }
 
