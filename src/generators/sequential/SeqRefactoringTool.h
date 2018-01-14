@@ -23,14 +23,11 @@ public:
   /// @param loop The ParLoop containing informations about the op_par_loop.
   /// @param PCHContainerOps The PCHContainerOperation for loading and creating
   /// clang modules
-  SeqRefactoringTool(
-      const clang::tooling::CompilationDatabase &Compilations,
-      const OP2Application &app, size_t idx,
-      std::shared_ptr<clang::PCHContainerOperations> PCHContainerOps =
-          std::make_shared<clang::PCHContainerOperations>())
-      : OP2KernelGeneratorBase(
-            Compilations, {std::string(SKELETONS_DIR) + skeletons[0]}, app, idx,
-            SeqRefactoringTool::_postfix, PCHContainerOps),
+  SeqRefactoringTool(const clang::tooling::CompilationDatabase &Compilations,
+                     const OP2Application &app, size_t idx)
+      : OP2KernelGeneratorBase(Compilations,
+                               {std::string(SKELETONS_DIR) + skeletons[0]}, app,
+                               idx, SeqRefactoringTool::_postfix),
         seqKernelHandler(&getReplacements(), app, idx) {}
 
   /// @brief Adding Sequential specific MAtchers and handlers.

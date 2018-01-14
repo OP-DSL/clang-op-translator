@@ -14,16 +14,12 @@ class VecRefactoringTool : public OP2KernelGeneratorBase {
   SeqKernelHandler seqKernelHandler;
 
 public:
-  VecRefactoringTool(
-      const clang::tooling::CompilationDatabase &Compilations,
-      const OP2Application &app, size_t idx,
-      std::shared_ptr<clang::PCHContainerOperations> PCHContainerOps =
-          std::make_shared<clang::PCHContainerOperations>())
+  VecRefactoringTool(const clang::tooling::CompilationDatabase &Compilations,
+                     const OP2Application &app, size_t idx)
       : OP2KernelGeneratorBase(Compilations,
                                {std::string(SKELETONS_DIR) +
                                 skeletons[!app.getParLoops()[idx].isDirect()]},
-                               app, idx, VecRefactoringTool::_postfix,
-                               PCHContainerOps),
+                               app, idx, VecRefactoringTool::_postfix),
         vecKernelHandler(&getReplacements(), Compilations, app, idx),
         seqKernelHandler(&getReplacements(), app, idx) {}
 

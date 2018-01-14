@@ -57,10 +57,8 @@ public:
   OP2KernelGeneratorBase(
       const clang::tooling::CompilationDatabase &Compilations,
       const std::vector<std::string> &Sources, const OP2Application &app,
-      size_t idx, std::string postfix,
-      std::shared_ptr<clang::PCHContainerOperations> PCHContainerOps =
-          std::make_shared<clang::PCHContainerOperations>())
-      : OP2WriteableRefactoringTool(Compilations, Sources, PCHContainerOps),
+      size_t idx, std::string postfix)
+      : OP2WriteableRefactoringTool(Compilations, Sources),
         postfix(postfix), application(app), loopIdx(idx),
         baseKernelHandler(&getReplacements(), application.getParLoops()[idx]) {}
 

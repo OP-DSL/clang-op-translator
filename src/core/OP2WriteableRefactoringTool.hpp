@@ -21,19 +21,13 @@ public:
   getOutputFileName(const clang::FileEntry *Entry) const = 0;
 
   OP2WriteableRefactoringTool(
-      clang::tooling::CommonOptionsParser &optionsParser,
-      std::shared_ptr<clang::PCHContainerOperations> PCHContainerOps =
-          std::make_shared<clang::PCHContainerOperations>())
+      clang::tooling::CommonOptionsParser &optionsParser)
       : clang::tooling::RefactoringTool(optionsParser.getCompilations(),
-                                        optionsParser.getSourcePathList(),
-                                        PCHContainerOps) {}
+                                        optionsParser.getSourcePathList()) {}
   OP2WriteableRefactoringTool(
       const clang::tooling::CompilationDatabase &Compilations,
-      const std::vector<std::string> Sources,
-      std::shared_ptr<clang::PCHContainerOperations> PCHContainerOps =
-          std::make_shared<clang::PCHContainerOperations>())
-      : clang::tooling::RefactoringTool(Compilations, Sources,
-                                        PCHContainerOps) {}
+      const std::vector<std::string> Sources)
+      : clang::tooling::RefactoringTool(Compilations, Sources) {}
 
   /// @brief Create the output files based on the replacements.
   virtual void writeOutReplacements() {
@@ -88,6 +82,15 @@ public:
                                           E = Rewrite.buffer_end();
          I != E; ++I) {
       I->second.write(os);
+    }
+  }
+
+  void addReplacementTo(std::string fileName, clang::tooling::Replacement repl,
+                        std::string diagMessage) {
+    llvm::Error err = getReplacements()[fileName].add(repl);
+    if (err) { // TODO proper error checking
+      llvm::outs() << "Some Error occured during adding replacement for "
+                   << diagMessage << "\n";
     }
   }
 
