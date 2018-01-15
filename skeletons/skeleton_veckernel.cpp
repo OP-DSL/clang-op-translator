@@ -41,7 +41,7 @@ void op_par_loop_skeleton(char const *name, op_set set, op_arg arg0) {
       }
       double dat[SIMD_VEC] = {0.0};
       double dat0[2][SIMD_VEC];
-#pragma simd
+#pragma omp simd
       for (int i = 0; i < SIMD_VEC; i++) {
         int idx0_2 = 2 * arg0.map_data[(n + i) * arg0.map->dim + 0];
 

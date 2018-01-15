@@ -34,7 +34,7 @@ void op_par_loop_skeleton(char const *name, op_set set, op_arg arg0) {
 #pragma novector
     for (int n = 0; n < (exec_size / SIMD_VEC) * SIMD_VEC; n += SIMD_VEC) {
       double dat[SIMD_VEC] = {0.0};
-#pragma simd
+#pragma omp simd
       for (int i = 0; i < SIMD_VEC; i++) {
         skeleton_vec(&((double *)arg0.data)[4 * n]);
       }
