@@ -178,7 +178,7 @@ void ParLoopHandler::run(const matchers::MatchFinder::MatchResult &Result) {
                                        clang::CharSourceRange(replRange, false),
                                        "_" + name->getString().str() + "(");
 
-  tool.addReplacementTo(getFileNameFromSourceLoc(function->getLocStart(), SM),
+  tool.addReplacementTo(SM->getFilename(function->getLocStart()),
                         func_Rep, "func_call");
   // End adding Replacements
 

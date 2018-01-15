@@ -23,7 +23,7 @@ class VecUserFuncHandler
     if (!match)
       return 1;
     clang::SourceManager *sm = Result.SourceManager;
-    std::string filename = getFileNameFromSourceLoc(match->getLocStart(), sm);
+    std::string filename = sm->getFilename(match->getLocStart());
     std::string localdefs, addlocals;
     for (const size_t &i : redIndexes) {
       std::string name = loop.getUserFuncInfo().paramNames[i];
@@ -92,7 +92,7 @@ class VecUserFuncHandler
     if (!match)
       return 1;
     clang::SourceManager *sm = Result.SourceManager;
-    std::string filename = getFileNameFromSourceLoc(match->getLocStart(), sm);
+    std::string filename = sm->getFilename(match->getLocStart());
 
     tooling::Replacement repl(*Result.SourceManager,
                               match->getLocEnd().getLocWithOffset(1), 0,

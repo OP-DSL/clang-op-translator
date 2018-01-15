@@ -35,14 +35,6 @@ getCommandlineArgs(clang::tooling::CommonOptionsParser &parser) {
   return ToolCommandLine;
 }
 
-inline std::string
-getFileNameFromSourceLoc(clang::SourceLocation sLoc,
-                         clang::SourceManager *sourceManager) {
-  clang::FileID fileID = sourceManager->getFileID(sLoc);
-  const clang::FileEntry *fileEntry = sourceManager->getFileEntryForID(fileID);
-  return fileEntry->getName();
-}
-
 // Just for parsing integers inside op_arg_dat()
 inline int getIntValFromExpr(const clang::Expr *expr) {
   // check for - in case of direct Kernels

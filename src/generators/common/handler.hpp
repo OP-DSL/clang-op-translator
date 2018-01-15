@@ -32,7 +32,7 @@ int lineReplHandler(const clang::ast_matchers::MatchFinder::MatchResult &Result,
   if (debug)
     llvm::outs() << Key << "\n";
   clang::SourceManager *sm = Result.SourceManager;
-  std::string filename = getFileNameFromSourceLoc(match->getLocStart(), sm);
+  std::string filename = sm->getFilename(match->getLocStart());
   SourceRange replRange(match->getLocStart(),
                         match->getLocEnd().getLocWithOffset(Offset));
   std::string replacement = ReplacementGenerator();
@@ -62,7 +62,7 @@ int fixLengthReplHandler(
   if (debug)
     llvm::outs() << Key << "\n";
   clang::SourceManager *sm = Result.SourceManager;
-  std::string filename = getFileNameFromSourceLoc(match->getLocStart(), sm);
+  std::string filename = sm->getFilename(match->getLocStart());
   std::string replacement = ReplacementGenerator();
 
   tooling::Replacement repl(*sm, match->getLocStart().getLocWithOffset(Offset),

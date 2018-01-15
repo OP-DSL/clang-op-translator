@@ -120,7 +120,7 @@ int BaseKernelHandler::handleParLoopDecl(
   if (!function)
     return 1; // We shouldn't handle this match
   clang::SourceManager *sm = Result.SourceManager;
-  std::string filename = getFileNameFromSourceLoc(function->getLocStart(), sm);
+  std::string filename = sm->getFilename(function->getLocStart());
   // replace skeleton to the name of the loop
   size_t nameoffset = std::string("void op_par_loop_").length();
   size_t length = std::string("skeleton").length();
@@ -194,7 +194,7 @@ int BaseKernelHandler::handleOPKernels(const MatchFinder::MatchResult &Result) {
 
   clang::SourceManager *sm = Result.SourceManager;
   std::string filename =
-      getFileNameFromSourceLoc(kernelsSubscriptExpr->getLocStart(), sm);
+      sm->getFilename(kernelsSubscriptExpr->getLocStart());
 
   if (Result.Nodes.getNodeAs<clang::MemberExpr>("opk_member_expr")
           ->getMemberDecl()
@@ -239,7 +239,7 @@ int BaseKernelHandler::handleMPIWaitAllIfStmt(
     return 0;
 
   SourceManager *sm = Result.SourceManager;
-  std::string filename = getFileNameFromSourceLoc(ifStmt->getLocStart(), sm);
+  std::string filename = sm->getFilename(ifStmt->getLocStart());
   SourceRange replRange(ifStmt->getLocStart(),
                         ifStmt->getLocEnd().getLocWithOffset(1));
   /*FIXME magic number for semicolon pos*/
