@@ -47,7 +47,7 @@ void op_par_loop_skeleton(char const *name, op_set set, op_arg arg0) {
 
         dat0[0][i] = (ptr0)[idx0_2 + 0];
       }
-#pragma simd
+#pragma omp simd
       for (int i = 0; i < SIMD_VEC; i++) {
         skeleton_vec(&((double *)arg0.data)[4 * n]);
       }
