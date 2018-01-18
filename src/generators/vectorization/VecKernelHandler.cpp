@@ -243,7 +243,8 @@ std::string VecKernelHandler::alignedPtrDecls() {
 
 std::string VecKernelHandler::vecFuncCallHandler() {
   const ParLoop &loop = application.getParLoops()[loopIdx];
-  std::string repl = loop.getUserFuncInfo().funcName + (loop.isDirect() ? "(" : "_vec(");
+  std::string repl =
+      loop.getUserFuncInfo().funcName + (loop.isDirect() ? "(" : "_vec(");
   llvm::raw_string_ostream os(repl);
   for (size_t i = 0; i < loop.getNumArgs(); ++i) {
     if (!loop.getArg(i).isGBL) {
@@ -253,7 +254,11 @@ std::string VecKernelHandler::vecFuncCallHandler() {
         os << "dat" << i << ",";
       }
     } else {
-      os << "&dat" << i << "[i],";
+      if (loop.getArg(i).isReduction()) {
+        os << "&dat" << i << "[i],";
+      } else {
+        os << "(" << loop.getArg(i).type << "*)arg" << i << ".data,";
+      }
     }
   }
   if (!loop.isDirect()) {
