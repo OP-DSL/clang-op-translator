@@ -16,6 +16,7 @@ class VecUserFuncHandler
   const ParLoop &loop;
   const std::vector<size_t> &redIndexes;
   std::map<std::string, clang::tooling::Replacements> *Replace;
+  std::map<std::string, std::vector<clang::SourceLocation>> alreadyDone;
 
   int addLocalVarDecls(const MatchFinder::MatchResult &Result) {
     const clang::FunctionDecl *match =
@@ -23,12 +24,14 @@ class VecUserFuncHandler
     if (!match)
       return 1;
     clang::SourceManager *sm = Result.SourceManager;
+    // FIXME filename always /tmp/loop.h
     std::string filename = sm->getFilename(match->getLocStart());
     std::string localdefs, addlocals;
     for (const size_t &i : redIndexes) {
       std::string name = loop.getUserFuncInfo().paramNames[i];
       std::string type = loop.getArg(i).type;
-      localdefs += type + " __" + name + "_l = 0;";
+      localdefs += type + " __" + name + "_l = 0;"; // FIXME min max
+                                                    // reductions..
       addlocals += "*" + name + "+= " + "__" + name + "_l;";
     }
     clang::SourceLocation end = match->getBodyRBrace();
@@ -92,11 +95,19 @@ class VecUserFuncHandler
     if (!match)
       return 1;
     clang::SourceManager *sm = Result.SourceManager;
-    std::string filename = sm->getFilename(match->getLocStart());
+    // FIXME filename always /tmp/loop.h
+    clang::SourceLocation end =
+        sm->getSpellingLoc(match->getLocEnd()).getLocWithOffset(1);
+    for (const clang::SourceLocation &sl : alreadyDone[key]) { //TODO find better solution
+      if (end == sl){
+        return 0;
+      }
+    }
+    alreadyDone[key].push_back(end);
+    std::string filename =
+        sm->getFilename(sm->getSpellingLoc(match->getLocStart()));
 
-    tooling::Replacement repl(*Result.SourceManager,
-                              match->getLocEnd().getLocWithOffset(1), 0,
-                              "[idx]");
+    tooling::Replacement repl(*Result.SourceManager, end, 0, "[idx]");
     if (llvm::Error err = (*Replace)[filename].add(repl)) {
       // TODO diagnostics..
       llvm::errs() << "Replacement for key: " << key
@@ -142,10 +153,10 @@ class VecUserFuncGenerator : public OP2WriteableRefactoringTool {
   const std::vector<size_t> &redIndexes;
 
 public:
-  VecUserFuncGenerator(
-      const clang::tooling::CompilationDatabase &Compilations,
-      const ParLoop &_loop, const std::vector<size_t> &redIndexes,
-      std::vector<std::string> path = {"/tmp/loop.h"})
+  VecUserFuncGenerator(const clang::tooling::CompilationDatabase &Compilations,
+                       const ParLoop &_loop,
+                       const std::vector<size_t> &redIndexes,
+                       std::vector<std::string> path = {"/tmp/loop.h"})
       : OP2WriteableRefactoringTool(Compilations, path), loop(_loop),
         redIndexes(redIndexes) {}
 

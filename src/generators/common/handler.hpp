@@ -33,8 +33,9 @@ int lineReplHandler(const clang::ast_matchers::MatchFinder::MatchResult &Result,
     llvm::outs() << Key << "\n";
   clang::SourceManager *sm = Result.SourceManager;
   std::string filename = sm->getFilename(match->getLocStart());
-  SourceRange replRange(match->getLocStart(),
-                        match->getLocEnd().getLocWithOffset(Offset));
+  SourceRange replRange(
+      sm->getSpellingLoc(match->getLocStart()),
+      sm->getSpellingLoc(match->getLocEnd()).getLocWithOffset(Offset));
   std::string replacement = ReplacementGenerator();
 
   tooling::Replacement repl(*sm, CharSourceRange(replRange, false),
@@ -62,11 +63,13 @@ int fixLengthReplHandler(
   if (debug)
     llvm::outs() << Key << "\n";
   clang::SourceManager *sm = Result.SourceManager;
-  std::string filename = sm->getFilename(match->getLocStart());
+  std::string filename =
+      sm->getFilename(sm->getSpellingLoc(match->getLocStart()));
   std::string replacement = ReplacementGenerator();
 
-  tooling::Replacement repl(*sm, match->getLocStart().getLocWithOffset(Offset),
-                            length, replacement);
+  tooling::Replacement repl(
+      *sm, sm->getSpellingLoc(match->getLocStart()).getLocWithOffset(Offset),
+      length, replacement);
   if (llvm::Error err = (*Replace)[filename].add(repl)) {
     // TODO diagnostics..
     llvm::errs() << "Replacement for key: " << Key << " failed in: " << filename
