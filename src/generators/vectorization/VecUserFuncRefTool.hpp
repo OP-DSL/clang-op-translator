@@ -28,11 +28,14 @@ class VecUserFuncHandler
     std::string filename = sm->getFilename(match->getLocStart());
     std::string localdefs, addlocals;
     for (const size_t &i : redIndexes) {
+      const OPArg &arg = loop.getArg(i);
       std::string name = loop.getUserFuncInfo().paramNames[i];
-      std::string type = loop.getArg(i).type;
-      localdefs += type + " __" + name + "_l = 0;"; // FIXME min max
-                                                    // reductions..
-      addlocals += "*" + name + "+= " + "__" + name + "_l;";
+      std::string type = arg.type;
+
+      if (arg.accs == OP_accs_type::OP_INC) {
+        localdefs += type + " __" + name + "_l = 0;";
+        addlocals += "*" + name + "+= " + "__" + name + "_l;";
+      }
     }
     clang::SourceLocation end = match->getBodyRBrace();
 
@@ -98,8 +101,9 @@ class VecUserFuncHandler
     // FIXME filename always /tmp/loop.h
     clang::SourceLocation end =
         sm->getSpellingLoc(match->getLocEnd()).getLocWithOffset(1);
-    for (const clang::SourceLocation &sl : alreadyDone[key]) { //TODO find better solution
-      if (end == sl){
+    for (const clang::SourceLocation &sl :
+         alreadyDone[key]) { // TODO find better solution
+      if (end == sl) {
         return 0;
       }
     }
@@ -171,12 +175,14 @@ public:
                           .bind("userFuncDecl"),
                       &handler);
     for (const size_t &i : redIndexes) {
-      std::string name = loop.getUserFuncInfo().paramNames[i];
-      Finder.addMatcher(declRefExpr(to(parmVarDecl(hasName(name))),
-                                    hasAncestor(functionDecl(hasName(
-                                        loop.getUserFuncInfo().funcName))))
-                            .bind(name + "_red"),
-                        &handler);
+      if (loop.getArg(i).accs == OP_accs_type::OP_INC) {
+        std::string name = loop.getUserFuncInfo().paramNames[i];
+        Finder.addMatcher(declRefExpr(to(parmVarDecl(hasName(name))),
+                                      hasAncestor(functionDecl(hasName(
+                                          loop.getUserFuncInfo().funcName))))
+                              .bind(name + "_red"),
+                          &handler);
+      }
     }
     if (VEC && !loop.isDirect()) {
       for (size_t i = 0; i < loop.getNumArgs(); ++i) {
