@@ -128,6 +128,7 @@ public:
 typedef MasterkernelGenerator<SeqRefactoringTool> SeqGenerator;
 typedef MasterkernelGenerator<OMPRefactoringTool> OpenMPGenerator;
 typedef MasterkernelGenerator<VecRefactoringTool> VectorizedGenerator;
+typedef MasterkernelGenerator<SeqRefactoringTool> CUDAGenerator;
 } // namespace OP2
 
 #endif /* ifndef MASTERKERNELGENERATOR_HPP */

@@ -8,7 +8,7 @@
 
 namespace OP2 {
 
-enum OP2Targets { all = 0, none, seq, openmp, vec };
+enum OP2Targets { all = 0, none, seq, openmp, vec, cuda };
 
 /// @brief This class is responsible for processing OP2 applications.
 /// Collect data about parloops and constants. Also generates the modified

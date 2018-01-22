@@ -15,6 +15,7 @@ static llvm::cl::opt<OP2::OP2Targets>
                  clEnumValN(OP2::none, "none", "Don't generate kernel files"),
                  clEnumValN(OP2::seq, "seq", "Sequential"),
                  clEnumValN(OP2::openmp, "openmp", "OpenMP"),
+                 clEnumValN(OP2::cuda, "cuda", "CUDA"),
                  clEnumValN(OP2::vec, "vec", "Vectorization")));
 
 int main(int argc, const char **argv) {
