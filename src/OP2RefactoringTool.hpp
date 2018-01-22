@@ -8,7 +8,7 @@
 
 namespace OP2 {
 
-enum OP2Targets { all = 0, none, seq, openmp, vec };
+enum OP2Targets { all = 0, none, seq, openmp, vec, cuda };
 
 class OP2RefactoringTool : public OP2WriteableRefactoringTool {
 protected:

@@ -42,6 +42,10 @@ void OP2RefactoringTool::generateKernelFiles() {
                                   "skeleton_veckernels.cpp");
     generator.generateKernelFiles();
   }
+  if (opTarget == cuda || opTarget == all) {
+    CUDAGenerator generator(application, commandLineArgs, Compilations);
+    generator.generateKernelFiles();
+  }
 }
 
 int OP2RefactoringTool::generateOPFiles() {
