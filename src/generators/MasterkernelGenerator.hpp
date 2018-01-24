@@ -2,6 +2,7 @@
 #define MASTERKERNELGENERATOR_HPP
 #include "core/OP2WriteableRefactoringTool.hpp"
 #include "generators/common/handler.hpp"
+#include "generators/cuda/CudaRefactoringTool.h"
 #include "generators/openmp/OMPRefactoringTool.h"
 #include "generators/sequential/SeqRefactoringTool.h"
 #include "generators/vectorization/VecRefactoringTool.h"
@@ -128,7 +129,7 @@ public:
 typedef MasterkernelGenerator<SeqRefactoringTool> SeqGenerator;
 typedef MasterkernelGenerator<OMPRefactoringTool> OpenMPGenerator;
 typedef MasterkernelGenerator<VecRefactoringTool> VectorizedGenerator;
-typedef MasterkernelGenerator<SeqRefactoringTool> CUDAGenerator;
+typedef MasterkernelGenerator<CUDARefactoringTool> CUDAGenerator;
 } // namespace OP2
 
 #endif /* ifndef MASTERKERNELGENERATOR_HPP */
