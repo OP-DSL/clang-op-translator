@@ -55,6 +55,7 @@ add_executable(${PROJECT_NAME}
   src/OP2RefactoringTool.cpp
   src/core/OPParLoopData.cpp
   src/generators/common/BaseKernelHandler.cpp
+  src/generators/cuda/CudaKernelHandler.cpp
   src/generators/sequential/SeqKernelHandler.cpp
   src/generators/openmp/OMPKernelHandler.cpp
   src/generators/vectorization/VecKernelHandler.cpp
