@@ -37,8 +37,6 @@ OP2-Clang
 |  
 \`- doc: documentation  
 |  
-\`- generator_example: skeleton kernel generator for extending the tool  
-|  
 \`- skeletons: kernel and masterkernel skeletons used by the tool  
 |  
 \`- src: source of the tool  
