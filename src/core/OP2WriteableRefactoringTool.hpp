@@ -8,8 +8,8 @@
 #include "clang/Tooling/Refactoring.h"
 
 namespace OP2 {
-/// @brief Base class for OP2 RefactoringTools adds utility to write output to
-/// files.
+/// @brief Base class for RefactoringTools in op2-clang. Adds utility to write
+/// output to files or streams.
 class OP2WriteableRefactoringTool : public clang::tooling::RefactoringTool {
 public:
   /// @brief Generate output filename.

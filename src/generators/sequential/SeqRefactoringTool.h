@@ -5,7 +5,7 @@
 #include "generators/common/GeneratorBase.hpp"
 #include "generators/sequential/SeqKernelHandler.h"
 namespace OP2 {
-/// \brief Utility of generate sequential kernel based on ParLoop information.
+/// @brief Utility of generate sequential kernel based on ParLoop information.
 ///
 ///
 class SeqRefactoringTool : public OP2KernelGeneratorBase {
@@ -20,9 +20,8 @@ public:
   ///
   /// @param Compilations The CompilationDatabase which contains the copmile
   /// commandlines.
-  /// @param loop The ParLoop containing informations about the op_par_loop.
-  /// @param PCHContainerOps The PCHContainerOperation for loading and creating
-  /// clang modules
+  /// @param app collected application data.
+  /// @param idx idx of the currently processed parloop.
   SeqRefactoringTool(const clang::tooling::CompilationDatabase &Compilations,
                      const OP2Application &app, size_t idx)
       : OP2KernelGeneratorBase(Compilations,

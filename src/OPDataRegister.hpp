@@ -7,6 +7,9 @@
 namespace OP2 {
 namespace matchers = clang::ast_matchers;
 
+/// @brief Parse constant, mapping, set and data declaration and add data to
+/// the OP2Application. Currently only constant declarations are used for
+/// code generation.
 class DataRegister : public matchers::MatchFinder::MatchCallback {
   OP2Application &application;
 

@@ -10,6 +10,10 @@ namespace OP2 {
 
 enum OP2Targets { all = 0, none, seq, openmp, vec };
 
+/// @brief This class is responsible for processing OP2 applications.
+/// Collect data about parloops and constants. Also generates the modified
+/// application files.
+///
 class OP2RefactoringTool : public OP2WriteableRefactoringTool {
 protected:
   OP2Targets opTarget;
@@ -24,7 +28,8 @@ public:
                      clang::tooling::CommonOptionsParser &optionsParser,
                      OP2Targets opTarget);
 
-  /// @brief Generates kernelfiles for all parLoop
+  /// @brief Generates target specific kernelfiles for all parLoop and all
+  /// specified target.
   void generateKernelFiles();
 
   /// @brief Setting the finders for the refactoring tool then runs the tool
@@ -35,6 +40,7 @@ public:
   int generateOPFiles();
 
   /// @brief Generate output filename from the filename of the processed file.
+  /// Inherited function from OP2WriteableRefactoringTool.
   ///
   /// @param Entry The input file that processed.
   ///

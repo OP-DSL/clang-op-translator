@@ -20,6 +20,7 @@ static llvm::cl::opt<OP2::OP2Targets>
 int main(int argc, const char **argv) {
   using namespace clang::tooling;
   using namespace clang::ast_matchers;
+  // Initialize the tool
   CommonOptionsParser OptionsParser(argc, argv, Op2Category);
 
   std::vector<std::string> args = OP2::getCommandlineArgs(OptionsParser);
@@ -27,12 +28,14 @@ int main(int argc, const char **argv) {
   clang::tooling::FixedCompilationDatabase Compilations(".", args);
   OP2::OP2RefactoringTool Tool(args, Compilations, OptionsParser,
                                opTarget.getValue());
-
+  // Collect data about the application and generate modified application files.
   if (int Result = Tool.generateOPFiles()) {
     return Result;
   }
 
+  // Generate and write target specific kernel files.
   Tool.generateKernelFiles();
+  // Write out the modified application files.
   Tool.writeOutReplacements();
 
   return 0;

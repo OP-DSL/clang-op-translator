@@ -6,7 +6,7 @@
 
 namespace OP2 {
 
-/// @brief The Base class of OP2 kernel generators.
+/// @brief The Base class of OP2 Target Specific Kernel Generators.
 ///   All subclass should implement addGeneratorSpecificMatchers function
 ///    and set the postfix for kernel files.
 class OP2KernelGeneratorBase : public OP2WriteableRefactoringTool {
@@ -32,7 +32,7 @@ protected:
   /// @param Finder
   void addBaseKernelMatchers(clang::ast_matchers::MatchFinder &Finder) {
     // Create Callbacks
-    // TODO Finder to Refactoring tool?
+    // TODO move Finder to Refactoring tool?
     Finder.addMatcher(BaseKernelHandler::parLoopDeclMatcher,
                       &baseKernelHandler);
     Finder.addMatcher(BaseKernelHandler::nargsMatcher, &baseKernelHandler);

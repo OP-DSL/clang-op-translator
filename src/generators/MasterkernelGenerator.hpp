@@ -15,6 +15,9 @@ const DeclarationMatcher globVarMatcher =
 }
 
 namespace matchers = clang::ast_matchers;
+
+/// @brief Generates replacements to master kernel skeleton, to fit to the
+/// application.
 class MasterKernelHandler : public matchers::MatchFinder::MatchCallback {
   const std::vector<std::string> &kernels;
   const std::set<op_global_const> &constants;
@@ -47,6 +50,13 @@ public:
   }
 };
 
+/// @brief The Master Kernel Generator generates the master kernel file from
+/// it's skeleton and run a target specific kernel generator for all parloop
+/// found in the application.
+///
+/// @tparam KernelGeneratorType Type of the target specific kernel generator.
+/// @tparam Handler MasterKernelHandler type (only when we need to do something
+/// special in the masterkernel file for this target).
 template <typename KernelGeneratorType, typename Handler = MasterKernelHandler>
 class MasterkernelGenerator : public OP2WriteableRefactoringTool {
 protected:
@@ -64,7 +74,12 @@ public:
         application(app), commandLineArgs(args) {}
 
   /// @brief Generates kernelfiles for all parLoop and then the master kernel
-  ///  file
+  ///  file.
+  ///
+  /// Create a new compilation datapase with target specific flags. Then run
+  /// a target specific kernel generator (wich is also a RefactoringTool) on
+  /// a skeleton to get the kernel file for each parloop. Finally run this tool
+  /// on the master kernel skeleton to get the master kernel file.
   void generateKernelFiles() {
     for (size_t i = 0; i < KernelGeneratorType::numParams; ++i) {
       commandLineArgs.push_back(KernelGeneratorType::commandlineParams[i]);
