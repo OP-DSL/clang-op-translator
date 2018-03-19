@@ -9,9 +9,6 @@ namespace matchers = clang::ast_matchers;
 
 /// @brief Callback for perform the specific modifications for CUDA
 /// kernels on skeleton
-///
-/// Callback for perform the modifications for CUDA kernels on
-/// op_par_loop_skeleton.cu
 class CUDAKernelHandler : public matchers::MatchFinder::MatchCallback {
 protected:
   std::map<std::string, clang::tooling::Replacements> *Replace;

@@ -4,6 +4,8 @@
 #include "core/OPParLoopData.h"
 #include "generators/common/GeneratorBase.hpp"
 #include "generators/cuda/CudaKernelHandler.h"
+#include "generators/sequential/SeqKernelHandler.h"
+
 namespace OP2 {
 /// \brief Utility of generate CUDA kernel based on ParLoop information.
 ///
@@ -34,10 +36,13 @@ public:
   ///
   /// @param MatchFinder used by the RefactoringTool
   virtual void addGeneratorSpecificMatchers(
-      clang::ast_matchers::MatchFinder &Finder) override {}
+      clang::ast_matchers::MatchFinder &Finder) override {
+
+    Finder.addMatcher(SeqKernelHandler::userFuncMatcher, &cudaKernelHandler);
+  }
 
   static constexpr const char *_postfix = "kernel";
-  static constexpr unsigned numParams = 4;
+  static constexpr unsigned numParams = 0;
   static const std::string commandlineParams[numParams];
 
   /// @brief Generate the name of the output file.
@@ -56,8 +61,7 @@ public:
 const std::string CUDARefactoringTool::skeletons[2] = {
     "skeleton_direct_kernel.cu", "skeleton_kernel.cu"};
 const std::string
-    CUDARefactoringTool::commandlineParams[CUDARefactoringTool::numParams] = {
-         "-x", "cuda", "-pthread", "--cuda-host-only"};
+    CUDARefactoringTool::commandlineParams[CUDARefactoringTool::numParams] = {};
 } // namespace OP2
 
 #endif

@@ -22,6 +22,13 @@ CUDAKernelHandler::CUDAKernelHandler(
 
 //________________________________GLOBAL_HANDLER_______________________________
 void CUDAKernelHandler::run(const MatchFinder::MatchResult &Result) {
+  if (!lineReplHandler<FunctionDecl, 1>(Result, Replace, "user_func", [this]() {
+        const ParLoop &loop = this->application.getParLoops()[loopIdx];
+        std::string hostFuncText = loop.getUserFuncInc();
+        return "__device__ void " + loop.getName() + "_gpu" +
+               hostFuncText.substr(hostFuncText.find("("));
+      }))
+    return; // if successfully handled return
 }
 
 //___________________________________HANDLERS__________________________________
