@@ -57,7 +57,7 @@ const std::string CUDARefactoringTool::skeletons[2] = {
     "skeleton_direct_kernel.cu", "skeleton_kernel.cu"};
 const std::string
     CUDARefactoringTool::commandlineParams[CUDARefactoringTool::numParams] = {
-        "-lcudart-static", "-x", "cuda", "-pthread"};
+         "-x", "cuda", "-pthread", "--cuda-host-only"};
 } // namespace OP2
 
 #endif
