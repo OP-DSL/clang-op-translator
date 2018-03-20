@@ -15,6 +15,8 @@ protected:
   const OP2Application &application;
   const size_t loopIdx;
 
+  std::string getCUDAFuncDefinition();
+
 public:
   /// @brief Construct a CUDAKernelHandler
   ///
@@ -26,6 +28,7 @@ public:
       std::map<std::string, clang::tooling::Replacements> *Replace,
       const OP2Application &app, size_t idx);
   // Static matchers handled by this class
+  static const matchers::DeclarationMatcher cudaFuncMatcher;
 
   virtual void run(const matchers::MatchFinder::MatchResult &Result) override;
 };

@@ -39,6 +39,7 @@ public:
       clang::ast_matchers::MatchFinder &Finder) override {
 
     Finder.addMatcher(SeqKernelHandler::userFuncMatcher, &cudaKernelHandler);
+    Finder.addMatcher(CUDAKernelHandler::cudaFuncMatcher, &cudaKernelHandler);
   }
 
   static constexpr const char *_postfix = "kernel";

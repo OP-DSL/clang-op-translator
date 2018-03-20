@@ -13,6 +13,10 @@ using namespace clang::ast_matchers;
 using namespace clang;
 
 //___________________________________MATCHERS__________________________________
+const DeclarationMatcher CUDAKernelHandler::cudaFuncMatcher =
+    functionDecl(hasName("op_cuda_skeleton"), isDefinition(),
+                 parameterCountIs(2))
+        .bind("cuda_func_definition");
 
 //_________________________________CONSTRUCTORS________________________________
 CUDAKernelHandler::CUDAKernelHandler(
@@ -29,8 +33,40 @@ void CUDAKernelHandler::run(const MatchFinder::MatchResult &Result) {
                hostFuncText.substr(hostFuncText.find("("));
       }))
     return; // if successfully handled return
+  if (!HANDLER(FunctionDecl, 1, "cuda_func_definition",
+               CUDAKernelHandler::getCUDAFuncDefinition))
+    return; // if successfully handled return
 }
 
 //___________________________________HANDLERS__________________________________
+
+std::string CUDAKernelHandler::getCUDAFuncDefinition() {
+  const ParLoop &loop = application.getParLoops()[loopIdx];
+  std::string funcDef = "__global__ void op_cuda_" + loop.getName() + "(";
+  llvm::raw_string_ostream os(funcDef);
+
+  for (size_t i = 0; i < loop.getNumArgs(); ++i) {
+    const OPArg &arg = loop.getArg(i);
+    if (arg.accs == OP2::OP_READ) {
+      os << "const " << arg.type << " *__restrict arg";
+    } else {
+      os << arg.type << " *arg";
+    }
+    os << i << ",";
+  }
+
+  os << "int set_size) {"
+     << "int n = threadIdx.x + blockIdx.x * blockDim.x;"
+     << "if (n < set_size) {" << loop.getName() << "_gpu("
+     << "arg0+n*" << loop.getArg(0).dim;
+
+  for (size_t i = 1; i < loop.getNumArgs(); ++i) {
+    const OPArg &arg = loop.getArg(i);
+    os << ",arg" << i << "+n*" << arg.dim;
+  }
+
+  os << ");}";           // close if(n<set_size)
+  return os.str() + "}"; // close function def
+}
 
 } // namespace OP2
