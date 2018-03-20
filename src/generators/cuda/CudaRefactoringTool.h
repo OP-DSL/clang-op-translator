@@ -40,6 +40,8 @@ public:
 
     Finder.addMatcher(SeqKernelHandler::userFuncMatcher, &cudaKernelHandler);
     Finder.addMatcher(CUDAKernelHandler::cudaFuncMatcher, &cudaKernelHandler);
+    Finder.addMatcher(CUDAKernelHandler::cudaFuncCallMatcher,
+                      &cudaKernelHandler);
   }
 
   static constexpr const char *_postfix = "kernel";

@@ -29,6 +29,7 @@ public:
       const OP2Application &app, size_t idx);
   // Static matchers handled by this class
   static const matchers::DeclarationMatcher cudaFuncMatcher;
+  static const matchers::StatementMatcher cudaFuncCallMatcher;
 
   virtual void run(const matchers::MatchFinder::MatchResult &Result) override;
 };

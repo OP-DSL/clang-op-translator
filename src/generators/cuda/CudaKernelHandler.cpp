@@ -18,6 +18,11 @@ const DeclarationMatcher CUDAKernelHandler::cudaFuncMatcher =
                  parameterCountIs(2))
         .bind("cuda_func_definition");
 
+const StatementMatcher CUDAKernelHandler::cudaFuncCallMatcher =
+    callExpr(
+        callee(functionDecl(hasName("op_cuda_skeleton"), parameterCountIs(2))))
+        .bind("cuda_func_call");
+
 //_________________________________CONSTRUCTORS________________________________
 CUDAKernelHandler::CUDAKernelHandler(
     std::map<std::string, clang::tooling::Replacements> *Replace,
@@ -35,6 +40,20 @@ void CUDAKernelHandler::run(const MatchFinder::MatchResult &Result) {
     return; // if successfully handled return
   if (!HANDLER(FunctionDecl, 1, "cuda_func_definition",
                CUDAKernelHandler::getCUDAFuncDefinition))
+    return; // if successfully handled return
+  if (!lineReplHandler<CallExpr, 2>(
+          Result, Replace, "cuda_func_call", [this]() {
+            const ParLoop &loop = this->application.getParLoops()[loopIdx];
+            std::string funcCall =
+                "op_cuda_" + loop.getName() + "<<<nblocks, nthread>>>(";
+            llvm::raw_string_ostream os(funcCall);
+            for (size_t i = 0; i < loop.getNumArgs(); ++i) {
+              const OPArg &arg = loop.getArg(i);
+              os << "(" << arg.type << " *) arg" << i << ".data_d,";
+            }
+            os << "set->size);";
+            return os.str();
+          }))
     return; // if successfully handled return
 }
 
