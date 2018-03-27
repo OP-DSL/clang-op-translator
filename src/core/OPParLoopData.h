@@ -34,7 +34,7 @@ enum OP_accs_type { OP_READ = 0, OP_WRITE, OP_RW, OP_INC, OP_MIN, OP_MAX };
 inline llvm::raw_ostream &operator<<(llvm::raw_ostream &os,
                                      const OP_accs_type &accs) {
   constexpr const char *OP_accs_labels[6] = {"OP_READ", "OP_WRITE", "OP_RW",
-                                             "OP_INC",  "OP_MAX",   "OP_MIN"};
+                                             "OP_INC",  "OP_MIN",   "OP_MAX"};
   return os << OP_accs_labels[accs];
 }
 
