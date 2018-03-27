@@ -22,6 +22,8 @@ void op_par_loop_skeleton(char const *name, op_set set, op_arg arg0) {
 
   args[0] = arg0;
 
+  double *arg0h = (double *)arg0.data;
+
   // initialise timers
   double cpu_t1, cpu_t2, wall_t1, wall_t2;
   op_timing_realloc(0);
@@ -39,7 +41,11 @@ void op_par_loop_skeleton(char const *name, op_set set, op_arg arg0) {
 
     int nblocks = (set->size - 1) / nthread + 1;
 
+    int reduct_bytes = 0;
+
     op_cuda_skeleton((double *)arg0.data_d, set->size);
+
+    mvReductArraysToHost(reduct_bytes);
   }
 
   op_mpi_set_dirtybit_cuda(nargs, args);
