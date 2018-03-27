@@ -42,10 +42,15 @@ public:
     Finder.addMatcher(CUDAKernelHandler::cudaFuncMatcher, &cudaKernelHandler);
     Finder.addMatcher(CUDAKernelHandler::cudaFuncCallMatcher,
                       &cudaKernelHandler);
+    Finder.addMatcher(CUDAKernelHandler::hostReductArrsMatcher,
+                      &cudaKernelHandler);
+    Finder.addMatcher(CUDAKernelHandler::arg0hDeclMatcher, &cudaKernelHandler);
+    Finder.addMatcher(CUDAKernelHandler::mvReductCallMatcher,
+                      &cudaKernelHandler);
   }
 
   static constexpr const char *_postfix = "kernel";
-  static constexpr unsigned numParams = 0;
+  static constexpr unsigned numParams = 1;
   static const std::string commandlineParams[numParams];
 
   /// @brief Generate the name of the output file.
@@ -64,7 +69,8 @@ public:
 const std::string CUDARefactoringTool::skeletons[2] = {
     "skeleton_direct_kernel.cu", "skeleton_kernel.cu"};
 const std::string
-    CUDARefactoringTool::commandlineParams[CUDARefactoringTool::numParams] = {};
+    CUDARefactoringTool::commandlineParams[CUDARefactoringTool::numParams] = {
+        std::string("-include") + OP2_INC + "op_cuda_rt_support.h"};
 } // namespace OP2
 
 #endif
