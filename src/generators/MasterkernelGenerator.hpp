@@ -87,8 +87,6 @@ public:
     }
     commandLineArgs.push_back(std::string("-include") + OP2_INC +
                               "op_lib_cpp.h");
-    // Currently this only needed when we modify the user kernel.
-    commandLineArgs.push_back(std::string("-xc++"));
 
     std::ofstream os("/tmp/" + application.applicationName + "_global.h");
     for (const op_global_const &c : application.constants) {

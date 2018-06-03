@@ -46,13 +46,13 @@ public:
   };
 
   static constexpr const char *_postfix = "veckernel";
-  static constexpr unsigned numParams = 2;
+  static constexpr unsigned numParams = 3;
   static const std::string commandlineParams[numParams];
 };
 
 const std::string
     VecRefactoringTool::commandlineParams[VecRefactoringTool::numParams] = {
-        "-DSIMD_VEC=4", "-DVECTORIZE"};
+        "-DSIMD_VEC=4", "-DVECTORIZE", "-xc++"};
 const std::string VecRefactoringTool::skeletons[2] = {
     "skeleton_direct_veckernel.cpp", "skeleton_veckernel.cpp"};
 
