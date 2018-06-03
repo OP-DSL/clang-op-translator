@@ -32,10 +32,10 @@ int lineReplHandler(const clang::ast_matchers::MatchFinder::MatchResult &Result,
   if (debug)
     llvm::outs() << Key << "\n";
   clang::SourceManager *sm = Result.SourceManager;
-  std::string filename = sm->getFilename(match->getLocStart());
+  std::string filename = sm->getFilename(sm->getFileLoc(match->getLocStart()));
   SourceRange replRange(
-      sm->getSpellingLoc(match->getLocStart()),
-      sm->getSpellingLoc(match->getLocEnd()).getLocWithOffset(Offset));
+      sm->getFileLoc(match->getLocStart()),
+      sm->getFileLoc(match->getLocEnd()).getLocWithOffset(Offset));
   std::string replacement = ReplacementGenerator();
 
   tooling::Replacement repl(*sm, CharSourceRange(replRange, false),
@@ -63,12 +63,11 @@ int fixLengthReplHandler(
   if (debug)
     llvm::outs() << Key << "\n";
   clang::SourceManager *sm = Result.SourceManager;
-  std::string filename =
-      sm->getFilename(sm->getSpellingLoc(match->getLocStart()));
+  std::string filename = sm->getFilename(sm->getFileLoc(match->getLocStart()));
   std::string replacement = ReplacementGenerator();
 
   tooling::Replacement repl(
-      *sm, sm->getSpellingLoc(match->getLocStart()).getLocWithOffset(Offset),
+      *sm, sm->getFileLoc(match->getLocStart()).getLocWithOffset(Offset),
       length, replacement);
   if (llvm::Error err = (*Replace)[filename].add(repl)) {
     // TODO diagnostics..
