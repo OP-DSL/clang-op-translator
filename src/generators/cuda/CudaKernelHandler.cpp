@@ -38,6 +38,12 @@ const DeclarationMatcher CUDAKernelHandler::declLocalRedArrMatcher =
             hasAncestor(functionDecl(hasName("op_cuda_skeleton"))))
         .bind("arg0_l_decl");
 
+const StatementMatcher CUDAKernelHandler::initLocalRedArrMatcher =
+    forStmt(hasBody(compoundStmt(hasAnySubstatement(binaryOperator(
+                hasOperatorName("="), hasRHS(floatLiteral(equals(0.0))))))),
+            hasAncestor(functionDecl(hasName("op_cuda_skeleton"))))
+        .bind("init_local_arr_forstmt");
+
 const StatementMatcher CUDAKernelHandler::opReductionMatcher =
     forStmt(hasBody(compoundStmt(hasAnySubstatement(
                 callExpr(callee(functionDecl(hasName("op_reduction"))))))))
@@ -107,6 +113,9 @@ void CUDAKernelHandler::run(const MatchFinder::MatchResult &Result) {
     return;
   if (!HANDLER(VarDecl, 2, "arg0_l_decl", CUDAKernelHandler::genLocalArrDecl))
     return;
+  if (!HANDLER(ForStmt, 2, "init_local_arr_forstmt",
+               CUDAKernelHandler::genLocalArrInit))
+    return;
   if (!HANDLER(ForStmt, 1, "op_reduction_forstmt",
                CUDAKernelHandler::genRedForstmt))
     return;
@@ -166,11 +175,25 @@ std::string CUDAKernelHandler::genLocalArrDecl() {
   for (size_t i = 0; i < loop.getNumArgs(); ++i) {
     const OPArg &arg = loop.getArg(i);
     // reduction inside function
+    if (arg.isReduction() || (!arg.isDirect() && arg.accs == OP2::OP_INC)) {
+      std::string argstr = "arg" + std::to_string(i);
+      os << arg.type << " " << argstr << "_l[" << arg.dim << "];";
+    }
+  }
+  return os.str();
+}
+
+std::string CUDAKernelHandler::genLocalArrInit() {
+  const ParLoop &loop = application.getParLoops()[loopIdx];
+  std::string localArrDecl = "";
+  llvm::raw_string_ostream os(localArrDecl);
+  for (size_t i = 0; i < loop.getNumArgs(); ++i) {
+    const OPArg &arg = loop.getArg(i);
+    // reduction inside function
     if (arg.isReduction()) {
       std::string argstr = "arg" + std::to_string(i);
       std::string globidx = "[d+blockIdx.x*" + std::to_string(arg.dim) + "]";
 
-      os << arg.type << " " << argstr << "_l[" << arg.dim << "];";
       os << "for(int d=0;d<" << arg.dim << ";++d){" << argstr << "_l[d] = ";
       if (arg.accs == OP2::OP_INC) {
         os << "ZERO_" << arg.type << ";";

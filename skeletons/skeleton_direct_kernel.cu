@@ -10,6 +10,10 @@ __global__ void op_cuda_skeleton(double *arg0, int set_size) {
   int n = threadIdx.x + blockIdx.x * blockDim.x;
   double arg0_l[1];
 
+  for (int d = 0; d < 1; ++d) {
+    arg0_l[d] = ZERO_double;
+  }
+
   if (n < set_size) {
     // user-supplied kernel call
     skeleton(arg0);

@@ -54,6 +54,8 @@ public:
                       &cudaKernelHandler);
     Finder.addMatcher(CUDAKernelHandler::declLocalRedArrMatcher,
                       &cudaKernelHandler);
+    Finder.addMatcher(CUDAKernelHandler::initLocalRedArrMatcher,
+                      &cudaKernelHandler);
   }
 
   static constexpr const char *_postfix = "kernel";

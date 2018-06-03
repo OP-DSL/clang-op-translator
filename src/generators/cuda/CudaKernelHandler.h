@@ -20,6 +20,7 @@ protected:
   template <bool GEN_CONSTANTS = false> std::string getReductArrsToDevice();
   std::string getHostReduction();
   std::string genLocalArrDecl();
+  std::string genLocalArrInit();
   std::string genRedForstmt();
   std::string genFuncCall();
 
@@ -37,6 +38,7 @@ public:
   static const matchers::DeclarationMatcher cudaFuncMatcher;
   static const matchers::StatementMatcher cudaFuncCallMatcher;
   static const matchers::DeclarationMatcher declLocalRedArrMatcher;
+  static const matchers::StatementMatcher initLocalRedArrMatcher;
   static const matchers::StatementMatcher opReductionMatcher;
   static const matchers::StatementMatcher updateRedArrsOnHostMatcher;
   static const matchers::StatementMatcher setReductionArraysToArgsMatcher;
