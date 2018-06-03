@@ -3,14 +3,20 @@
 //
 
 // user function
-void skeleton(double *a) {}
+__device__ void skeleton(double *a) {}
 
 // CUDA kernel function
-void op_cuda_skeleton(double *arg0, int set_size) {
-  int n = 0;
+__global__ void op_cuda_skeleton(double *arg0, int set_size) {
+  int n = threadIdx.x + blockIdx.x * blockDim.x;
+  double arg0_l[1];
+
   if (n < set_size) {
     // user-supplied kernel call
     skeleton(arg0);
+  }
+
+  for (int d = 0; d < 1; d++) {
+    op_reduction<OP_INC>(&arg0[d + blockIdx.x * 1], arg0_l[d]);
   }
 }
 
@@ -36,16 +42,27 @@ void op_par_loop_skeleton(char const *name, op_set set, op_arg arg0) {
   op_mpi_halo_exchanges_cuda(set, nargs, args);
   if (set->size > 0) {
 
+    int const_bytes = 0;
+    op_setup_constants(const_bytes, args, nargs);
+    setConstantArrToArg<double>(args[0], arg0h);
+    mvConstArraysToDevice(const_bytes);
+
     // set CUDA execution parameters
     int nthread = OP_block_size;
 
     int nblocks = (set->size - 1) / nthread + 1;
 
-    int reduct_bytes = 0;
+    int maxblocks = nblocks;
+    reduct_supp_data_t reduct;
+    op_setup_reductions(reduct, args, nargs, maxblocks);
+    setRedArrToArg<double, OP_INC>(args[0], maxblocks, arg0h);
+    mvReductArraysToDevice(reduct.reduct_bytes);
+    int nshared = reduct.reduct_size * nthread;
+    op_cuda_skeleton<<<nblocks, nthread, nshared>>>((double *)arg0.data_d,
+                                                    set->size);
 
-    op_cuda_skeleton((double *)arg0.data_d, set->size);
-
-    mvReductArraysToHost(reduct_bytes);
+    mvReductArraysToHost(reduct.reduct_bytes);
+    updateRedArrToArg<double, OP_INC>(args[0], maxblocks, arg0h);
   }
 
   op_mpi_set_dirtybit_cuda(nargs, args);
