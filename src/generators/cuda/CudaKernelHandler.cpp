@@ -28,16 +28,31 @@ const DeclarationMatcher CUDAKernelHandler::arg0hDeclMatcher =
             hasAncestor(functionDecl(hasName("op_par_loop_skeleton"))))
         .bind("arg0h_decl");
 
-const DeclarationMatcher CUDAKernelHandler::hostReductArrsMatcher =
-    varDecl(hasName("reduct_bytes"),
-            hasAncestor(functionDecl(hasName("op_par_loop_skeleton"))))
-        .bind("reduct_bytes");
-
-const StatementMatcher CUDAKernelHandler::mvReductCallMatcher =
-    callExpr(callee(functionDecl(hasName("mvReductArraysToHost"),
-                                 parameterCountIs(1))),
+const StatementMatcher CUDAKernelHandler::setReductionArraysToArgsMatcher =
+    callExpr(callee(functionDecl(hasName("setRedArrToArg"))),
              hasAncestor(functionDecl(hasName("op_par_loop_skeleton"))))
-        .bind("mvReductArraysToHost");
+        .bind("initRedArrs");
+
+const DeclarationMatcher CUDAKernelHandler::declLocalRedArrMatcher =
+    varDecl(hasName("arg0_l"),
+            hasAncestor(functionDecl(hasName("op_cuda_skeleton"))))
+        .bind("arg0_l_decl");
+
+const StatementMatcher CUDAKernelHandler::opReductionMatcher =
+    forStmt(hasBody(compoundStmt(hasAnySubstatement(
+                callExpr(callee(functionDecl(hasName("op_reduction"))))))))
+        .bind("op_reduction_forstmt");
+
+const StatementMatcher CUDAKernelHandler::setConstantArraysToArgsMatcher =
+    callExpr(callee(functionDecl(hasName("setConstantArrToArg"))),
+             hasAncestor(functionDecl(hasName("op_par_loop_skeleton"))))
+        .bind("initConstArrs");
+
+const StatementMatcher CUDAKernelHandler::updateRedArrsOnHostMatcher =
+    callExpr(
+        callee(functionDecl(hasName("updateRedArrToArg"), parameterCountIs(3))),
+        hasAncestor(functionDecl(hasName("op_par_loop_skeleton"))))
+        .bind("updateRedHost");
 //_________________________________CONSTRUCTORS________________________________
 CUDAKernelHandler::CUDAKernelHandler(
     std::map<std::string, clang::tooling::Replacements> *Replace,
@@ -53,8 +68,11 @@ void CUDAKernelHandler::run(const MatchFinder::MatchResult &Result) {
                hostFuncText.substr(hostFuncText.find("("));
       }))
     return; // if successfully handled return
-  if (!HANDLER(FunctionDecl, 1, "cuda_func_definition",
-               CUDAKernelHandler::getCUDAFuncDefinition))
+  if (!fixLengthReplHandler<FunctionDecl>(
+          Result, Replace, "cuda_func_definition", 61,
+          std::bind(&CUDAKernelHandler::getCUDAFuncDefinition, this)))
+    return; // if successfully handled return
+  if (!HANDLER(CallExpr, 2, "func_call", CUDAKernelHandler::genFuncCall))
     return; // if successfully handled return
   if (!lineReplHandler<CallExpr, 2>(
           Result, Replace, "cuda_func_call", [this]() {
@@ -66,7 +84,7 @@ void CUDAKernelHandler::run(const MatchFinder::MatchResult &Result) {
             bool hasReduction = false;
             for (size_t i = 0; i < loop.getNumArgs(); ++i) {
               const OPArg &arg = loop.getArg(i);
-              os << "(" << arg.type << " *) arg" << i << ".data_d,";
+              os << "(" << arg.type << " *) args[" << i << "].data_d,";
               if (arg.isReduction())
                 hasReduction = true;
             }
@@ -76,27 +94,99 @@ void CUDAKernelHandler::run(const MatchFinder::MatchResult &Result) {
             return begin + ">>>(" + os.str();
           }))
     return; // if successfully handled return
-  if (!HANDLER(VarDecl, 6, "arg0h_decl",
-               CUDAKernelHandler::getLocalVarDecls4Reduct))
+  if (!HANDLER(VarDecl, 6, "arg0h_decl", CUDAKernelHandler::getLocalVarDecls))
     return;
-  if (!HANDLER(VarDecl, 2, "reduct_bytes",
-               CUDAKernelHandler::getReductArrsToDevice))
+  if (!HANDLER(CallExpr, 2, "initRedArrs",
+               CUDAKernelHandler::getReductArrsToDevice<false>))
     return;
-  if (!HANDLER(CallExpr, 2, "mvReductArraysToHost",
+  if (!HANDLER(CallExpr, 2, "initConstArrs",
+               CUDAKernelHandler::getReductArrsToDevice<true>))
+    return;
+  if (!HANDLER(CallExpr, 2, "updateRedHost",
                CUDAKernelHandler::getHostReduction))
+    return;
+  if (!HANDLER(VarDecl, 2, "arg0_l_decl", CUDAKernelHandler::genLocalArrDecl))
+    return;
+  if (!HANDLER(ForStmt, 1, "op_reduction_forstmt",
+               CUDAKernelHandler::genRedForstmt))
     return;
 }
 
 //___________________________________HANDLERS__________________________________
 
+std::string CUDAKernelHandler::genFuncCall() {
+  const ParLoop &loop = application.getParLoops()[loopIdx];
+  std::string funcCall = "";
+  llvm::raw_string_ostream os(funcCall);
+
+  os << loop.getName() << "_gpu(arg0";
+  if (loop.getArg(0).isReduction()) {
+    os << "_l";
+  } else if (!loop.getArg(0).isGBL) {
+    os << "+n*" << loop.getArg(0).dim;
+  }
+  for (size_t i = 1; i < loop.getNumArgs(); ++i) {
+    const OPArg &arg = loop.getArg(i);
+    os << ",arg" << i;
+    if (arg.isReduction()) {
+      os << "_l";
+    } else if (!arg.isGBL) {
+      os << "+n*" << arg.dim;
+    }
+  }
+
+  os << ");";
+
+  return os.str();
+}
+
+std::string CUDAKernelHandler::genRedForstmt() {
+  const ParLoop &loop = application.getParLoops()[loopIdx];
+  std::string repl = "";
+  llvm::raw_string_ostream os(repl);
+  for (size_t i = 0; i < loop.getNumArgs(); ++i) {
+    const OPArg &arg = loop.getArg(i);
+    if (arg.isReduction()) {
+      std::string argstr = "arg" + std::to_string(i);
+      std::string globidx = "[d+blockIdx.x*" + std::to_string(arg.dim) + "]";
+
+      os << "for(int d=0;d<" << arg.dim << ";++d){";
+      os << "op_reduction<" << arg.accs << ">(&" << argstr << globidx << ", "
+         << argstr << "_l[d]);";
+      os << "}";
+    }
+  }
+  return os.str();
+}
+
+std::string CUDAKernelHandler::genLocalArrDecl() {
+  const ParLoop &loop = application.getParLoops()[loopIdx];
+  std::string localArrDecl = "";
+  llvm::raw_string_ostream os(localArrDecl);
+  for (size_t i = 0; i < loop.getNumArgs(); ++i) {
+    const OPArg &arg = loop.getArg(i);
+    // reduction inside function
+    if (arg.isReduction()) {
+      std::string argstr = "arg" + std::to_string(i);
+      std::string globidx = "[d+blockIdx.x*" + std::to_string(arg.dim) + "]";
+
+      os << arg.type << " " << argstr << "_l[" << arg.dim << "];";
+      os << "for(int d=0;d<" << arg.dim << ";++d){" << argstr << "_l[d] = ";
+      if (arg.accs == OP2::OP_INC) {
+        os << "ZERO_" << arg.type << ";";
+      } else { // min/max red
+        os << argstr << globidx << ";";
+      }
+      os << "}";
+    }
+  }
+  return os.str();
+}
+
 std::string CUDAKernelHandler::getCUDAFuncDefinition() {
   const ParLoop &loop = application.getParLoops()[loopIdx];
   std::string funcDef = "__global__ void op_cuda_" + loop.getName() + "(";
   llvm::raw_string_ostream os(funcDef);
-
-  // local helper vars for reduction handling
-  std::string localVars4Red = "", globalRed = "";
-  llvm::raw_string_ostream localOS(localVars4Red), globalRedOS(globalRed);
 
   for (size_t i = 0; i < loop.getNumArgs(); ++i) {
     const OPArg &arg = loop.getArg(i);
@@ -107,66 +197,19 @@ std::string CUDAKernelHandler::getCUDAFuncDefinition() {
       os << arg.type << " *arg";
     }
     os << i << ",";
-
-    // reduction inside function
-
-    if (arg.isReduction()) {
-      std::string argstr = "arg" + std::to_string(i);
-      std::string globidx = "[d+blockIdx.x*" + std::to_string(arg.dim) + "]";
-
-      localOS << arg.type << " " << argstr << "_l[" << arg.dim << "];";
-      localOS << "for(int d=0;d<" << arg.dim << ";++d){";
-      localOS << argstr << "_l[d] = ";
-      if (arg.accs == OP2::OP_INC) {
-        localOS << "ZERO_" << arg.type << ";";
-      } else { // min/max red
-        localOS << argstr << globidx << ";";
-      }
-      localOS << "}";
-
-      localOS.str();
-
-      globalRedOS << "for(int d=0;d<" << arg.dim << ";++d){";
-      globalRedOS << "op_reduction<" << arg.accs << ">(&" << argstr << globidx
-                  << ", " << argstr << "_l[d]);";
-      globalRedOS << "}";
-      globalRedOS.str();
-    }
   }
 
-  os << "int set_size) {"
-     << "int n = threadIdx.x + blockIdx.x * blockDim.x;";
-
-  os << localVars4Red;
-
-  os << "if (n < set_size) {" << loop.getName() << "_gpu(";
-  if (loop.getArg(0).isReduction()) {
-    os << "arg0_l";
-  } else {
-    os << "arg0+n*" << loop.getArg(0).dim;
-  }
-  for (size_t i = 1; i < loop.getNumArgs(); ++i) {
-    const OPArg &arg = loop.getArg(i);
-    os << ",arg" << i;
-    if (arg.isReduction()) {
-      os << "_l";
-    } else {
-      os << "+n*" << arg.dim;
-    }
-  }
-
-  os << ");}"; // close if(n<set_size)
-  os << globalRed;
-  return os.str() + "}"; // close function def
+  os << "int set_size)";
+  return os.str();
 }
 
-std::string CUDAKernelHandler::getLocalVarDecls4Reduct() {
+std::string CUDAKernelHandler::getLocalVarDecls() {
   const ParLoop &loop = application.getParLoops()[loopIdx];
   std::string varDecls = "";
   llvm::raw_string_ostream os(varDecls);
   for (size_t i = 0; i < loop.getNumArgs(); ++i) {
     const OPArg &arg = loop.getArg(i);
-    if (arg.isReduction()) {
+    if (arg.isGBL) {
       std::string argi = "arg" + std::to_string(i);
       os << arg.type << "* " << argi << "h = (" << arg.type << " *)" << argi
          << ".data;";
@@ -176,69 +219,46 @@ std::string CUDAKernelHandler::getLocalVarDecls4Reduct() {
   return os.str();
 }
 
+template <bool GEN_CONSTANTS>
 std::string CUDAKernelHandler::getReductArrsToDevice() {
   const ParLoop &loop = application.getParLoops()[loopIdx];
 
-  const std::string begin =
-      "int maxblocks = nblocks;int reduct_bytes = 0;int reduct_size  = 0;";
-
-  std::string redString = "", initRedArrs = "";
-  llvm::raw_string_ostream redBytesOS(redString), initArrOs(initRedArrs);
+  std::string initRedArrs = "";
+  llvm::raw_string_ostream initArrOs(initRedArrs);
   for (size_t i = 0; i < loop.getNumArgs(); ++i) {
     const OPArg &arg = loop.getArg(i);
-    if (arg.isReduction()) {
-      redBytesOS << "reduct_bytes += ROUND_UP(maxblocks*" << arg.dim
-                 << "*sizeof(" << arg.type << "));"
-                 << "reduct_size   = MAX(reduct_size,sizeof(" << arg.type
-                 << "));";
+    if (!GEN_CONSTANTS && arg.isReduction()) {
       std::string argi = "arg" + std::to_string(i);
-      initArrOs << argi << ".data   = OP_reduct_h + reduct_bytes;";
-      initArrOs << argi << ".data_d = OP_reduct_d + reduct_bytes;";
-      initArrOs << "for( int b=0; b<maxblocks; b++ ){"
-                << "for( int d=0; d<" << arg.dim << "; ++d){ ((" << arg.type
-                << "*)" << argi << ".data)[d+b*" << arg.dim << "]=";
       if (arg.accs == OP2::OP_INC) {
-        initArrOs << "ZERO_" << arg.type << ";";
-      } else { // min/max red
-        initArrOs << argi << "h[d];";
+        initArrOs << arg.type << " " << argi << "_ZERO = ZERO_" << arg.type
+                  << ";";
       }
-      initArrOs << "}}";
-      initArrOs << "reduct_bytes += ROUND_UP(maxblocks*" << arg.dim
-                << "*sizeof(" << arg.type << "));";
+      initArrOs << "setRedArrToArg<" << arg.type << "," << arg.accs << ">(args["
+                << i << "],maxblocks,";
+      if (arg.accs == OP_INC) {
+        initArrOs << "&" << argi << "_ZERO);";
+      } else {
+        initArrOs << argi << "h);";
+      }
+    } else if (GEN_CONSTANTS && arg.isGBL && arg.accs == OP2::OP_READ) {
+      initArrOs << "setConstantArrToArg<" << arg.type << ">(args[" << i
+                << "],arg" << i << "h);";
     }
   }
-  if (redBytesOS.str() == "")
-    return "";
-
-  return begin + redString +
-         "reallocReductArrays(reduct_bytes);reduct_bytes=0;" + initArrOs.str() +
-         "mvReductArraysToDevice(reduct_bytes);int nshared = "
-         "reduct_size*nthread;";
+  return initArrOs.str();
 }
 
 std::string CUDAKernelHandler::getHostReduction() {
   const ParLoop &loop = application.getParLoops()[loopIdx];
-  std::string begin = "//transfer global reduction data back to "
-                      "CPU\nmvReductArraysToHost(reduct_bytes);";
+  std::string begin = "//Perform global reduction on CPU\n";
   std::string copyCalls = "";
   llvm::raw_string_ostream os(copyCalls);
   for (size_t i = 0; i < loop.getNumArgs(); ++i) {
     if (loop.getArg(i).isReduction()) {
       const OPArg &arg = loop.getArg(i);
-      os << "for(int b=0;b<maxblocks;b++){";
-      os << "for(int d=0;d<" << arg.dim << ";d++){";
       std::string argi = "arg" + std::to_string(i);
-      os << argi << "h[d] = ";
-      if (arg.accs == OP2::OP_INC) {
-        os << argi << "h[d] + ((" << arg.type << " *)" << argi << ".data)[d+b*"
-           << arg.dim << "];";
-      } else {
-        os << ((arg.accs == OP2::OP_MIN) ? "MIN(" : "MAX(") << argi
-           << "h[d], ((" << arg.type << " *)" << argi << ".data)[d+b*"
-           << arg.dim << "]);";
-      }
-      os << "}}" << argi << ".data= (char *)" << argi << "h;";
-      os << "op_mpi_reduce(&" << argi << "," << argi << "h);";
+      os << "updateRedArrToArg<" << arg.type << "," << arg.accs << ">(args["
+         << i << "],maxblocks," << argi << "h);";
     }
   }
 

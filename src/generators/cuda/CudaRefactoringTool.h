@@ -39,18 +39,25 @@ public:
       clang::ast_matchers::MatchFinder &Finder) override {
 
     Finder.addMatcher(SeqKernelHandler::userFuncMatcher, &cudaKernelHandler);
+    Finder.addMatcher(SeqKernelHandler::funcCallMatcher, &cudaKernelHandler);
     Finder.addMatcher(CUDAKernelHandler::cudaFuncMatcher, &cudaKernelHandler);
     Finder.addMatcher(CUDAKernelHandler::cudaFuncCallMatcher,
                       &cudaKernelHandler);
-    Finder.addMatcher(CUDAKernelHandler::hostReductArrsMatcher,
+    Finder.addMatcher(CUDAKernelHandler::setReductionArraysToArgsMatcher,
+                      &cudaKernelHandler);
+    Finder.addMatcher(CUDAKernelHandler::setConstantArraysToArgsMatcher,
                       &cudaKernelHandler);
     Finder.addMatcher(CUDAKernelHandler::arg0hDeclMatcher, &cudaKernelHandler);
-    Finder.addMatcher(CUDAKernelHandler::mvReductCallMatcher,
+    Finder.addMatcher(CUDAKernelHandler::updateRedArrsOnHostMatcher,
+                      &cudaKernelHandler);
+    Finder.addMatcher(CUDAKernelHandler::opReductionMatcher,
+                      &cudaKernelHandler);
+    Finder.addMatcher(CUDAKernelHandler::declLocalRedArrMatcher,
                       &cudaKernelHandler);
   }
 
   static constexpr const char *_postfix = "kernel";
-  static constexpr unsigned numParams = 1;
+  static constexpr unsigned numParams = 4;
   static const std::string commandlineParams[numParams];
 
   /// @brief Generate the name of the output file.
@@ -70,7 +77,10 @@ const std::string CUDARefactoringTool::skeletons[2] = {
     "skeleton_direct_kernel.cu", "skeleton_kernel.cu"};
 const std::string
     CUDARefactoringTool::commandlineParams[CUDARefactoringTool::numParams] = {
-        std::string("-include") + OP2_INC + "op_cuda_rt_support.h"};
+        std::string("-include") + OP2_INC + "op_cuda_rt_support.h",
+        std::string("-include") + OP2_INC + "op_cuda_reduction_supp.h",
+        std::string("-include") + OP2_INC + "op_cuda_reduction.h",
+        "--cuda-device-only"};
 } // namespace OP2
 
 #endif

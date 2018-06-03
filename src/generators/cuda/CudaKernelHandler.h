@@ -16,9 +16,12 @@ protected:
   const size_t loopIdx;
 
   std::string getCUDAFuncDefinition();
-  std::string getLocalVarDecls4Reduct();
-  std::string getReductArrsToDevice();
+  std::string getLocalVarDecls();
+  template <bool GEN_CONSTANTS = false> std::string getReductArrsToDevice();
   std::string getHostReduction();
+  std::string genLocalArrDecl();
+  std::string genRedForstmt();
+  std::string genFuncCall();
 
 public:
   /// @brief Construct a CUDAKernelHandler
@@ -33,8 +36,11 @@ public:
   // Static matchers handled by this class
   static const matchers::DeclarationMatcher cudaFuncMatcher;
   static const matchers::StatementMatcher cudaFuncCallMatcher;
-  static const matchers::StatementMatcher mvReductCallMatcher;
-  static const matchers::DeclarationMatcher hostReductArrsMatcher;
+  static const matchers::DeclarationMatcher declLocalRedArrMatcher;
+  static const matchers::StatementMatcher opReductionMatcher;
+  static const matchers::StatementMatcher updateRedArrsOnHostMatcher;
+  static const matchers::StatementMatcher setReductionArraysToArgsMatcher;
+  static const matchers::StatementMatcher setConstantArraysToArgsMatcher;
   static const matchers::DeclarationMatcher arg0hDeclMatcher;
 
   virtual void run(const matchers::MatchFinder::MatchResult &Result) override;
