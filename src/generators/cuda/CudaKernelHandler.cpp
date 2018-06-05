@@ -18,8 +18,8 @@ const DeclarationMatcher CUDAKernelHandler::cudaFuncMatcher =
         .bind("cuda_func_definition");
 
 const StatementMatcher CUDAKernelHandler::cudaFuncCallMatcher =
-    callExpr(
-        callee(functionDecl(hasName("op_cuda_skeleton"), parameterCountIs(2))))
+    callExpr(callee(functionDecl(hasName("op_cuda_skeleton"))),
+             hasAncestor(functionDecl(hasName("op_par_loop_skeleton"))))
         .bind("cuda_func_call");
 
 const DeclarationMatcher CUDAKernelHandler::arg0hDeclMatcher =
