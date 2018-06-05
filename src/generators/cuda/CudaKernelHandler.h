@@ -23,6 +23,8 @@ protected:
   std::string genLocalArrInit();
   std::string genRedForstmt();
   std::string genFuncCall();
+  std::string genCUDAkernelLaunch();
+  std::string getMapIdxDecls();
 
 public:
   /// @brief Construct a CUDAKernelHandler
@@ -44,6 +46,7 @@ public:
   static const matchers::StatementMatcher setReductionArraysToArgsMatcher;
   static const matchers::StatementMatcher setConstantArraysToArgsMatcher;
   static const matchers::DeclarationMatcher arg0hDeclMatcher;
+  static const matchers::DeclarationMatcher mapidxDeclMatcher;
 
   virtual void run(const matchers::MatchFinder::MatchResult &Result) override;
 };

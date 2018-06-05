@@ -223,7 +223,6 @@ std::string DummyParLoop::getMapVarDecls() const {
   std::string mapDecls = "";
   llvm::raw_string_ostream ss(mapDecls);
   std::vector<int> mapinds(args.size(), -1);
-  std::map<std::string, int> mapToArg;
   for (size_t i = 0; i < args.size(); ++i) {
     if (args[i].isDirect() || args[i].isGBL) {
       continue;

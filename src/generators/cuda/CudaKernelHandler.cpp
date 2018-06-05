@@ -14,8 +14,7 @@ using namespace clang;
 
 //___________________________________MATCHERS__________________________________
 const DeclarationMatcher CUDAKernelHandler::cudaFuncMatcher =
-    functionDecl(hasName("op_cuda_skeleton"), isDefinition(),
-                 parameterCountIs(2))
+    functionDecl(hasName("op_cuda_skeleton"), isDefinition())
         .bind("cuda_func_definition");
 
 const StatementMatcher CUDAKernelHandler::cudaFuncCallMatcher =
@@ -37,6 +36,11 @@ const DeclarationMatcher CUDAKernelHandler::declLocalRedArrMatcher =
     varDecl(hasName("arg0_l"),
             hasAncestor(functionDecl(hasName("op_cuda_skeleton"))))
         .bind("arg0_l_decl");
+
+const DeclarationMatcher CUDAKernelHandler::mapidxDeclMatcher =
+    varDecl(hasName("map1idx"),
+            hasAncestor(functionDecl(hasName("op_cuda_skeleton"))))
+        .bind("mapidx_decl");
 
 const StatementMatcher CUDAKernelHandler::initLocalRedArrMatcher =
     forStmt(hasBody(compoundStmt(hasAnySubstatement(binaryOperator(
@@ -67,6 +71,7 @@ CUDAKernelHandler::CUDAKernelHandler(
 
 //________________________________GLOBAL_HANDLER_______________________________
 void CUDAKernelHandler::run(const MatchFinder::MatchResult &Result) {
+  const ParLoop &loop = this->application.getParLoops()[loopIdx];
   if (!lineReplHandler<FunctionDecl, 1>(Result, Replace, "user_func", [this]() {
         const ParLoop &loop = this->application.getParLoops()[loopIdx];
         std::string hostFuncText = loop.getUserFuncInc();
@@ -75,32 +80,17 @@ void CUDAKernelHandler::run(const MatchFinder::MatchResult &Result) {
       }))
     return; // if successfully handled return
   if (!fixLengthReplHandler<FunctionDecl>(
-          Result, Replace, "cuda_func_definition", 61,
+          Result, Replace, "cuda_func_definition", loop.isDirect() ? 61 : 223,
           std::bind(&CUDAKernelHandler::getCUDAFuncDefinition, this)))
     return; // if successfully handled return
   if (!HANDLER(CallExpr, 2, "func_call", CUDAKernelHandler::genFuncCall))
     return; // if successfully handled return
-  if (!lineReplHandler<CallExpr, 2>(
-          Result, Replace, "cuda_func_call", [this]() {
-            const ParLoop &loop = this->application.getParLoops()[loopIdx];
-            std::string funcCall = "";
-            std::string begin =
-                "op_cuda_" + loop.getName() + "<<<nblocks, nthread";
-            llvm::raw_string_ostream os(funcCall);
-            bool hasReduction = false;
-            for (size_t i = 0; i < loop.getNumArgs(); ++i) {
-              const OPArg &arg = loop.getArg(i);
-              os << "(" << arg.type << " *) args[" << i << "].data_d,";
-              if (arg.isReduction())
-                hasReduction = true;
-            }
-            os << "set->size);";
-            if (hasReduction)
-              begin += ",nshared";
-            return begin + ">>>(" + os.str();
-          }))
+  if (!HANDLER(CallExpr, 2, "cuda_func_call",
+               CUDAKernelHandler::genCUDAkernelLaunch))
     return; // if successfully handled return
   if (!HANDLER(VarDecl, 6, "arg0h_decl", CUDAKernelHandler::getLocalVarDecls))
+    return;
+  if (!HANDLER(VarDecl, 8, "mapidx_decl", CUDAKernelHandler::getMapIdxDecls))
     return;
   if (!HANDLER(CallExpr, 2, "initRedArrs",
                CUDAKernelHandler::getReductArrsToDevice<false>))
@@ -123,30 +113,87 @@ void CUDAKernelHandler::run(const MatchFinder::MatchResult &Result) {
 
 //___________________________________HANDLERS__________________________________
 
+std::string CUDAKernelHandler::getMapIdxDecls() {
+  const ParLoop &loop = this->application.getParLoops()[loopIdx];
+  std::string repl = "";
+  llvm::raw_string_ostream os(repl);
+  std::vector<int> mapinds(loop.getNumArgs(), -1);
+
+  for (size_t i = 0; i < loop.getNumArgs(); ++i) {
+    const OPArg &arg = loop.getArg(i);
+    if (arg.isDirect() || arg.isGBL)
+      continue;
+
+    if (mapinds[loop.mapIdxs[i]] == -1) {
+      mapinds[loop.mapIdxs[i]] = i;
+      os << "int map" << loop.mapIdxs[i] << "idx = opDat"
+         << loop.map2argIdxs[loop.arg2map[i]] << "Map[n + offset_b + set_size *"
+         << arg.idx << "];\n";
+    }
+  }
+
+  return os.str();
+}
+
+std::string CUDAKernelHandler::genCUDAkernelLaunch() {
+  const ParLoop &loop = this->application.getParLoops()[loopIdx];
+  std::string funcCall = "";
+  std::string begin = "op_cuda_" + loop.getName() + "<<<nblocks, nthread";
+  llvm::raw_string_ostream os(funcCall);
+  bool hasReduction = false;
+  for (const int &indirectDatArgIdx : loop.dat2argIdxs) {
+    os << "(" << loop.getArg(indirectDatArgIdx).type << " *) arg"
+       << indirectDatArgIdx << ".data_d,";
+  }
+  for (const int &mappingArgIdx : loop.map2argIdxs) {
+    os << "arg" << mappingArgIdx << ".map_data_d,";
+  }
+  for (size_t i = 0; i < loop.getNumArgs(); ++i) {
+    const OPArg &arg = loop.getArg(i);
+    if (arg.isDirect()) {
+      os << "(" << arg.type << " *) args[" << i << "].data_d,";
+      if (arg.isReduction())
+        hasReduction = true;
+    }
+  }
+
+  if (!loop.isDirect()) {
+    os << "block_offset,Plan->blkmap,Plan->offset,Plan->nelems,Plan->"
+          "nthrcol,Plan->thrcol,Plan->ncolblk[col],set->exec_size+";
+  }
+  os << "set->size);";
+  if (hasReduction) // TODO update
+    begin += ",nshared";
+  return begin + ">>>(" + os.str();
+}
+
 std::string CUDAKernelHandler::genFuncCall() {
   const ParLoop &loop = application.getParLoops()[loopIdx];
   std::string funcCall = "";
   llvm::raw_string_ostream os(funcCall);
 
-  os << loop.getName() << "_gpu(arg0";
-  if (loop.getArg(0).isReduction()) {
-    os << "_l";
-  } else if (!loop.getArg(0).isGBL) {
-    os << "+n*" << loop.getArg(0).dim;
-  }
-  for (size_t i = 1; i < loop.getNumArgs(); ++i) {
+  os << loop.getName() << "_gpu(";
+  for (size_t i = 0; i < loop.getNumArgs(); ++i) {
     const OPArg &arg = loop.getArg(i);
-    os << ",arg" << i;
-    if (arg.isReduction()) {
-      os << "_l";
-    } else if (!arg.isGBL) {
-      os << "+n*" << arg.dim;
+    if (arg.isDirect()) {
+      os << "arg" << i;
+      if (arg.isReduction()) {
+        os << "_l";
+      } else if (!arg.isGBL) {
+        if (loop.isDirect()) {
+          os << "+n*" << arg.dim;
+        } else {
+          os << "+(n+offset_b)*" << arg.dim;
+        }
+      }
+    } else {
+      os << "ind_arg" << loop.dataIdxs[i] << "+map" << loop.mapIdxs[i] << "idx*"
+         << arg.dim;
     }
+    os << ",";
   }
 
-  os << ");";
-
-  return os.str();
+  return os.str().substr(0, os.str().size() - 1) + ");";
 }
 
 std::string CUDAKernelHandler::genRedForstmt() {
@@ -211,15 +258,33 @@ std::string CUDAKernelHandler::getCUDAFuncDefinition() {
   std::string funcDef = "__global__ void op_cuda_" + loop.getName() + "(";
   llvm::raw_string_ostream os(funcDef);
 
+  for (size_t i = 0; i < loop.dat2argIdxs.size(); ++i) {
+    const OPArg &arg = loop.getArg(loop.dat2argIdxs[i]);
+
+    if (arg.accs == OP2::OP_READ) {
+      os << " const " << arg.type << " *__restrict ";
+    } else {
+      os << arg.type << "*";
+    }
+    os << "ind_arg" << i << ",";
+  }
+  for (const int &mappingArgIdx : loop.map2argIdxs) {
+    os << "const int *__restrict opDat" << mappingArgIdx << "Map,";
+  }
   for (size_t i = 0; i < loop.getNumArgs(); ++i) {
     const OPArg &arg = loop.getArg(i);
-    // function parameters
-    if (arg.accs == OP2::OP_READ) {
-      os << "const " << arg.type << " *__restrict arg";
-    } else {
-      os << arg.type << " *arg";
+    if (arg.isDirect()) {
+      if (arg.accs == OP2::OP_READ) {
+        os << "const " << arg.type << " *__restrict arg";
+      } else {
+        os << arg.type << " *arg";
+      }
+      os << i << ",";
     }
-    os << i << ",";
+  }
+  if (!loop.isDirect()) {
+    os << "int block_offset, int *blkmap, int *offset, int *nelems, int"
+          "*ncolors, int *colors, int nblocks,";
   }
 
   os << "int set_size)";
