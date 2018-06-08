@@ -80,7 +80,8 @@ void CUDAKernelHandler::run(const MatchFinder::MatchResult &Result) {
       }))
     return; // if successfully handled return
   if (!fixLengthReplHandler<FunctionDecl>(
-          Result, Replace, "cuda_func_definition", loop.isDirect() ? 61 : 223,
+          Result, Replace, "cuda_func_definition",
+          loop.isDirect() ? 61 : 129, // 223,
           std::bind(&CUDAKernelHandler::getCUDAFuncDefinition, this)))
     return; // if successfully handled return
   if (!HANDLER(CallExpr, 2, "func_call", CUDAKernelHandler::genFuncCall))
@@ -127,7 +128,8 @@ std::string CUDAKernelHandler::getMapIdxDecls() {
     if (mapinds[loop.mapIdxs[i]] == -1) {
       mapinds[loop.mapIdxs[i]] = i;
       os << "int map" << loop.mapIdxs[i] << "idx = opDat"
-         << loop.map2argIdxs[loop.arg2map[i]] << "Map[n + offset_b + set_size *"
+         // << loop.map2argIdxs[loop.arg2map[i]] << "Map[n + offset_b + set_size *"
+         << loop.map2argIdxs[loop.arg2map[i]] << "Map[n + set_size *"
          << arg.idx << "];\n";
     }
   }
@@ -158,8 +160,9 @@ std::string CUDAKernelHandler::genCUDAkernelLaunch() {
   }
 
   if (!loop.isDirect()) {
-    os << "block_offset,Plan->blkmap,Plan->offset,Plan->nelems,Plan->"
-          "nthrcol,Plan->thrcol,Plan->ncolblk[col],set->exec_size+";
+    os << "start, end, Plan->col_reord,";
+    // os << "block_offset,Plan->blkmap,Plan->offset,Plan->nelems,Plan->"
+    //       "nthrcol,Plan->thrcol,Plan->ncolblk[col],set->exec_size+";
   }
   os << "set->size);";
   if (hasReduction) // TODO update
@@ -180,11 +183,11 @@ std::string CUDAKernelHandler::genFuncCall() {
       if (arg.isReduction()) {
         os << "_l";
       } else if (!arg.isGBL) {
-        if (loop.isDirect()) {
-          os << "+n*" << arg.dim;
-        } else {
-          os << "+(n+offset_b)*" << arg.dim;
-        }
+        // if (loop.isDirect()) { //TODO 2level color
+        os << "+n*" << arg.dim;
+        // } else {
+        //   os << "+(n+offset_b)*" << arg.dim;
+        // }
       }
     } else {
       os << "ind_arg" << loop.dataIdxs[i] << "+map" << loop.mapIdxs[i] << "idx*"
@@ -283,8 +286,9 @@ std::string CUDAKernelHandler::getCUDAFuncDefinition() {
     }
   }
   if (!loop.isDirect()) {
-    os << "int block_offset, int *blkmap, int *offset, int *nelems, int"
-          "*ncolors, int *colors, int nblocks,";
+    os << "int start, int end, int *col_reord,";
+    // os << "int block_offset, int *blkmap, int *offset, int *nelems, int"
+    //       "*ncolors, int *colors, int nblocks,";
   }
 
   os << "int set_size)";

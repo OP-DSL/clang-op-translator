@@ -48,19 +48,19 @@ public:
     Finder.addMatcher(CUDAKernelHandler::cudaFuncCallMatcher,
                       &cudaKernelHandler); // TODO update
     Finder.addMatcher(CUDAKernelHandler::setReductionArraysToArgsMatcher,
-                      &cudaKernelHandler);
+                      &cudaKernelHandler); // check
     Finder.addMatcher(CUDAKernelHandler::setConstantArraysToArgsMatcher,
-                      &cudaKernelHandler);
-    Finder.addMatcher(CUDAKernelHandler::arg0hDeclMatcher, &cudaKernelHandler);
-    Finder.addMatcher(CUDAKernelHandler::mapidxDeclMatcher, &cudaKernelHandler);
+                      &cudaKernelHandler); // check
+    Finder.addMatcher(CUDAKernelHandler::arg0hDeclMatcher, &cudaKernelHandler); // check
+    Finder.addMatcher(CUDAKernelHandler::mapidxDeclMatcher, &cudaKernelHandler); // check
     Finder.addMatcher(CUDAKernelHandler::updateRedArrsOnHostMatcher,
-                      &cudaKernelHandler);
+                      &cudaKernelHandler); // check
     Finder.addMatcher(CUDAKernelHandler::opReductionMatcher,
-                      &cudaKernelHandler);
+                      &cudaKernelHandler); // check
     Finder.addMatcher(CUDAKernelHandler::declLocalRedArrMatcher,
-                      &cudaKernelHandler);
+                      &cudaKernelHandler); // check
     Finder.addMatcher(CUDAKernelHandler::initLocalRedArrMatcher,
-                      &cudaKernelHandler);
+                      &cudaKernelHandler); // check
   }
 
   static constexpr const char *_postfix = "kernel";
