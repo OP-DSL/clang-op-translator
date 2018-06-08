@@ -4,11 +4,10 @@
 // OP2 includes
 #include "core/OP2WriteableRefactoringTool.hpp"
 #include "core/OPParLoopData.h"
+#include "core/op2_clang_core.h"
 #include "clang/ASTMatchers/ASTMatchFinder.h"
 
 namespace OP2 {
-
-enum OP2Targets { all = 0, none, seq, openmp, vec, cuda };
 
 /// @brief This class is responsible for processing OP2 applications.
 /// Collect data about parloops and constants. Also generates the modified
@@ -17,6 +16,7 @@ enum OP2Targets { all = 0, none, seq, openmp, vec, cuda };
 class OP2RefactoringTool : public OP2WriteableRefactoringTool {
 protected:
   OP2Targets opTarget;
+  Staging staging;
   std::vector<std::string> &commandLineArgs;
   clang::tooling::FixedCompilationDatabase &Compilations;
   // We can collect all data about kernels
@@ -26,7 +26,7 @@ public:
   OP2RefactoringTool(std::vector<std::string> &commandLineArgs,
                      clang::tooling::FixedCompilationDatabase &compilations,
                      clang::tooling::CommonOptionsParser &optionsParser,
-                     OP2Targets opTarget);
+                     OP2Targets opTarget, Staging staging);
 
   /// @brief Generates target specific kernelfiles for all parLoop and all
   /// specified target.

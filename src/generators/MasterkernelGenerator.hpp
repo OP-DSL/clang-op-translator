@@ -1,6 +1,7 @@
 #ifndef MASTERKERNELGENERATOR_HPP
 #define MASTERKERNELGENERATOR_HPP
 #include "core/OP2WriteableRefactoringTool.hpp"
+#include "core/op2_clang_core.h"
 #include "generators/common/handler.hpp"
 #include "generators/cuda/CudaRefactoringTool.h"
 #include "generators/openmp/OMPRefactoringTool.h"
@@ -61,6 +62,7 @@ public:
 template <typename KernelGeneratorType, typename Handler = MasterKernelHandler>
 class MasterkernelGenerator : public OP2WriteableRefactoringTool {
 protected:
+  const Staging staging;
   const OP2Application &application;
   std::vector<std::string> commandLineArgs;
   std::vector<std::string> generatedFiles;
@@ -69,10 +71,11 @@ public:
   MasterkernelGenerator(const OP2Application &app,
                         std::vector<std::string> &args,
                         clang::tooling::FixedCompilationDatabase &compilations,
+                        Staging staging,
                         std::string skeleton_name = "skeleton_kernels.cpp")
       : OP2WriteableRefactoringTool(
             compilations, {std::string(SKELETONS_DIR) + skeleton_name}),
-        application(app), commandLineArgs(args) {}
+        staging(staging), application(app), commandLineArgs(args) {}
 
   /// @brief Generates kernelfiles for all parLoop and then the master kernel
   ///  file.

@@ -17,6 +17,13 @@ static llvm::cl::opt<OP2::OP2Targets>
                  clEnumValN(OP2::openmp, "openmp", "OpenMP"),
                  clEnumValN(OP2::cuda, "cuda", "CUDA"),
                  clEnumValN(OP2::vec, "vec", "Vectorization")));
+static llvm::cl::opt<OP2::Staging> staging(
+    "staging", llvm::cl::desc("Sets the staging and coloring type for cuda."),
+    llvm::cl::init(OP2::OP_STAGE_ALL), llvm::cl::cat(Op2Category),
+    llvm::cl::values(
+        clEnumValN(OP2::OP_STAGE_ALL, "op_stage_all",
+                   "Use hierarchical coloring with staging [default]"),
+        clEnumValN(OP2::OP_COlOR2, "op_color2", "Use global coloring")));
 
 int main(int argc, const char **argv) {
   using namespace clang::tooling;
@@ -28,7 +35,7 @@ int main(int argc, const char **argv) {
   args.insert(args.begin(), std::string("-I") + OP2_INC);
   clang::tooling::FixedCompilationDatabase Compilations(".", args);
   OP2::OP2RefactoringTool Tool(args, Compilations, OptionsParser,
-                               opTarget.getValue());
+                               opTarget.getValue(), staging.getValue());
   // Collect data about the application and generate modified application files.
   if (int Result = Tool.generateOPFiles()) {
     return Result;
