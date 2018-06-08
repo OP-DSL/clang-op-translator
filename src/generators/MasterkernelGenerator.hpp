@@ -102,7 +102,7 @@ public:
     clang::tooling::FixedCompilationDatabase F(".", commandLineArgs);
     for (size_t i = 0; i < application.getParLoops().size(); ++i) {
 
-      KernelGeneratorType tool(F, application, i);
+      KernelGeneratorType tool(F, application, i, staging);
       if (tool.generateKernelFile()) {
         llvm::outs() << "Error during processing ";
       }

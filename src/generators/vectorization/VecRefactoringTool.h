@@ -1,6 +1,7 @@
 #ifndef VECREFACTORINGTOOL_H
 #define VECREFACTORINGTOOL_H value
 #include "core/OPParLoopData.h"
+#include "core/op2_clang_core.h"
 #include "generators/common/GeneratorBase.hpp"
 #include "generators/sequential/SeqKernelHandler.h"
 #include "generators/vectorization/VecKernelHandler.h"
@@ -15,7 +16,7 @@ class VecRefactoringTool : public OP2KernelGeneratorBase {
 
 public:
   VecRefactoringTool(const clang::tooling::CompilationDatabase &Compilations,
-                     const OP2Application &app, size_t idx)
+                     const OP2Application &app, size_t idx, Staging)
       : OP2KernelGeneratorBase(Compilations,
                                {std::string(SKELETONS_DIR) +
                                 skeletons[!app.getParLoops()[idx].isDirect()]},

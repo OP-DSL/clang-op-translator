@@ -14,7 +14,8 @@ using namespace clang;
 
 //___________________________________MATCHERS__________________________________
 const DeclarationMatcher CUDAKernelHandler::cudaFuncMatcher =
-    functionDecl(hasName("op_cuda_skeleton"), isDefinition())
+    functionDecl(hasName("op_cuda_skeleton"), isDefinition(),
+                 hasBody(compoundStmt().bind("END")))
         .bind("cuda_func_definition");
 
 const StatementMatcher CUDAKernelHandler::cudaFuncCallMatcher =
@@ -79,9 +80,8 @@ void CUDAKernelHandler::run(const MatchFinder::MatchResult &Result) {
                hostFuncText.substr(hostFuncText.find("("));
       }))
     return; // if successfully handled return
-  if (!fixLengthReplHandler<FunctionDecl>(
+  if (!fixEndReplHandler<FunctionDecl, CompoundStmt>(
           Result, Replace, "cuda_func_definition",
-          loop.isDirect() ? 61 : 129, // 223,
           std::bind(&CUDAKernelHandler::getCUDAFuncDefinition, this)))
     return; // if successfully handled return
   if (!HANDLER(CallExpr, 2, "func_call", CUDAKernelHandler::genFuncCall))
@@ -128,9 +128,10 @@ std::string CUDAKernelHandler::getMapIdxDecls() {
     if (mapinds[loop.mapIdxs[i]] == -1) {
       mapinds[loop.mapIdxs[i]] = i;
       os << "int map" << loop.mapIdxs[i] << "idx = opDat"
-         // << loop.map2argIdxs[loop.arg2map[i]] << "Map[n + offset_b + set_size *"
-         << loop.map2argIdxs[loop.arg2map[i]] << "Map[n + set_size *"
-         << arg.idx << "];\n";
+         // << loop.map2argIdxs[loop.arg2map[i]] << "Map[n + offset_b + set_size
+         // *"
+         << loop.map2argIdxs[loop.arg2map[i]] << "Map[n + set_size *" << arg.idx
+         << "];\n";
     }
   }
 

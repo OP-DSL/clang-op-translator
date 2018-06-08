@@ -2,6 +2,7 @@
 #define OMPREFACTORINGTOOL_H
 
 #include "core/OPParLoopData.h"
+#include "core/op2_clang_core.h"
 #include "generators/common/GeneratorBase.hpp"
 #include "generators/openmp/OMPKernelHandler.h"
 #include "generators/sequential/SeqKernelHandler.h"
@@ -29,7 +30,7 @@ public:
   /// @param PCHContainerOps The PCHContainerOperation for loading and creating
   /// clang modules
   OMPRefactoringTool(const clang::tooling::CompilationDatabase &Compilations,
-                     const OP2Application &app, size_t idx)
+                     const OP2Application &app, size_t idx, Staging)
       : OP2KernelGeneratorBase(Compilations,
                                {std::string(SKELETONS_DIR) +
                                 skeletons[!app.getParLoops()[idx].isDirect()]},
