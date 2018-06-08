@@ -81,7 +81,7 @@ public:
 };
 
 const std::string CUDARefactoringTool::skeletons[2] = {
-    "skeleton_direct_kernel.cu", "skeleton_kernel.cu"};
+    "cuda/skeleton_direct_kernel.cu", "cuda/skeleton_global_kernel.cu"};
 const std::string
     CUDARefactoringTool::commandlineParams[CUDARefactoringTool::numParams] = {
         std::string("-include") + OP2_INC + "op_cuda_rt_support.h",
