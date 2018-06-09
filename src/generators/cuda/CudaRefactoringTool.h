@@ -42,7 +42,8 @@ public:
             {std::string(SKELETONS_DIR) +
              skeletons[getLoopType(app.getParLoops()[idx], staging)]},
             app, idx, CUDARefactoringTool::_postfix),
-        cudaKernelHandler(&getReplacements(), app, idx), staging(staging) {}
+        cudaKernelHandler(&getReplacements(), app, idx, staging),
+        staging(staging) {}
 
   /// @brief Adding CUDA specific Matchers and handlers.
   ///   Called from OP2KernelGeneratorBase::GenerateKernelFile()
@@ -51,26 +52,24 @@ public:
   virtual void addGeneratorSpecificMatchers(
       clang::ast_matchers::MatchFinder &Finder) override {
 
-    Finder.addMatcher(SeqKernelHandler::userFuncMatcher,
-                      &cudaKernelHandler); // TODO check
+    Finder.addMatcher(SeqKernelHandler::userFuncMatcher, &cudaKernelHandler);
     Finder.addMatcher(SeqKernelHandler::funcCallMatcher,
                       &cudaKernelHandler); // TODO update
-    Finder.addMatcher(CUDAKernelHandler::cudaFuncMatcher,
-                      &cudaKernelHandler); // TODO update
+    Finder.addMatcher(CUDAKernelHandler::cudaFuncMatcher, &cudaKernelHandler);
     Finder.addMatcher(CUDAKernelHandler::cudaFuncCallMatcher,
-                      &cudaKernelHandler); // TODO update
+                      &cudaKernelHandler); // check shared
     Finder.addMatcher(CUDAKernelHandler::setReductionArraysToArgsMatcher,
-                      &cudaKernelHandler); // check
+                      &cudaKernelHandler);
     Finder.addMatcher(CUDAKernelHandler::setConstantArraysToArgsMatcher,
-                      &cudaKernelHandler); // check
+                      &cudaKernelHandler);
     Finder.addMatcher(CUDAKernelHandler::arg0hDeclMatcher,
                       &cudaKernelHandler); // check
     Finder.addMatcher(CUDAKernelHandler::mapidxDeclMatcher,
-                      &cudaKernelHandler); // check
+                      &cudaKernelHandler); // check + separate to 2
     Finder.addMatcher(CUDAKernelHandler::updateRedArrsOnHostMatcher,
-                      &cudaKernelHandler); // check
+                      &cudaKernelHandler);
     Finder.addMatcher(CUDAKernelHandler::opReductionMatcher,
-                      &cudaKernelHandler); // check
+                      &cudaKernelHandler);
     Finder.addMatcher(CUDAKernelHandler::declLocalRedArrMatcher,
                       &cudaKernelHandler); // check
     Finder.addMatcher(CUDAKernelHandler::initLocalRedArrMatcher,

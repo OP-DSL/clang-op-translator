@@ -1,6 +1,7 @@
 #ifndef CUDAKERNELHANDLER_H
 #define CUDAKERNELHANDLER_H
 #include "core/OPParLoopData.h"
+#include "core/op2_clang_core.h"
 #include "clang/ASTMatchers/ASTMatchFinder.h"
 #include "clang/Tooling/Refactoring.h"
 
@@ -14,6 +15,7 @@ protected:
   std::map<std::string, clang::tooling::Replacements> *Replace;
   const OP2Application &application;
   const size_t loopIdx;
+  Staging staging;
 
   std::string getCUDAFuncDefinition();
   std::string getLocalVarDecls();
@@ -35,7 +37,7 @@ public:
   /// @param idx index of the currently generated loop
   CUDAKernelHandler(
       std::map<std::string, clang::tooling::Replacements> *Replace,
-      const OP2Application &app, size_t idx);
+      const OP2Application &app, size_t idx, Staging staging);
   // Static matchers handled by this class
   static const matchers::DeclarationMatcher cudaFuncMatcher;
   static const matchers::StatementMatcher cudaFuncCallMatcher;

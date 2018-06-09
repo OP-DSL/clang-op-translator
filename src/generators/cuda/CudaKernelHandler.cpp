@@ -67,12 +67,11 @@ const StatementMatcher CUDAKernelHandler::updateRedArrsOnHostMatcher =
 //_________________________________CONSTRUCTORS________________________________
 CUDAKernelHandler::CUDAKernelHandler(
     std::map<std::string, clang::tooling::Replacements> *Replace,
-    const OP2Application &app, size_t idx)
-    : Replace(Replace), application(app), loopIdx(idx) {}
+    const OP2Application &app, size_t idx, Staging staging)
+    : Replace(Replace), application(app), loopIdx(idx), staging(staging) {}
 
 //________________________________GLOBAL_HANDLER_______________________________
 void CUDAKernelHandler::run(const MatchFinder::MatchResult &Result) {
-  const ParLoop &loop = this->application.getParLoops()[loopIdx];
   if (!lineReplHandler<FunctionDecl, 1>(Result, Replace, "user_func", [this]() {
         const ParLoop &loop = this->application.getParLoops()[loopIdx];
         std::string hostFuncText = loop.getUserFuncInc();
@@ -128,10 +127,13 @@ std::string CUDAKernelHandler::getMapIdxDecls() {
     if (mapinds[loop.mapIdxs[i]] == -1) {
       mapinds[loop.mapIdxs[i]] = i;
       os << "int map" << loop.mapIdxs[i] << "idx = opDat"
-         // << loop.map2argIdxs[loop.arg2map[i]] << "Map[n + offset_b + set_size
-         // *"
-         << loop.map2argIdxs[loop.arg2map[i]] << "Map[n + set_size *" << arg.idx
-         << "];\n";
+         << loop.map2argIdxs[loop.arg2map[i]];
+      if (staging == OP2::OP_COlOR2) {
+        os << "Map[n + set_size *";
+      } else {
+        os << "Map[n + offset_b + set_size *";
+      }
+      os << arg.idx << "];\n";
     }
   }
 
@@ -161,9 +163,12 @@ std::string CUDAKernelHandler::genCUDAkernelLaunch() {
   }
 
   if (!loop.isDirect()) {
-    os << "start, end, Plan->col_reord,";
-    // os << "block_offset,Plan->blkmap,Plan->offset,Plan->nelems,Plan->"
-    //       "nthrcol,Plan->thrcol,Plan->ncolblk[col],set->exec_size+";
+    if (staging == OP2::OP_COlOR2) {
+      os << "start, end, Plan->col_reord,";
+    } else {
+      os << "block_offset,Plan->blkmap,Plan->offset,Plan->nelems,Plan->"
+            "nthrcol,Plan->thrcol,Plan->ncolblk[col],set->exec_size+";
+    }
   }
   os << "set->size);";
   if (hasReduction) // TODO update
@@ -184,15 +189,19 @@ std::string CUDAKernelHandler::genFuncCall() {
       if (arg.isReduction()) {
         os << "_l";
       } else if (!arg.isGBL) {
-        // if (loop.isDirect()) { //TODO 2level color
-        os << "+n*" << arg.dim;
-        // } else {
-        //   os << "+(n+offset_b)*" << arg.dim;
-        // }
+        if (loop.isDirect() || staging == OP2::OP_COlOR2) {
+          os << "+n*" << arg.dim;
+        } else {
+          os << "+(n+offset_b)*" << arg.dim;
+        }
       }
     } else {
-      os << "ind_arg" << loop.dataIdxs[i] << "+map" << loop.mapIdxs[i] << "idx*"
-         << arg.dim;
+      if (arg.accs != OP2::OP_INC || staging == OP2::OP_COlOR2) {
+        os << "ind_arg" << loop.dataIdxs[i] << "+map" << loop.mapIdxs[i]
+           << "idx*" << arg.dim;
+      } else {
+        os << "arg" << i << "_l";
+      }
     }
     os << ",";
   }
