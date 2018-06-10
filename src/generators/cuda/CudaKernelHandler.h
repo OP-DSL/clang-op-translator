@@ -27,6 +27,8 @@ protected:
   std::string genFuncCall();
   std::string genCUDAkernelLaunch();
   std::string getMapIdxDecls();
+  std::string getMapIdxInits();
+  std::string genWriteIncrement();
 
 public:
   /// @brief Construct a CUDAKernelHandler
@@ -49,6 +51,8 @@ public:
   static const matchers::StatementMatcher setConstantArraysToArgsMatcher;
   static const matchers::DeclarationMatcher arg0hDeclMatcher;
   static const matchers::DeclarationMatcher mapidxDeclMatcher;
+  static const matchers::StatementMatcher mapidxInitMatcher;
+  static const matchers::StatementMatcher incrementWriteMatcher;
 
   virtual void run(const matchers::MatchFinder::MatchResult &Result) override;
 };

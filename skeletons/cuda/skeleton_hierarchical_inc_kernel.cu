@@ -9,6 +9,7 @@ __device__ void skeleton(double *a) {}
 __global__ void op_cuda_skeleton(double *arg0, int block_offset, int *blkmap,
                                  int *offset, int *nelems, int *ncolors,
                                  int *colors, int nblocks, int set_size) {
+  __shared__ int nelems2, ncolor;
   __shared__ int nelem, offset_b;
   extern __shared__ char shared[];
   if (blockIdx.x + blockIdx.y * gridDim.x >= nblocks) {
@@ -17,23 +18,38 @@ __global__ void op_cuda_skeleton(double *arg0, int block_offset, int *blkmap,
 
   double arg0_l[1];
 
-  for (int d = 0; d < 1; ++d) {
-    arg0_l[d] = ZERO_double;
-  }
-
   if (threadIdx.x == 0) {
     // get sizes and shift pointers and direct-mapped data
     int blockId = blkmap[blockIdx.x + blockIdx.y * gridDim.x + block_offset];
     nelem = nelems[blockId];
     offset_b = offset[blockId];
+
+    nelems2 = blockDim.x * (1 + (nelem - 1) / blockDim.x);
+    ncolor = ncolors[blockId];
   }
   __syncthreads(); // make sure all of above completed
 
-  for (int n = threadIdx.x; n < nelem; n += blockDim.x) {
+  for (int n = threadIdx.x; n < nelems2; n += blockDim.x) {
+    int col2 = -1;
     int map1idx;
-    map1idx = 0;
-    // user-supplied kernel call
-    skeleton(arg0);
+    if (n < nelem) {
+      for (int d = 0; d < 1; ++d) {
+        arg0_l[d] = ZERO_double;
+      }
+
+      map1idx = 0;
+      // user-supplied kernel call
+      skeleton(arg0);
+      col2 = colors[n + offset_b];
+    }
+
+    // store local variables
+    for (int col = 0; col < ncolor; col++) {
+      if (col2 == col) {
+        arg0_l[0] += arg0[0 + map1idx * 1];
+      }
+      __syncthreads();
+    }
   }
 
   for (int d = 0; d < 1; d++) {
@@ -76,8 +92,8 @@ void op_par_loop_skeleton(char const *name, op_set set, op_arg arg0) {
     mvConstArraysToDevice(const_bytes);
 
     int maxblocks = 0;
-    for ( int col=0; col<Plan->ncolors; col++ ){
-      maxblocks = MAX(maxblocks,Plan->ncolblk[col]);
+    for (int col = 0; col < Plan->ncolors; col++) {
+      maxblocks = MAX(maxblocks, Plan->ncolblk[col]);
     }
     reduct_supp_data_t reduct;
     op_setup_reductions(reduct, args, nargs, maxblocks);

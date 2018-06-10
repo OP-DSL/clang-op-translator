@@ -12,7 +12,7 @@ namespace OP2 {
 ///
 ///
 class CUDARefactoringTool : public OP2KernelGeneratorBase {
-  static const std::string skeletons[3];
+  static const std::string skeletons[4];
 
   /// @brief Handler for CUDA specific modifications.
   ///
@@ -25,6 +25,11 @@ class CUDARefactoringTool : public OP2KernelGeneratorBase {
       return 0;
     if (staging == OP2::OP_COlOR2)
       return 1;
+    for (size_t i = 0; i < loop.getNumArgs(); ++i) {
+      if (!loop.getArg(i).isDirect() && loop.getArg(i).accs == OP2::OP_INC) {
+        return 3;
+      }
+    }
     return 2;
   }
 
@@ -63,17 +68,20 @@ public:
     Finder.addMatcher(CUDAKernelHandler::setConstantArraysToArgsMatcher,
                       &cudaKernelHandler);
     Finder.addMatcher(CUDAKernelHandler::arg0hDeclMatcher,
-                      &cudaKernelHandler); // check
-    Finder.addMatcher(CUDAKernelHandler::mapidxDeclMatcher,
-                      &cudaKernelHandler); // check + separate to 2
+                      &cudaKernelHandler);
+    Finder.addMatcher(CUDAKernelHandler::mapidxDeclMatcher, &cudaKernelHandler);
+    Finder.addMatcher(CUDAKernelHandler::mapidxInitMatcher,
+                      &cudaKernelHandler);
     Finder.addMatcher(CUDAKernelHandler::updateRedArrsOnHostMatcher,
                       &cudaKernelHandler);
     Finder.addMatcher(CUDAKernelHandler::opReductionMatcher,
                       &cudaKernelHandler);
     Finder.addMatcher(CUDAKernelHandler::declLocalRedArrMatcher,
-                      &cudaKernelHandler); // check
+                      &cudaKernelHandler);
     Finder.addMatcher(CUDAKernelHandler::initLocalRedArrMatcher,
-                      &cudaKernelHandler); // check
+                      &cudaKernelHandler);
+    Finder.addMatcher(CUDAKernelHandler::incrementWriteMatcher,
+                      &cudaKernelHandler);
   }
 
   static constexpr const char *_postfix = "kernel";
@@ -93,9 +101,10 @@ public:
   virtual ~CUDARefactoringTool() = default;
 };
 
-const std::string CUDARefactoringTool::skeletons[3] = {
+const std::string CUDARefactoringTool::skeletons[4] = {
     "cuda/skeleton_direct_kernel.cu", "cuda/skeleton_global_kernel.cu",
-    "cuda/skeleton_hierarchical_kernel.cu"};
+    "cuda/skeleton_hierarchical_kernel.cu",
+    "cuda/skeleton_hierarchical_inc_kernel.cu"};
 const std::string
     CUDARefactoringTool::commandlineParams[CUDARefactoringTool::numParams] = {
         std::string("-include") + OP2_INC + "op_cuda_rt_support.h",

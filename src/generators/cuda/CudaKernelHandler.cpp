@@ -43,6 +43,12 @@ const DeclarationMatcher CUDAKernelHandler::mapidxDeclMatcher =
             hasAncestor(functionDecl(hasName("op_cuda_skeleton"))))
         .bind("mapidx_decl");
 
+const StatementMatcher CUDAKernelHandler::mapidxInitMatcher =
+    binaryOperator(hasLHS(declRefExpr(to(varDecl(hasName("map1idx"))))),
+                   hasRHS(integerLiteral(equals(0))),
+                   hasAncestor(functionDecl(hasName("op_cuda_skeleton"))))
+        .bind("map1idx_init");
+
 const StatementMatcher CUDAKernelHandler::initLocalRedArrMatcher =
     forStmt(hasBody(compoundStmt(hasAnySubstatement(binaryOperator(
                 hasOperatorName("="), hasRHS(floatLiteral(equals(0.0))))))),
@@ -64,6 +70,14 @@ const StatementMatcher CUDAKernelHandler::updateRedArrsOnHostMatcher =
         callee(functionDecl(hasName("updateRedArrToArg"), parameterCountIs(3))),
         hasAncestor(functionDecl(hasName("op_par_loop_skeleton"))))
         .bind("updateRedHost");
+
+const StatementMatcher CUDAKernelHandler::incrementWriteMatcher =
+    ifStmt(hasThen(compoundStmt(hasAnySubstatement(
+               binaryOperator(hasOperatorName("+=")).bind("write_increment")))),
+           hasAncestor(functionDecl(hasName("op_cuda_skeleton"))),
+           hasCondition(binaryOperator(hasLHS(
+               ignoringImpCasts(declRefExpr(to(varDecl(hasName("col2")))))))));
+
 //_________________________________CONSTRUCTORS________________________________
 CUDAKernelHandler::CUDAKernelHandler(
     std::map<std::string, clang::tooling::Replacements> *Replace,
@@ -92,6 +106,9 @@ void CUDAKernelHandler::run(const MatchFinder::MatchResult &Result) {
     return;
   if (!HANDLER(VarDecl, 8, "mapidx_decl", CUDAKernelHandler::getMapIdxDecls))
     return;
+  if (!HANDLER(BinaryOperator, 2, "map1idx_init",
+               CUDAKernelHandler::getMapIdxInits))
+    return;
   if (!HANDLER(CallExpr, 2, "initRedArrs",
                CUDAKernelHandler::getReductArrsToDevice<false>))
     return;
@@ -109,9 +126,35 @@ void CUDAKernelHandler::run(const MatchFinder::MatchResult &Result) {
   if (!HANDLER(ForStmt, 1, "op_reduction_forstmt",
                CUDAKernelHandler::genRedForstmt))
     return;
+  if (!HANDLER(BinaryOperator, 2, "write_increment",
+               CUDAKernelHandler::genWriteIncrement))
+    return;
 }
 
 //___________________________________HANDLERS__________________________________
+
+std::string CUDAKernelHandler::genWriteIncrement() {
+  const ParLoop &loop = this->application.getParLoops()[loopIdx];
+  std::string repl = "";
+  llvm::raw_string_ostream os(repl);
+  for (size_t i = 0; i < loop.getNumArgs(); ++i) {
+    const OPArg &arg = loop.getArg(i);
+    if (!arg.isDirect() && arg.accs == OP2::OP_INC) {
+      int idx = loop.dataIdxs[i], mapIdx = loop.mapIdxs[i];
+      for (size_t d = 0; d < arg.dim; ++d) {
+        std::string argl =
+            "arg" + std::to_string(i) + "_l[" + std::to_string(d) + "]";
+        std::string indarg =
+            "ind_arg" + std::to_string(idx) + "[" + std::to_string(d) + "+map" +
+            std::to_string(mapIdx) + "idx*" + std::to_string(arg.dim) + "]";
+        os << argl << "+=" << indarg << ";";
+        os << indarg << "=" << argl << ";";
+      }
+    }
+  }
+
+  return os.str();
+}
 
 std::string CUDAKernelHandler::getMapIdxDecls() {
   const ParLoop &loop = this->application.getParLoops()[loopIdx];
@@ -126,7 +169,27 @@ std::string CUDAKernelHandler::getMapIdxDecls() {
 
     if (mapinds[loop.mapIdxs[i]] == -1) {
       mapinds[loop.mapIdxs[i]] = i;
-      os << "int map" << loop.mapIdxs[i] << "idx = opDat"
+      os << "int map" << loop.mapIdxs[i] << "idx;";
+    }
+  }
+
+  return os.str();
+}
+
+std::string CUDAKernelHandler::getMapIdxInits() {
+  const ParLoop &loop = this->application.getParLoops()[loopIdx];
+  std::string repl = "";
+  llvm::raw_string_ostream os(repl);
+  std::vector<int> mapinds(loop.getNumArgs(), -1);
+
+  for (size_t i = 0; i < loop.getNumArgs(); ++i) {
+    const OPArg &arg = loop.getArg(i);
+    if (arg.isDirect() || arg.isGBL)
+      continue;
+
+    if (mapinds[loop.mapIdxs[i]] == -1) {
+      mapinds[loop.mapIdxs[i]] = i;
+      os << "map" << loop.mapIdxs[i] << "idx = opDat"
          << loop.map2argIdxs[loop.arg2map[i]];
       if (staging == OP2::OP_COlOR2) {
         os << "Map[n + set_size *";
@@ -186,7 +249,8 @@ std::string CUDAKernelHandler::genFuncCall() {
     const OPArg &arg = loop.getArg(i);
     if (arg.isDirect()) {
       os << "arg" << i;
-      if (arg.isReduction()) {
+      if (arg.isReduction() || (staging == OP2::OP_STAGE_ALL &&
+                                !arg.isDirect() && arg.accs == OP2::OP_INC)) {
         os << "_l";
       } else if (!arg.isGBL) {
         if (loop.isDirect() || staging == OP2::OP_COlOR2) {
@@ -235,7 +299,8 @@ std::string CUDAKernelHandler::genLocalArrDecl() {
   for (size_t i = 0; i < loop.getNumArgs(); ++i) {
     const OPArg &arg = loop.getArg(i);
     // reduction inside function
-    if (arg.isReduction() || (!arg.isDirect() && arg.accs == OP2::OP_INC)) {
+    if (arg.isReduction() || (staging == OP2::OP_STAGE_ALL && !arg.isDirect() &&
+                              arg.accs == OP2::OP_INC)) {
       std::string argstr = "arg" + std::to_string(i);
       os << arg.type << " " << argstr << "_l[" << arg.dim << "];";
     }
@@ -250,7 +315,8 @@ std::string CUDAKernelHandler::genLocalArrInit() {
   for (size_t i = 0; i < loop.getNumArgs(); ++i) {
     const OPArg &arg = loop.getArg(i);
     // reduction inside function
-    if (arg.isReduction()) {
+    if (arg.isReduction() || (staging == OP2::OP_STAGE_ALL && !arg.isDirect() &&
+                              arg.accs == OP2::OP_INC)) {
       std::string argstr = "arg" + std::to_string(i);
       std::string globidx = "[d+blockIdx.x*" + std::to_string(arg.dim) + "]";
 
@@ -296,9 +362,12 @@ std::string CUDAKernelHandler::getCUDAFuncDefinition() {
     }
   }
   if (!loop.isDirect()) {
-    os << "int start, int end, int *col_reord,";
-    // os << "int block_offset, int *blkmap, int *offset, int *nelems, int"
-    //       "*ncolors, int *colors, int nblocks,";
+    if (staging == OP2::OP_COlOR2) {
+      os << "int start, int end, int *col_reord,";
+    } else {
+      os << "int block_offset, int *blkmap, int *offset, int *nelems, int"
+            "*ncolors, int *colors, int nblocks,";
+    }
   }
 
   os << "int set_size)";

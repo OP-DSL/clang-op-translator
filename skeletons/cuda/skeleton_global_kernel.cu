@@ -20,6 +20,7 @@ __global__ void op_cuda_skeleton(double *arg0, int start, int end,
   int n = col_reord[tid + start];
 
   int map1idx;
+  map1idx = 0;
 
   // user-supplied kernel call
   skeleton(arg0);
