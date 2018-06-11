@@ -29,7 +29,7 @@ public:
   SeqKernelHandler(std::map<std::string, clang::tooling::Replacements> *Replace,
                    const OP2Application &app, size_t idx);
   // Static matchers handled by this class
-  /// @brief Matcher for the placeholder of the user funciton
+  /// @brief Matcher for the placeholder of the user function
   static const matchers::DeclarationMatcher userFuncMatcher;
   /// @brief Matcher for function kall in kernel
   static const matchers::StatementMatcher funcCallMatcher;

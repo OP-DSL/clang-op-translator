@@ -1,6 +1,7 @@
 #ifndef VECREFACTORINGTOOL_H
 #define VECREFACTORINGTOOL_H value
 #include "core/OPParLoopData.h"
+#include "core/op2_clang_core.h"
 #include "generators/common/GeneratorBase.hpp"
 #include "generators/sequential/SeqKernelHandler.h"
 #include "generators/vectorization/VecKernelHandler.h"
@@ -15,7 +16,7 @@ class VecRefactoringTool : public OP2KernelGeneratorBase {
 
 public:
   VecRefactoringTool(const clang::tooling::CompilationDatabase &Compilations,
-                     const OP2Application &app, size_t idx)
+                     const OP2Application &app, size_t idx, Staging)
       : OP2KernelGeneratorBase(Compilations,
                                {std::string(SKELETONS_DIR) +
                                 skeletons[!app.getParLoops()[idx].isDirect()]},
@@ -46,13 +47,14 @@ public:
   };
 
   static constexpr const char *_postfix = "veckernel";
-  static constexpr unsigned numParams = 2;
+  static constexpr const char *fileExtension = ".cpp";
+  static constexpr unsigned numParams = 3;
   static const std::string commandlineParams[numParams];
 };
 
 const std::string
     VecRefactoringTool::commandlineParams[VecRefactoringTool::numParams] = {
-        "-DSIMD_VEC=4", "-DVECTORIZE"};
+        "-DSIMD_VEC=4", "-DVECTORIZE", "-xc++"};
 const std::string VecRefactoringTool::skeletons[2] = {
     "skeleton_direct_veckernel.cpp", "skeleton_veckernel.cpp"};
 

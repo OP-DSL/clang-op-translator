@@ -32,10 +32,10 @@ int lineReplHandler(const clang::ast_matchers::MatchFinder::MatchResult &Result,
   if (debug)
     llvm::outs() << Key << "\n";
   clang::SourceManager *sm = Result.SourceManager;
-  std::string filename = sm->getFilename(match->getLocStart());
+  std::string filename = sm->getFilename(sm->getFileLoc(match->getLocStart()));
   SourceRange replRange(
-      sm->getSpellingLoc(match->getLocStart()),
-      sm->getSpellingLoc(match->getLocEnd()).getLocWithOffset(Offset));
+      sm->getFileLoc(match->getLocStart()),
+      sm->getFileLoc(match->getLocEnd()).getLocWithOffset(Offset));
   std::string replacement = ReplacementGenerator();
 
   tooling::Replacement repl(*sm, CharSourceRange(replRange, false),
@@ -51,6 +51,7 @@ int lineReplHandler(const clang::ast_matchers::MatchFinder::MatchResult &Result,
 #define HANDLER(MatchType, Offset, Key, MemberFunction)                        \
   lineReplHandler<MatchType, Offset>(Result, Replace, Key,                     \
                                      std::bind(&MemberFunction, this))
+
 template <typename MatchType, int Offset = 0, bool debug = false>
 int fixLengthReplHandler(
     const clang::ast_matchers::MatchFinder::MatchResult &Result,
@@ -63,12 +64,11 @@ int fixLengthReplHandler(
   if (debug)
     llvm::outs() << Key << "\n";
   clang::SourceManager *sm = Result.SourceManager;
-  std::string filename =
-      sm->getFilename(sm->getSpellingLoc(match->getLocStart()));
+  std::string filename = sm->getFilename(sm->getFileLoc(match->getLocStart()));
   std::string replacement = ReplacementGenerator();
 
   tooling::Replacement repl(
-      *sm, sm->getSpellingLoc(match->getLocStart()).getLocWithOffset(Offset),
+      *sm, sm->getFileLoc(match->getLocStart()).getLocWithOffset(Offset),
       length, replacement);
   if (llvm::Error err = (*Replace)[filename].add(repl)) {
     // TODO diagnostics..
@@ -77,6 +77,38 @@ int fixLengthReplHandler(
   }
   return 0;
 }
+
+template <typename MatchType, typename EndMatchType, int StartOffset = 0,
+          int EndOffset = 0, bool debug = false>
+int fixEndReplHandler(
+    const clang::ast_matchers::MatchFinder::MatchResult &Result,
+    std::map<std::string, tooling::Replacements> *Replace,
+    const std::string Key,
+    std::function<std::string(void)> &&ReplacementGenerator,
+    std::string EndKey = "END") {
+  const MatchType *match = Result.Nodes.getNodeAs<MatchType>(Key);
+  const EndMatchType *endMatch = Result.Nodes.getNodeAs<EndMatchType>(EndKey);
+  if (!match && !endMatch)
+    return 1; // We shouldn't handle this match
+  if (debug)
+    llvm::outs() << Key << "\n";
+  clang::SourceManager *sm = Result.SourceManager;
+  std::string filename = sm->getFilename(sm->getFileLoc(match->getLocStart()));
+  SourceRange replRange(
+      sm->getFileLoc(match->getLocStart()).getLocWithOffset(StartOffset),
+      sm->getFileLoc(endMatch->getLocStart()).getLocWithOffset(EndOffset));
+  std::string replacement = ReplacementGenerator();
+
+  tooling::Replacement repl(*sm, CharSourceRange(replRange, false),
+                            replacement);
+  if (llvm::Error err = (*Replace)[filename].add(repl)) {
+    // TODO diagnostics..
+    llvm::errs() << "Replacement for key: " << Key << " failed in: " << filename
+                 << "\n";
+  }
+  return 0;
+}
+
 } // namespace OP2
 
 #endif /* ifndef MATCHHANDLER_FUNC_HPP */

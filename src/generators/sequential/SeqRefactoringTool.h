@@ -2,6 +2,7 @@
 #define SEQREFACTORINGTOOL_H
 
 #include "core/OPParLoopData.h"
+#include "core/op2_clang_core.h"
 #include "generators/common/GeneratorBase.hpp"
 #include "generators/sequential/SeqKernelHandler.h"
 namespace OP2 {
@@ -23,7 +24,7 @@ public:
   /// @param app collected application data.
   /// @param idx idx of the currently processed parloop.
   SeqRefactoringTool(const clang::tooling::CompilationDatabase &Compilations,
-                     const OP2Application &app, size_t idx)
+                     const OP2Application &app, size_t idx, Staging)
       : OP2KernelGeneratorBase(Compilations,
                                {std::string(SKELETONS_DIR) + skeletons[0]}, app,
                                idx, SeqRefactoringTool::_postfix),
@@ -41,6 +42,7 @@ public:
   }
 
   static constexpr const char *_postfix = "seqkernel";
+  static constexpr const char *fileExtension = ".cpp";
   static constexpr unsigned numParams = 0;
   static constexpr const char *commandlineParams[numParams] = {};
 
