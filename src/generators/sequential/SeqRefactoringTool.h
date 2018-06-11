@@ -42,6 +42,7 @@ public:
   }
 
   static constexpr const char *_postfix = "seqkernel";
+  static constexpr const char *fileExtension = ".cpp";
   static constexpr unsigned numParams = 0;
   static constexpr const char *commandlineParams[numParams] = {};
 

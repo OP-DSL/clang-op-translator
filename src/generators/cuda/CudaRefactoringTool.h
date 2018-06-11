@@ -85,6 +85,7 @@ public:
   }
 
   static constexpr const char *_postfix = "kernel";
+  static constexpr const char *fileExtension = ".cu";
   static constexpr unsigned numParams = 4;
   static const std::string commandlineParams[numParams];
 

@@ -47,6 +47,7 @@ public:
   };
 
   static constexpr const char *_postfix = "veckernel";
+  static constexpr const char *fileExtension = ".cpp";
   static constexpr unsigned numParams = 3;
   static const std::string commandlineParams[numParams];
 };

@@ -35,16 +35,18 @@ void OP2RefactoringTool::generateKernelFiles() {
     generator.generateKernelFiles();
   }
   if (opTarget == openmp || opTarget == all) {
-    OpenMPGenerator generator(application, commandLineArgs, Compilations, staging);
+    OpenMPGenerator generator(application, commandLineArgs, Compilations,
+                              staging);
     generator.generateKernelFiles();
   }
   if (opTarget == vec || opTarget == all) {
-    VectorizedGenerator generator(application, commandLineArgs, Compilations, staging,
-                                  "skeleton_veckernels.cpp");
+    VectorizedGenerator generator(application, commandLineArgs, Compilations,
+                                  staging, "skeleton_veckernels.cpp");
     generator.generateKernelFiles();
   }
   if (opTarget == cuda || opTarget == all) {
-    CUDAGenerator generator(application, commandLineArgs, Compilations, staging);
+    CUDAGenerator generator(application, commandLineArgs, Compilations, staging,
+                            "skeleton_kernels.cu");
     generator.generateKernelFiles();
   }
 }

@@ -53,6 +53,7 @@ public:
   }
 
   static constexpr const char *_postfix = "kernel";
+  static constexpr const char *fileExtension = ".cpp";
   static constexpr unsigned numParams = 1;
   static constexpr const char *commandlineParams[numParams] = {"-fopenmp"};
 

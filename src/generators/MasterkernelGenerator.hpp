@@ -4,6 +4,7 @@
 #include "core/op2_clang_core.h"
 #include "generators/common/handler.hpp"
 #include "generators/cuda/CudaRefactoringTool.h"
+#include "generators/cuda/CUDAMasterKernelHandler.h"
 #include "generators/openmp/OMPRefactoringTool.h"
 #include "generators/sequential/SeqRefactoringTool.h"
 #include "generators/vectorization/VecRefactoringTool.h"
@@ -44,6 +45,10 @@ public:
       os << "#include \"" << kernel << "\"\n";
     }
     return os.str();
+  }
+
+  void addMatchersTo(clang::ast_matchers::MatchFinder &finder){ 
+    finder.addMatcher(globVarMatcher, this);
   }
 
   virtual void run(const matchers::MatchFinder::MatchResult &Result) override {
@@ -112,7 +117,7 @@ public:
 
     clang::ast_matchers::MatchFinder Finder;
     Handler handler(generatedFiles, application.constants, &getReplacements());
-    Finder.addMatcher(globVarMatcher, &handler);
+    handler.addMatchersTo(Finder);
     if (int Result =
             run(clang::tooling::newFrontendActionFactory(&Finder).get())) {
       llvm::outs() << "Error " << Result << "\n";
@@ -123,14 +128,14 @@ public:
 
   std::string getOutputFileName(const clang::FileEntry *) const {
     return application.applicationName + "_" + KernelGeneratorType::_postfix +
-           "s.cpp";
+           "s" + KernelGeneratorType::fileExtension;
   }
 };
 
 typedef MasterkernelGenerator<SeqRefactoringTool> SeqGenerator;
 typedef MasterkernelGenerator<OMPRefactoringTool> OpenMPGenerator;
 typedef MasterkernelGenerator<VecRefactoringTool> VectorizedGenerator;
-typedef MasterkernelGenerator<CUDARefactoringTool> CUDAGenerator;
+typedef MasterkernelGenerator<CUDARefactoringTool, CUDAMasterKernelHandler> CUDAGenerator;
 } // namespace OP2
 
 #endif /* ifndef MASTERKERNELGENERATOR_HPP */
