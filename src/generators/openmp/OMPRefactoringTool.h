@@ -30,11 +30,11 @@ public:
   /// @param PCHContainerOps The PCHContainerOperation for loading and creating
   /// clang modules
   OMPRefactoringTool(const clang::tooling::CompilationDatabase &Compilations,
-                     const OP2Application &app, size_t idx, Staging)
+                     const OP2Application &app, size_t idx, OP2Optimizations op)
       : OP2KernelGeneratorBase(Compilations,
                                {std::string(SKELETONS_DIR) +
                                 skeletons[!app.getParLoops()[idx].isDirect()]},
-                               app, idx, OMPRefactoringTool::_postfix),
+                               app, idx, OMPRefactoringTool::_postfix, op),
         ompKernelHandler(&getReplacements(), app.getParLoops()[idx]),
         seqKernelHandler(&getReplacements(), app, idx) {}
 

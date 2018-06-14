@@ -1,7 +1,9 @@
 #ifndef OPDATAREGISTER_HPP
 #define OPDATAREGISTER_HPP
 #include "core/OPParLoopData.h"
+#include "core/op2_clang_core.h"
 #include "core/utils.h"
+#include "generators/common/handler.hpp"
 #include "clang/ASTMatchers/ASTMatchFinder.h"
 
 namespace OP2 {
@@ -12,9 +14,14 @@ namespace matchers = clang::ast_matchers;
 /// code generation.
 class DataRegister : public matchers::MatchFinder::MatchCallback {
   OP2Application &application;
+  std::map<std::string, clang::tooling::Replacements> *Replace;
+  OP2Optimizations op2Flags;
 
 public:
-  DataRegister(OP2Application &application) : application(application) {}
+  DataRegister(OP2Application &application,
+               std::map<std::string, clang::tooling::Replacements> *Replace,
+               OP2Optimizations op2Flags)
+      : application(application), Replace(Replace), op2Flags(op2Flags) {}
 
   void addToFinder(matchers::MatchFinder &finder) {
     using namespace matchers;
@@ -45,6 +52,11 @@ public:
                         .bind("op_decl_map")))
             .bind("op_map"),
         this);
+    if (op2Flags.SOA) {
+      finder.addMatcher(
+          callExpr(callee(functionDecl(hasName("op_init")))).bind("op_init"),
+          this);
+    }
   }
 
   virtual void run(const matchers::MatchFinder::MatchResult &Result) override {
@@ -105,6 +117,9 @@ public:
       application.mappings.insert(
           std::pair<std::string, const op_map>(mapname, m));
       llvm::outs() << m << "\n";
+    } else if (!lineReplHandler<CallExpr, 2>(Result, Replace, "op_init", []() {
+                 return "op_init_soa(argc, argv,2,1);";
+               })) {
     }
   }
 };

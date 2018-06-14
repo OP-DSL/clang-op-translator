@@ -16,11 +16,11 @@ class VecRefactoringTool : public OP2KernelGeneratorBase {
 
 public:
   VecRefactoringTool(const clang::tooling::CompilationDatabase &Compilations,
-                     const OP2Application &app, size_t idx, Staging)
+                     const OP2Application &app, size_t idx, OP2Optimizations op)
       : OP2KernelGeneratorBase(Compilations,
                                {std::string(SKELETONS_DIR) +
                                 skeletons[!app.getParLoops()[idx].isDirect()]},
-                               app, idx, VecRefactoringTool::_postfix),
+                               app, idx, VecRefactoringTool::_postfix, op),
         vecKernelHandler(&getReplacements(), Compilations, app, idx),
         seqKernelHandler(&getReplacements(), app, idx) {}
 

@@ -15,7 +15,7 @@ protected:
   std::map<std::string, clang::tooling::Replacements> *Replace;
   const OP2Application &application;
   const size_t loopIdx;
-  Staging staging;
+  OP2Optimizations op2Flags;
 
   std::string getCUDAFuncDefinition();
   std::string getLocalVarDecls();
@@ -39,7 +39,7 @@ public:
   /// @param idx index of the currently generated loop
   CUDAKernelHandler(
       std::map<std::string, clang::tooling::Replacements> *Replace,
-      const OP2Application &app, size_t idx, Staging staging);
+      const OP2Application &app, size_t idx, OP2Optimizations flags);
   // Static matchers handled by this class
   static const matchers::DeclarationMatcher cudaFuncMatcher;
   static const matchers::StatementMatcher cudaFuncCallMatcher;

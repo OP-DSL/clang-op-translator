@@ -18,8 +18,6 @@ class CUDARefactoringTool : public OP2KernelGeneratorBase {
   ///
   CUDAKernelHandler cudaKernelHandler;
 
-  Staging staging;
-
   static int getLoopType(const ParLoop &loop, Staging staging) {
     if (loop.isDirect())
       return 0;
@@ -41,14 +39,14 @@ public:
   /// @param app Collected application data
   /// @param idx index of currently generated loop
   CUDARefactoringTool(const clang::tooling::CompilationDatabase &Compilations,
-                      const OP2Application &app, size_t idx, Staging staging)
+                      const OP2Application &app, size_t idx,
+                      OP2Optimizations op)
       : OP2KernelGeneratorBase(
             Compilations,
             {std::string(SKELETONS_DIR) +
-             skeletons[getLoopType(app.getParLoops()[idx], staging)]},
-            app, idx, CUDARefactoringTool::_postfix),
-        cudaKernelHandler(&getReplacements(), app, idx, staging),
-        staging(staging) {}
+             skeletons[getLoopType(app.getParLoops()[idx], op.staging)]},
+            app, idx, CUDARefactoringTool::_postfix, op),
+        cudaKernelHandler(&getReplacements(), app, idx, op) {}
 
   /// @brief Adding CUDA specific Matchers and handlers.
   ///   Called from OP2KernelGeneratorBase::GenerateKernelFile()
@@ -67,11 +65,9 @@ public:
                       &cudaKernelHandler);
     Finder.addMatcher(CUDAKernelHandler::setConstantArraysToArgsMatcher,
                       &cudaKernelHandler);
-    Finder.addMatcher(CUDAKernelHandler::arg0hDeclMatcher,
-                      &cudaKernelHandler);
+    Finder.addMatcher(CUDAKernelHandler::arg0hDeclMatcher, &cudaKernelHandler);
     Finder.addMatcher(CUDAKernelHandler::mapidxDeclMatcher, &cudaKernelHandler);
-    Finder.addMatcher(CUDAKernelHandler::mapidxInitMatcher,
-                      &cudaKernelHandler);
+    Finder.addMatcher(CUDAKernelHandler::mapidxInitMatcher, &cudaKernelHandler);
     Finder.addMatcher(CUDAKernelHandler::updateRedArrsOnHostMatcher,
                       &cudaKernelHandler);
     Finder.addMatcher(CUDAKernelHandler::opReductionMatcher,

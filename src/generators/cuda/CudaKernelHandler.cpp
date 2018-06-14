@@ -81,8 +81,8 @@ const StatementMatcher CUDAKernelHandler::incrementWriteMatcher =
 //_________________________________CONSTRUCTORS________________________________
 CUDAKernelHandler::CUDAKernelHandler(
     std::map<std::string, clang::tooling::Replacements> *Replace,
-    const OP2Application &app, size_t idx, Staging staging)
-    : Replace(Replace), application(app), loopIdx(idx), staging(staging) {}
+    const OP2Application &app, size_t idx, OP2Optimizations flags)
+    : Replace(Replace), application(app), loopIdx(idx), op2Flags(flags) {}
 
 //________________________________GLOBAL_HANDLER_______________________________
 void CUDAKernelHandler::run(const MatchFinder::MatchResult &Result) {
@@ -191,7 +191,7 @@ std::string CUDAKernelHandler::getMapIdxInits() {
       mapinds[loop.mapIdxs[i]] = i;
       os << "map" << loop.mapIdxs[i] << "idx = opDat"
          << loop.map2argIdxs[loop.arg2map[i]];
-      if (staging == OP2::OP_COlOR2) {
+      if (op2Flags.staging == OP2::OP_COlOR2) {
         os << "Map[n + set_size *";
       } else {
         os << "Map[n + offset_b + set_size *";
@@ -226,7 +226,7 @@ std::string CUDAKernelHandler::genCUDAkernelLaunch() {
   }
 
   if (!loop.isDirect()) {
-    if (staging == OP2::OP_COlOR2) {
+    if (op2Flags.staging == OP2::OP_COlOR2) {
       os << "start, end, Plan->col_reord,";
     } else {
       os << "block_offset,Plan->blkmap,Plan->offset,Plan->nelems,Plan->"
@@ -249,18 +249,18 @@ std::string CUDAKernelHandler::genFuncCall() {
     const OPArg &arg = loop.getArg(i);
     if (arg.isDirect()) {
       os << "arg" << i;
-      if (arg.isReduction() || (staging == OP2::OP_STAGE_ALL &&
+      if (arg.isReduction() || (op2Flags.staging == OP2::OP_STAGE_ALL &&
                                 !arg.isDirect() && arg.accs == OP2::OP_INC)) {
         os << "_l";
       } else if (!arg.isGBL) {
-        if (loop.isDirect() || staging == OP2::OP_COlOR2) {
+        if (loop.isDirect() || op2Flags.staging == OP2::OP_COlOR2) {
           os << "+n*" << arg.dim;
         } else {
           os << "+(n+offset_b)*" << arg.dim;
         }
       }
     } else {
-      if (arg.accs != OP2::OP_INC || staging == OP2::OP_COlOR2) {
+      if (arg.accs != OP2::OP_INC || op2Flags.staging == OP2::OP_COlOR2) {
         os << "ind_arg" << loop.dataIdxs[i] << "+map" << loop.mapIdxs[i]
            << "idx*" << arg.dim;
       } else {
@@ -299,7 +299,7 @@ std::string CUDAKernelHandler::genLocalArrDecl() {
   for (size_t i = 0; i < loop.getNumArgs(); ++i) {
     const OPArg &arg = loop.getArg(i);
     // reduction inside function
-    if (arg.isReduction() || (staging == OP2::OP_STAGE_ALL && !arg.isDirect() &&
+    if (arg.isReduction() || (op2Flags.staging == OP2::OP_STAGE_ALL && !arg.isDirect() &&
                               arg.accs == OP2::OP_INC)) {
       std::string argstr = "arg" + std::to_string(i);
       os << arg.type << " " << argstr << "_l[" << arg.dim << "];";
@@ -315,7 +315,7 @@ std::string CUDAKernelHandler::genLocalArrInit() {
   for (size_t i = 0; i < loop.getNumArgs(); ++i) {
     const OPArg &arg = loop.getArg(i);
     // reduction inside function
-    if (arg.isReduction() || (staging == OP2::OP_STAGE_ALL && !arg.isDirect() &&
+    if (arg.isReduction() || (op2Flags.staging == OP2::OP_STAGE_ALL && !arg.isDirect() &&
                               arg.accs == OP2::OP_INC)) {
       std::string argstr = "arg" + std::to_string(i);
       std::string globidx = "[d+blockIdx.x*" + std::to_string(arg.dim) + "]";
@@ -362,7 +362,7 @@ std::string CUDAKernelHandler::getCUDAFuncDefinition() {
     }
   }
   if (!loop.isDirect()) {
-    if (staging == OP2::OP_COlOR2) {
+    if (op2Flags.staging == OP2::OP_COlOR2) {
       os << "int start, int end, int *col_reord,";
     } else {
       os << "int block_offset, int *blkmap, int *offset, int *nelems, int"

@@ -24,10 +24,10 @@ public:
   /// @param app collected application data.
   /// @param idx idx of the currently processed parloop.
   SeqRefactoringTool(const clang::tooling::CompilationDatabase &Compilations,
-                     const OP2Application &app, size_t idx, Staging)
+                     const OP2Application &app, size_t idx, OP2Optimizations op)
       : OP2KernelGeneratorBase(Compilations,
                                {std::string(SKELETONS_DIR) + skeletons[0]}, app,
-                               idx, SeqRefactoringTool::_postfix),
+                               idx, SeqRefactoringTool::_postfix, op),
         seqKernelHandler(&getReplacements(), app, idx) {}
 
   /// @brief Adding Sequential specific MAtchers and handlers.

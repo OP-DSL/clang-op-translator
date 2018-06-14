@@ -3,6 +3,7 @@
 
 #include "BaseKernelHandler.h"
 #include "core/OP2WriteableRefactoringTool.hpp"
+#include "core/op2_clang_core.h"
 
 namespace OP2 {
 
@@ -19,6 +20,8 @@ protected:
   const size_t loopIdx;
   /// @brief Handler for common modifications
   BaseKernelHandler baseKernelHandler;
+  /// @brief Optimizations flags
+  OP2Optimizations optimizationFlags;
 
   /// @brief Adding matchers and handlers to the Finder.
   ///   Should be implemented in subclasses.
@@ -57,10 +60,11 @@ public:
   OP2KernelGeneratorBase(
       const clang::tooling::CompilationDatabase &Compilations,
       const std::vector<std::string> &Sources, const OP2Application &app,
-      size_t idx, std::string postfix)
+      size_t idx, std::string postfix, OP2Optimizations optimizationFlags)
       : OP2WriteableRefactoringTool(Compilations, Sources), postfix(postfix),
         application(app), loopIdx(idx),
-        baseKernelHandler(&getReplacements(), application.getParLoops()[idx]) {}
+        baseKernelHandler(&getReplacements(), application.getParLoops()[idx]),
+        optimizationFlags(optimizationFlags) {}
 
   /// @brief Generate the kernel to <loopname>_xxkernel.cpp
   ///
