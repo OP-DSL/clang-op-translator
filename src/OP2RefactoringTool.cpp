@@ -8,11 +8,12 @@ OP2RefactoringTool::OP2RefactoringTool(
     std::vector<std::string> &commandLineArgs,
     clang::tooling::FixedCompilationDatabase &compilations,
     clang::tooling::CommonOptionsParser &optionsParser, OP2Targets opTarget,
-    Staging staging)
+    OP2Optimizations optimizationFlags)
     : OP2WriteableRefactoringTool(compilations,
                                   optionsParser.getSourcePathList()),
-      opTarget(opTarget), staging(staging), commandLineArgs(commandLineArgs),
-      Compilations(compilations), application() {
+      opTarget(opTarget), optimizationFlags(optimizationFlags),
+      commandLineArgs(commandLineArgs), Compilations(compilations),
+      application() {
   std::string applicationName = optionsParser.getSourcePathList()[0];
   size_t basename_start = applicationName.rfind("/"),
          basename_end = applicationName.rfind(".");
@@ -31,22 +32,23 @@ void OP2RefactoringTool::generateKernelFiles() {
   if (opTarget == none)
     return;
   if (opTarget == seq || opTarget == all) {
-    SeqGenerator generator(application, commandLineArgs, Compilations, staging);
+    SeqGenerator generator(application, commandLineArgs, Compilations,
+                           optimizationFlags);
     generator.generateKernelFiles();
   }
   if (opTarget == openmp || opTarget == all) {
     OpenMPGenerator generator(application, commandLineArgs, Compilations,
-                              staging);
+                              optimizationFlags);
     generator.generateKernelFiles();
   }
   if (opTarget == vec || opTarget == all) {
     VectorizedGenerator generator(application, commandLineArgs, Compilations,
-                                  staging, "skeleton_veckernels.cpp");
+                                  optimizationFlags, "skeleton_veckernels.cpp");
     generator.generateKernelFiles();
   }
   if (opTarget == cuda || opTarget == all) {
-    CUDAGenerator generator(application, commandLineArgs, Compilations, staging,
-                            "skeleton_kernels.cu");
+    CUDAGenerator generator(application, commandLineArgs, Compilations,
+                            optimizationFlags, "skeleton_kernels.cu");
     generator.generateKernelFiles();
   }
 }
@@ -60,7 +62,7 @@ int OP2RefactoringTool::generateOPFiles() {
       callExpr(callee(functionDecl(hasName("op_par_loop")))).bind("par_loop"),
       &parLoopHandlerCallback);
 
-  DataRegister drCallback(application);
+  DataRegister drCallback(application, &getReplacements(), optimizationFlags);
   drCallback.addToFinder(Finder);
 
   return run(

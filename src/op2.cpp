@@ -24,6 +24,10 @@ static llvm::cl::opt<OP2::Staging> staging(
         clEnumValN(OP2::OP_STAGE_ALL, "op_stage_all",
                    "Use hierarchical coloring with staging [default]"),
         clEnumValN(OP2::OP_COlOR2, "op_color2", "Use global coloring")));
+static llvm::cl::opt<bool>
+    SOA("soa",
+        llvm::cl::desc("Enable AoS to SoA transformation default: false"),
+        llvm::cl::init(false), llvm::cl::cat(Op2Category));
 
 int main(int argc, const char **argv) {
   using namespace clang::tooling;
@@ -34,8 +38,11 @@ int main(int argc, const char **argv) {
   std::vector<std::string> args = OP2::getCommandlineArgs(OptionsParser);
   args.insert(args.begin(), std::string("-I") + OP2_INC);
   clang::tooling::FixedCompilationDatabase Compilations(".", args);
+
+  OP2::OP2Optimizations optim = {staging.getValue(), SOA.getValue()};
+
   OP2::OP2RefactoringTool Tool(args, Compilations, OptionsParser,
-                               opTarget.getValue(), staging.getValue());
+                               opTarget.getValue(), optim);
   // Collect data about the application and generate modified application files.
   if (int Result = Tool.generateOPFiles()) {
     return Result;

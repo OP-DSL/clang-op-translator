@@ -1,6 +1,7 @@
 #include "CudaKernelHandler.h"
 #include "core/utils.h"
 #include "generators/common/handler.hpp"
+#include "generators/cuda/soa/UserFuncTransformator.hpp"
 
 namespace {
 using namespace clang::ast_matchers;
@@ -78,17 +79,38 @@ const StatementMatcher CUDAKernelHandler::incrementWriteMatcher =
            hasCondition(binaryOperator(hasLHS(
                ignoringImpCasts(declRefExpr(to(varDecl(hasName("col2")))))))));
 
+// SOA
+
+const DeclarationMatcher CUDAKernelHandler::strideDeclMatcher =
+    varDecl(hasName("direct_skeleton_stride_OP2HOST")).bind("strideDecl");
+
+const StatementMatcher CUDAKernelHandler::strideInitMatcher =
+    ifStmt(hasThen(compoundStmt(
+               hasAnySubstatement(binaryOperator(hasOperatorName("="))),
+               statementCountIs(1))),
+           hasAncestor(functionDecl(hasName("op_par_loop_skeleton"))),
+           hasCondition(binaryOperator(
+               hasLHS(ignoringImpCasts(memberExpr(member(hasName("count"))))))))
+        .bind("strideInit");
+
 //_________________________________CONSTRUCTORS________________________________
 CUDAKernelHandler::CUDAKernelHandler(
     std::map<std::string, clang::tooling::Replacements> *Replace,
-    const OP2Application &app, size_t idx, Staging staging)
-    : Replace(Replace), application(app), loopIdx(idx), staging(staging) {}
+    const clang::tooling::CompilationDatabase &Compilations,
+    const OP2Application &app, size_t idx, OP2Optimizations flags)
+    : Replace(Replace), Compilations(Compilations), application(app),
+      loopIdx(idx), op2Flags(flags) {}
 
 //________________________________GLOBAL_HANDLER_______________________________
 void CUDAKernelHandler::run(const MatchFinder::MatchResult &Result) {
   if (!lineReplHandler<FunctionDecl, 1>(Result, Replace, "user_func", [this]() {
         const ParLoop &loop = this->application.getParLoops()[loopIdx];
         std::string hostFuncText = loop.getUserFuncInc();
+        if (op2Flags.SOA) {
+          loop.dumpFuncTextTo("/tmp/loop.cu");
+          std::string SOAresult = UserFuncTransformator(Compilations, loop).run();
+          if(SOAresult != "") hostFuncText = SOAresult;
+        }
         return "__device__ void " + loop.getName() + "_gpu" +
                hostFuncText.substr(hostFuncText.find("("));
       }))
@@ -129,9 +151,67 @@ void CUDAKernelHandler::run(const MatchFinder::MatchResult &Result) {
   if (!HANDLER(BinaryOperator, 2, "write_increment",
                CUDAKernelHandler::genWriteIncrement))
     return;
+  if (!HANDLER(VarDecl, 2, "strideDecl", CUDAKernelHandler::genStrideDecls))
+    return;
+  if (!HANDLER(IfStmt, 2, "strideInit", CUDAKernelHandler::genStrideInit))
+    return;
 }
 
 //___________________________________HANDLERS__________________________________
+
+std::string CUDAKernelHandler::genStrideInit() {
+  if (!op2Flags.SOA)
+    return "";
+  const ParLoop &loop = this->application.getParLoops()[loopIdx];
+  std::string repl = "";
+  llvm::raw_string_ostream os(repl);
+  bool directStride = false;
+  for (size_t i = 0; i < loop.getNumArgs(); ++i) {
+    const OPArg &arg = loop.getArg(i);
+    if (arg.dim > 1 &&
+        ((!directStride && arg.isDirect() && !arg.isGBL) ||
+         (!arg.isDirect() && loop.dat2argIdxs[loop.dataIdxs[i]] == (int)i))) {
+      std::string strideName =
+          (arg.isDirect() ? "direct"
+                          : ("opDat" + std::to_string(loop.dataIdxs[i]))) +
+          "_" + loop.getName() + "_stride_OP2";
+      os << "if((OP_kernels[" << loop.getLoopID() << "].count == 1) || (";
+      os << strideName << "HOST != getSetSizeFromOpArg(&arg" << i << "))) {";
+      os << strideName << "HOST = getSetSizeFromOpArg(&arg" << i << ");"
+         << "cudaMemcpyToSymbol(" << strideName << "CONSTANT, &" << strideName
+         << "HOST, sizeof(int));";
+      os << "}";
+      if (arg.isDirect())
+        directStride = true;
+    }
+  }
+  return os.str();
+}
+
+std::string CUDAKernelHandler::genStrideDecls() {
+  if (!op2Flags.SOA)
+    return "";
+  const ParLoop &loop = this->application.getParLoops()[loopIdx];
+  std::string repl = "";
+  llvm::raw_string_ostream os(repl);
+  bool directStride = false;
+  for (size_t i = 0; i < loop.getNumArgs(); ++i) {
+    const OPArg &arg = loop.getArg(i);
+    if (arg.dim > 1 &&
+        ((!directStride && arg.isDirect() && !arg.isGBL) ||
+         (!arg.isDirect() && loop.dat2argIdxs[loop.dataIdxs[i]] == (int)i))) {
+      std::string strideName =
+          (arg.isDirect() ? "direct"
+                          : ("opDat" + std::to_string(loop.dataIdxs[i]))) +
+          "_" + loop.getName() + "_stride_OP2";
+      os << "__constant__ int " << strideName << "CONSTANT;"
+         << "int " << strideName << "HOST = -1;";
+      if (arg.isDirect())
+        directStride = true;
+    }
+  }
+  return os.str();
+}
 
 std::string CUDAKernelHandler::genWriteIncrement() {
   const ParLoop &loop = this->application.getParLoops()[loopIdx];
@@ -191,7 +271,7 @@ std::string CUDAKernelHandler::getMapIdxInits() {
       mapinds[loop.mapIdxs[i]] = i;
       os << "map" << loop.mapIdxs[i] << "idx = opDat"
          << loop.map2argIdxs[loop.arg2map[i]];
-      if (staging == OP2::OP_COlOR2) {
+      if (op2Flags.staging == OP2::OP_COlOR2) {
         os << "Map[n + set_size *";
       } else {
         os << "Map[n + offset_b + set_size *";
@@ -226,7 +306,7 @@ std::string CUDAKernelHandler::genCUDAkernelLaunch() {
   }
 
   if (!loop.isDirect()) {
-    if (staging == OP2::OP_COlOR2) {
+    if (op2Flags.staging == OP2::OP_COlOR2) {
       os << "start, end, Plan->col_reord,";
     } else {
       os << "block_offset,Plan->blkmap,Plan->offset,Plan->nelems,Plan->"
@@ -249,18 +329,18 @@ std::string CUDAKernelHandler::genFuncCall() {
     const OPArg &arg = loop.getArg(i);
     if (arg.isDirect()) {
       os << "arg" << i;
-      if (arg.isReduction() || (staging == OP2::OP_STAGE_ALL &&
+      if (arg.isReduction() || (op2Flags.staging == OP2::OP_STAGE_ALL &&
                                 !arg.isDirect() && arg.accs == OP2::OP_INC)) {
         os << "_l";
       } else if (!arg.isGBL) {
-        if (loop.isDirect() || staging == OP2::OP_COlOR2) {
+        if (loop.isDirect() || op2Flags.staging == OP2::OP_COlOR2) {
           os << "+n*" << arg.dim;
         } else {
           os << "+(n+offset_b)*" << arg.dim;
         }
       }
     } else {
-      if (arg.accs != OP2::OP_INC || staging == OP2::OP_COlOR2) {
+      if (arg.accs != OP2::OP_INC || op2Flags.staging == OP2::OP_COlOR2) {
         os << "ind_arg" << loop.dataIdxs[i] << "+map" << loop.mapIdxs[i]
            << "idx*" << arg.dim;
       } else {
@@ -299,8 +379,8 @@ std::string CUDAKernelHandler::genLocalArrDecl() {
   for (size_t i = 0; i < loop.getNumArgs(); ++i) {
     const OPArg &arg = loop.getArg(i);
     // reduction inside function
-    if (arg.isReduction() || (staging == OP2::OP_STAGE_ALL && !arg.isDirect() &&
-                              arg.accs == OP2::OP_INC)) {
+    if (arg.isReduction() || (op2Flags.staging == OP2::OP_STAGE_ALL &&
+                              !arg.isDirect() && arg.accs == OP2::OP_INC)) {
       std::string argstr = "arg" + std::to_string(i);
       os << arg.type << " " << argstr << "_l[" << arg.dim << "];";
     }
@@ -315,8 +395,8 @@ std::string CUDAKernelHandler::genLocalArrInit() {
   for (size_t i = 0; i < loop.getNumArgs(); ++i) {
     const OPArg &arg = loop.getArg(i);
     // reduction inside function
-    if (arg.isReduction() || (staging == OP2::OP_STAGE_ALL && !arg.isDirect() &&
-                              arg.accs == OP2::OP_INC)) {
+    if (arg.isReduction() || (op2Flags.staging == OP2::OP_STAGE_ALL &&
+                              !arg.isDirect() && arg.accs == OP2::OP_INC)) {
       std::string argstr = "arg" + std::to_string(i);
       std::string globidx = "[d+blockIdx.x*" + std::to_string(arg.dim) + "]";
 
@@ -362,7 +442,7 @@ std::string CUDAKernelHandler::getCUDAFuncDefinition() {
     }
   }
   if (!loop.isDirect()) {
-    if (staging == OP2::OP_COlOR2) {
+    if (op2Flags.staging == OP2::OP_COlOR2) {
       os << "int start, int end, int *col_reord,";
     } else {
       os << "int block_offset, int *blkmap, int *offset, int *nelems, int"

@@ -2,6 +2,8 @@
 // Skeleton for direct kernels using OpenMP
 //
 
+int direct_skeleton_stride_OP2HOST = -1;
+
 // user function
 __device__ void skeleton(double *a) {}
 
@@ -90,6 +92,10 @@ void op_par_loop_skeleton(char const *name, op_set set, op_arg arg0) {
     op_setup_constants(const_bytes, args, nargs);
     setConstantArrToArg<double>(args[0], arg0h);
     mvConstArraysToDevice(const_bytes);
+
+    if (OP_kernels[0].count == 0) {
+      direct_skeleton_stride_OP2HOST = getSetSizeFromOpArg(&arg0);
+    }
 
     int maxblocks = 0;
     for (int col = 0; col < Plan->ncolors; col++) {

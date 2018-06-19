@@ -16,7 +16,7 @@ namespace OP2 {
 class OP2RefactoringTool : public OP2WriteableRefactoringTool {
 protected:
   OP2Targets opTarget;
-  Staging staging;
+  OP2Optimizations optimizationFlags;
   std::vector<std::string> &commandLineArgs;
   clang::tooling::FixedCompilationDatabase &Compilations;
   // We can collect all data about kernels
@@ -26,7 +26,7 @@ public:
   OP2RefactoringTool(std::vector<std::string> &commandLineArgs,
                      clang::tooling::FixedCompilationDatabase &compilations,
                      clang::tooling::CommonOptionsParser &optionsParser,
-                     OP2Targets opTarget, Staging staging);
+                     OP2Targets opTarget, OP2Optimizations optimizationFlags);
 
   /// @brief Generates target specific kernelfiles for all parLoop and all
   /// specified target.

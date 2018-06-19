@@ -99,6 +99,7 @@ DummyParLoop::DummyParLoop(const clang::FunctionDecl *_function,
   std::map<std::string, int> map2ind;
   int mapidxs = 0;
   int nummaps = -1;
+  ninds = 0;
   for (size_t i = 0; i < args.size(); ++i) {
     OPArg &arg = args[i];
     if (arg.isDirect() || arg.isGBL) {
@@ -111,7 +112,6 @@ DummyParLoop::DummyParLoop(const clang::FunctionDecl *_function,
         dataIdxs.push_back(it->second);
       } else {
         dat2argIdxs.push_back(i);
-        ninds = datToInd.size();
         dataIdxs.push_back(ninds);
         datToInd[arg.opDat] = ninds;
         ninds++;

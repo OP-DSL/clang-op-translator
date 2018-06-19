@@ -3,8 +3,8 @@
 #include "core/OP2WriteableRefactoringTool.hpp"
 #include "core/op2_clang_core.h"
 #include "generators/common/handler.hpp"
-#include "generators/cuda/CudaRefactoringTool.h"
 #include "generators/cuda/CUDAMasterKernelHandler.h"
+#include "generators/cuda/CudaRefactoringTool.h"
 #include "generators/openmp/OMPRefactoringTool.h"
 #include "generators/sequential/SeqRefactoringTool.h"
 #include "generators/vectorization/VecRefactoringTool.h"
@@ -47,7 +47,7 @@ public:
     return os.str();
   }
 
-  void addMatchersTo(clang::ast_matchers::MatchFinder &finder){ 
+  void addMatchersTo(clang::ast_matchers::MatchFinder &finder) {
     finder.addMatcher(globVarMatcher, this);
   }
 
@@ -67,7 +67,7 @@ public:
 template <typename KernelGeneratorType, typename Handler = MasterKernelHandler>
 class MasterkernelGenerator : public OP2WriteableRefactoringTool {
 protected:
-  const Staging staging;
+  const OP2Optimizations op2Flags;
   const OP2Application &application;
   std::vector<std::string> commandLineArgs;
   std::vector<std::string> generatedFiles;
@@ -76,11 +76,11 @@ public:
   MasterkernelGenerator(const OP2Application &app,
                         std::vector<std::string> &args,
                         clang::tooling::FixedCompilationDatabase &compilations,
-                        Staging staging,
+                        OP2Optimizations flags,
                         std::string skeleton_name = "skeleton_kernels.cpp")
       : OP2WriteableRefactoringTool(
             compilations, {std::string(SKELETONS_DIR) + skeleton_name}),
-        staging(staging), application(app), commandLineArgs(args) {}
+        op2Flags(flags), application(app), commandLineArgs(args) {}
 
   /// @brief Generates kernelfiles for all parLoop and then the master kernel
   ///  file.
@@ -107,7 +107,7 @@ public:
     clang::tooling::FixedCompilationDatabase F(".", commandLineArgs);
     for (size_t i = 0; i < application.getParLoops().size(); ++i) {
 
-      KernelGeneratorType tool(F, application, i, staging);
+      KernelGeneratorType tool(F, application, i, op2Flags);
       if (tool.generateKernelFile()) {
         llvm::outs() << "Error during processing ";
       }
@@ -135,7 +135,8 @@ public:
 typedef MasterkernelGenerator<SeqRefactoringTool> SeqGenerator;
 typedef MasterkernelGenerator<OMPRefactoringTool> OpenMPGenerator;
 typedef MasterkernelGenerator<VecRefactoringTool> VectorizedGenerator;
-typedef MasterkernelGenerator<CUDARefactoringTool, CUDAMasterKernelHandler> CUDAGenerator;
+typedef MasterkernelGenerator<CUDARefactoringTool, CUDAMasterKernelHandler>
+    CUDAGenerator;
 } // namespace OP2
 
 #endif /* ifndef MASTERKERNELGENERATOR_HPP */
