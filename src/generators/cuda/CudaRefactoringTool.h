@@ -46,7 +46,7 @@ public:
             {std::string(SKELETONS_DIR) +
              skeletons[getLoopType(app.getParLoops()[idx], op.staging)]},
             app, idx, CUDARefactoringTool::_postfix, op),
-        cudaKernelHandler(&getReplacements(), app, idx, op) {}
+        cudaKernelHandler(&getReplacements(), Compilations, app, idx, op) {}
 
   /// @brief Adding CUDA specific Matchers and handlers.
   ///   Called from OP2KernelGeneratorBase::GenerateKernelFile()
@@ -78,6 +78,9 @@ public:
                       &cudaKernelHandler);
     Finder.addMatcher(CUDAKernelHandler::incrementWriteMatcher,
                       &cudaKernelHandler);
+    // SOA
+    Finder.addMatcher(CUDAKernelHandler::strideDeclMatcher, &cudaKernelHandler);
+    Finder.addMatcher(CUDAKernelHandler::strideInitMatcher, &cudaKernelHandler);
   }
 
   static constexpr const char *_postfix = "kernel";

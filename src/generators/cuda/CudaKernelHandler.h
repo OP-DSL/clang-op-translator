@@ -13,6 +13,7 @@ namespace matchers = clang::ast_matchers;
 class CUDAKernelHandler : public matchers::MatchFinder::MatchCallback {
 protected:
   std::map<std::string, clang::tooling::Replacements> *Replace;
+  const clang::tooling::CompilationDatabase &Compilations;
   const OP2Application &application;
   const size_t loopIdx;
   OP2Optimizations op2Flags;
@@ -29,6 +30,8 @@ protected:
   std::string getMapIdxDecls();
   std::string getMapIdxInits();
   std::string genWriteIncrement();
+  std::string genStrideDecls();
+  std::string genStrideInit();
 
 public:
   /// @brief Construct a CUDAKernelHandler
@@ -39,6 +42,7 @@ public:
   /// @param idx index of the currently generated loop
   CUDAKernelHandler(
       std::map<std::string, clang::tooling::Replacements> *Replace,
+      const clang::tooling::CompilationDatabase &Compilations,
       const OP2Application &app, size_t idx, OP2Optimizations flags);
   // Static matchers handled by this class
   static const matchers::DeclarationMatcher cudaFuncMatcher;
@@ -51,6 +55,8 @@ public:
   static const matchers::StatementMatcher setConstantArraysToArgsMatcher;
   static const matchers::DeclarationMatcher arg0hDeclMatcher;
   static const matchers::DeclarationMatcher mapidxDeclMatcher;
+  static const matchers::DeclarationMatcher strideDeclMatcher;
+  static const matchers::StatementMatcher strideInitMatcher;
   static const matchers::StatementMatcher mapidxInitMatcher;
   static const matchers::StatementMatcher incrementWriteMatcher;
 
