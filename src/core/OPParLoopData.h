@@ -97,16 +97,24 @@ public:
   std::string getMapVarDecls() const;
   UserFuncData getUserFuncInfo() const;
   void dumpFuncTextTo(std::string) const;
-  /// @brief index of mapping with idx corresponding to the arg (-1 for direct)
+  /// @brief index of the calculated mapping value used by the op_arg
+  /// eg. 0 if tihe op_arg uses map0idx, -1 for direct args
+  /// size: number of arguments, maximum value: number of mapping values - 1
   std::vector<int> mapIdxs;
+  /// @brief index of the mapping used by op_arg (-1 for direct)
+  /// size: number of arguments, maximum value: number of mapping array used - 1
   std::vector<int> arg2map;
-  /// @brief index of the data corresponding to the arg (-1 for direct)
-  std::vector<int> dataIdxs;
-  int ninds;
-  /// @brief Index of first occurence of indirect op_dat
-  std::vector<int> dat2argIdxs;
-  /// @brief Index of the first occurence of a map
+  /// @brief Index of the arg which is the first occurence of a mapping
+  /// size: number of different mapping array used
   std::vector<int> map2argIdxs;
+  /// @brief: number of different op_dat arrays accessed indirectly
+  int ninds;
+  /// @brief index of the data (op_dat) accessed by the op_arg (-1 for direct)
+  /// size: number of arguments, maximum value: ninds - 1
+  std::vector<int> dataIdxs;
+  /// @brief Index of the op_arg which is the first occurence of indirect op_dat
+  /// size: ninds
+  std::vector<int> dat2argIdxs;
 };
 
 typedef DummyParLoop ParLoop;
