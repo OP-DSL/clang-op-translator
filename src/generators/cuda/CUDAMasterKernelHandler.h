@@ -53,7 +53,7 @@ public:
     llvm::raw_string_ostream os(repl);
     for (const op_global_const &c : constants) {
       os << "if(!strcmp(name,\"" << c.name
-         << "\") { cutilSafeCall(cudaMemcpyToSymbol(" << c.name
+         << "\")) { cutilSafeCall(cudaMemcpyToSymbol(" << c.name
          << ", dat, dim*size));} else ";
     }
     if (constants.size() != 0)
