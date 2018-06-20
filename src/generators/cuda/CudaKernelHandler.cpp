@@ -227,8 +227,19 @@ std::string CUDAKernelHandler::genWriteIncrement() {
         std::string argl =
             "arg" + std::to_string(i) + "_l[" + std::to_string(d) + "]";
         std::string indarg =
-            "ind_arg" + std::to_string(idx) + "[" + std::to_string(d) + "+map" +
-            std::to_string(mapIdx) + "idx*" + std::to_string(arg.dim) + "]";
+            "ind_arg" + std::to_string(idx) + "[" + std::to_string(d);
+        if (op2Flags.SOA) {
+          std::string strideName =
+              (arg.isDirect() ? "direct"
+                              : ("opDat" + std::to_string(loop.dataIdxs[i]))) +
+              "_" + loop.getName() + "_stride_OP2CONSTANT";
+          indarg += "*" + strideName;
+        }
+        indarg += "+map" + std::to_string(mapIdx) + "idx";
+        if (!op2Flags.SOA) {
+          indarg += "*" + std::to_string(arg.dim);
+        }
+        indarg += "]";
         os << argl << "+=" << indarg << ";";
         os << indarg << "=" << argl << ";";
       }
