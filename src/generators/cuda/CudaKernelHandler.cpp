@@ -108,8 +108,10 @@ void CUDAKernelHandler::run(const MatchFinder::MatchResult &Result) {
         std::string hostFuncText = loop.getUserFuncInc();
         if (op2Flags.SOA) {
           loop.dumpFuncTextTo("/tmp/loop.cu");
-          std::string SOAresult = UserFuncTransformator(Compilations, loop).run();
-          if(SOAresult != "") hostFuncText = SOAresult;
+          std::string SOAresult =
+              UserFuncTransformator(Compilations, loop).run();
+          if (SOAresult != "")
+            hostFuncText = SOAresult;
         }
         return "__device__ void " + loop.getName() + "_gpu" +
                hostFuncText.substr(hostFuncText.find("("));
@@ -334,15 +336,19 @@ std::string CUDAKernelHandler::genFuncCall() {
         os << "_l";
       } else if (!arg.isGBL) {
         if (loop.isDirect() || op2Flags.staging == OP2::OP_COlOR2) {
-          os << "+n*" << arg.dim;
+          os << "+n";
         } else {
-          os << "+(n+offset_b)*" << arg.dim;
+          os << "+(n+offset_b)";
         }
+        if (!op2Flags.SOA)
+          os << "*" << arg.dim;
       }
     } else {
       if (arg.accs != OP2::OP_INC || op2Flags.staging == OP2::OP_COlOR2) {
         os << "ind_arg" << loop.dataIdxs[i] << "+map" << loop.mapIdxs[i]
-           << "idx*" << arg.dim;
+           << "idx";
+        if (!op2Flags.SOA)
+          os << "*" << arg.dim;
       } else {
         os << "arg" << i << "_l";
       }
