@@ -57,7 +57,7 @@ public:
          << ", dat, dim*size));} else ";
     }
     if (constants.size() != 0)
-      os << "{printf(\"error: unknown const name\n\"); exit(1);}";
+      os << "{printf(\"error: unknown const name\\n\"); exit(1);}";
     return os.str();
   }
 
