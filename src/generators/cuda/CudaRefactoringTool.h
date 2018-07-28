@@ -81,6 +81,9 @@ public:
     // SOA
     Finder.addMatcher(CUDAKernelHandler::strideDeclMatcher, &cudaKernelHandler);
     Finder.addMatcher(CUDAKernelHandler::strideInitMatcher, &cudaKernelHandler);
+
+    // Delete Const if not needed
+    Finder.addMatcher(CUDAKernelHandler::constantHandlingMatcher, &cudaKernelHandler);
   }
 
   static constexpr const char *_postfix = "kernel";

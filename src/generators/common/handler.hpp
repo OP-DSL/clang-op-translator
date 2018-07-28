@@ -88,7 +88,7 @@ int fixEndReplHandler(
     std::string EndKey = "END") {
   const MatchType *match = Result.Nodes.getNodeAs<MatchType>(Key);
   const EndMatchType *endMatch = Result.Nodes.getNodeAs<EndMatchType>(EndKey);
-  if (!match && !endMatch)
+  if (!match || !endMatch)
     return 1; // We shouldn't handle this match
   if (debug)
     llvm::outs() << Key << "\n";
@@ -99,12 +99,14 @@ int fixEndReplHandler(
       sm->getFileLoc(endMatch->getLocStart()).getLocWithOffset(EndOffset));
   std::string replacement = ReplacementGenerator();
 
-  tooling::Replacement repl(*sm, CharSourceRange(replRange, false),
-                            replacement);
-  if (llvm::Error err = (*Replace)[filename].add(repl)) {
-    // TODO diagnostics..
-    llvm::errs() << "Replacement for key: " << Key << " failed in: " << filename
-                 << "\n";
+  if (replacement != "NO_REPL") {
+    tooling::Replacement repl(*sm, CharSourceRange(replRange, false),
+                              replacement);
+    if (llvm::Error err = (*Replace)[filename].add(repl)) {
+      // TODO diagnostics..
+      llvm::errs() << "Replacement for key: " << Key
+                   << " failed in: " << filename << "\n";
+    }
   }
   return 0;
 }

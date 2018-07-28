@@ -59,6 +59,7 @@ public:
   static const matchers::StatementMatcher strideInitMatcher;
   static const matchers::StatementMatcher mapidxInitMatcher;
   static const matchers::StatementMatcher incrementWriteMatcher;
+  static const matchers::StatementMatcher constantHandlingMatcher;
 
   virtual void run(const matchers::MatchFinder::MatchResult &Result) override;
 };

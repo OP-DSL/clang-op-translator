@@ -93,6 +93,15 @@ const StatementMatcher CUDAKernelHandler::strideInitMatcher =
                hasLHS(ignoringImpCasts(memberExpr(member(hasName("count"))))))))
         .bind("strideInit");
 
+const StatementMatcher CUDAKernelHandler::constantHandlingMatcher =
+    compoundStmt(
+        hasAnySubstatement(
+            declStmt(containsDeclaration(0, varDecl(hasName("const_bytes"))))
+                .bind("const_bytes_decl")),
+        hasAnySubstatement(
+            callExpr(callee(functionDecl(hasName("mvConstArraysToDevice"))))
+                .bind("END")));
+
 //_________________________________CONSTRUCTORS________________________________
 CUDAKernelHandler::CUDAKernelHandler(
     std::map<std::string, clang::tooling::Replacements> *Replace,
@@ -157,6 +166,17 @@ void CUDAKernelHandler::run(const MatchFinder::MatchResult &Result) {
     return;
   if (!HANDLER(IfStmt, 2, "strideInit", CUDAKernelHandler::genStrideInit))
     return;
+  if (!fixEndReplHandler<DeclStmt, CallExpr, 0, 35>(
+          Result, Replace, "const_bytes_decl", [this]() {
+            const ParLoop &loop = this->application.getParLoops()[loopIdx];
+            for (size_t i = 0; i < loop.getNumArgs(); ++i) {
+              const OPArg &arg = loop.getArg(i);
+              if (arg.isGBL && arg.accs == OP2::OP_READ)
+                return "NO_REPL";
+            }
+            return "";
+          }))
+    return; // if successfully handled return
 }
 
 //___________________________________HANDLERS__________________________________
