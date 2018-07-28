@@ -243,6 +243,7 @@ std::string CUDAKernelHandler::genWriteIncrement() {
     const OPArg &arg = loop.getArg(i);
     if (!arg.isDirect() && arg.accs == OP2::OP_INC) {
       int idx = loop.dataIdxs[i], mapIdx = loop.mapIdxs[i];
+      std::string writeBack = "";
       for (size_t d = 0; d < arg.dim; ++d) {
         std::string argl =
             "arg" + std::to_string(i) + "_l[" + std::to_string(d) + "]";
@@ -261,8 +262,9 @@ std::string CUDAKernelHandler::genWriteIncrement() {
         }
         indarg += "]";
         os << argl << "+=" << indarg << ";";
-        os << indarg << "=" << argl << ";";
+        writeBack += indarg + "=" + argl + ";";
       }
+      os << writeBack;
     }
   }
 
