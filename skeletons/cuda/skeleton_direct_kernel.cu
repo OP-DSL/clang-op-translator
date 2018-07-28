@@ -76,6 +76,7 @@ void op_par_loop_skeleton(char const *name, op_set set, op_arg arg0) {
   }
 
   op_mpi_set_dirtybit_cuda(nargs, args);
+  cutilSafeCall(cudaDeviceSynchronize());
 
   // update kernel record
   op_timers_core(&cpu_t2, &wall_t2);
