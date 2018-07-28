@@ -9,14 +9,14 @@ __device__ void skeleton(double *a) {}
 
 // CUDA kernel function
 __global__ void op_cuda_skeleton(double *arg0, int set_size) {
-  int n = threadIdx.x + blockIdx.x * blockDim.x;
   double arg0_l[1];
 
   for (int d = 0; d < 1; ++d) {
     arg0_l[d] = ZERO_double;
   }
 
-  if (n < set_size) {
+  for (int n = threadIdx.x + blockIdx.x * blockDim.x; n < set_size;
+       n += blockDim.x * gridDim.x) {
     // user-supplied kernel call
     skeleton(arg0);
   }
@@ -60,7 +60,7 @@ void op_par_loop_skeleton(char const *name, op_set set, op_arg arg0) {
     // set CUDA execution parameters
     int nthread = OP_block_size;
 
-    int nblocks = (set->size - 1) / nthread + 1;
+    int nblocks = 200;
 
     int maxblocks = nblocks;
     reduct_supp_data_t reduct;
