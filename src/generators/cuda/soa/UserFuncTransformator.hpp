@@ -2,6 +2,7 @@
 #define USERFUNCTRANSFORMATOR_H
 #include "core/OP2WriteableRefactoringTool.hpp"
 #include "core/OPParLoopData.h"
+#include "core/op2_clang_core.h"
 #include "generators/common/handler.hpp"
 #include "clang/ASTMatchers/ASTMatchFinder.h"
 #include "clang/Tooling/Refactoring.h"
@@ -62,12 +63,14 @@ public:
 
 class UserFuncTransformator : public OP2WriteableRefactoringTool {
   const ParLoop &loop;
+  OP2Optimizations op2Flags;
 
 public:
   UserFuncTransformator(const clang::tooling::CompilationDatabase &Compilations,
-                        const ParLoop &_loop,
+                        const ParLoop &_loop, const OP2Optimizations &flags,
                         std::vector<std::string> path = {"/tmp/loop.cu"})
-      : OP2WriteableRefactoringTool(Compilations, path), loop(_loop) {}
+      : OP2WriteableRefactoringTool(Compilations, path), loop(_loop),
+        op2Flags(flags) {}
 
   std::string run() {
 
@@ -77,7 +80,11 @@ public:
     // Add mavhers to handler
     for (size_t i = 0; i < loop.getNumArgs(); ++i) {
       const OPArg &arg = loop.getArg(i);
-      if (arg.dim > 1 && ((arg.isDirect() && !arg.isGBL) || !arg.isDirect())) {
+      // Only need strides for nonglobal data with dim > 1 and don't need stride
+      // for indirect increments with 2 level coloring
+      if (arg.dim > 1 && ((arg.isDirect() && !arg.isGBL) ||
+                          (!arg.isDirect() && (op2Flags.staging != OP_STAGE_ALL ||
+                                               arg.accs != OP_INC)))) {
         std::string name = loop.getUserFuncInfo().paramNames[i];
         Finder.addMatcher(
             arraySubscriptExpr(hasBase(hasDescendant(declRefExpr(

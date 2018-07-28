@@ -118,7 +118,7 @@ void CUDAKernelHandler::run(const MatchFinder::MatchResult &Result) {
         if (op2Flags.SOA) {
           loop.dumpFuncTextTo("/tmp/loop.cu");
           std::string SOAresult =
-              UserFuncTransformator(Compilations, loop).run();
+              UserFuncTransformator(Compilations, loop, op2Flags).run();
           if (SOAresult != "")
             hostFuncText = SOAresult;
         }
