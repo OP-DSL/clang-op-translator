@@ -97,6 +97,7 @@ void op_par_loop_skeleton(char const *name, op_set set, op_arg arg0) {
       direct_skeleton_stride_OP2HOST = getSetSizeFromOpArg(&arg0);
     }
 
+    int nthread = OP_block_size;
     int maxblocks = 0;
     for (int col = 0; col < Plan->ncolors; col++) {
       maxblocks = MAX(maxblocks, Plan->ncolblk[col]);
@@ -105,6 +106,7 @@ void op_par_loop_skeleton(char const *name, op_set set, op_arg arg0) {
     op_setup_reductions(reduct, args, nargs, maxblocks);
     setRedArrToArg<double, OP_INC>(args[0], maxblocks, arg0h);
     mvReductArraysToDevice(reduct.reduct_bytes);
+    int nshared = reduct.reduct_size * nthread;
 
     // execute plan
     int block_offset = 0;
@@ -113,15 +115,12 @@ void op_par_loop_skeleton(char const *name, op_set set, op_arg arg0) {
         op_mpi_wait_all_cuda(nargs, args);
       }
 
-      int nthread = OP_block_size;
-
       dim3 nblocks = dim3(
           Plan->ncolblk[col] >= (1 << 16) ? 65535 : Plan->ncolblk[col],
           Plan->ncolblk[col] >= (1 << 16) ? (Plan->ncolblk[col] - 1) / 65535 + 1
                                           : 1,
           1);
       if (Plan->ncolblk[col] > 0) {
-        int nshared = reduct.reduct_size * nthread;
         op_cuda_skeleton<<<nblocks, nthread>>>(
             (double *)arg0.data_d, block_offset, Plan->blkmap, Plan->offset,
             Plan->nelems, Plan->nthrcol, Plan->thrcol, Plan->ncolblk[col],

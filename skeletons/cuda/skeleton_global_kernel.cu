@@ -83,6 +83,7 @@ void op_par_loop_skeleton(char const *name, op_set set, op_arg arg0) {
     op_setup_reductions(reduct, args, nargs, maxblocks);
     setRedArrToArg<double, OP_INC>(args[0], maxblocks, arg0h);
     mvReductArraysToDevice(reduct.reduct_bytes);
+    int nshared = reduct.reduct_size * nthread;
 
     // execute plan
     for (int col = 0; col < Plan->ncolors; col++) {
@@ -93,7 +94,6 @@ void op_par_loop_skeleton(char const *name, op_set set, op_arg arg0) {
       int start = Plan->col_offsets[0][col];
       int end = Plan->col_offsets[0][col + 1];
       int nblocks = (end - start - 1) / nthread + 1;
-      int nshared = reduct.reduct_size * nthread;
 
       op_cuda_skeleton<<<nblocks, nthread, nshared>>>(
           (double *)arg0.data_d, start, end, Plan->col_reord, set->size);

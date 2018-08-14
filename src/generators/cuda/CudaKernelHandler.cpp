@@ -102,6 +102,20 @@ const StatementMatcher CUDAKernelHandler::constantHandlingMatcher =
             callExpr(callee(functionDecl(hasName("mvConstArraysToDevice"))))
                 .bind("END")));
 
+const StatementMatcher CUDAKernelHandler::reductHandlingMatcher = compoundStmt(
+    hasAnySubstatement(
+        declStmt(containsDeclaration(0, varDecl(hasName("maxblocks"))))
+            .bind("maxblocks_decl")),
+    hasAnySubstatement(
+        declStmt(containsDeclaration(0, varDecl(hasName("nshared"))))
+            .bind("END")));
+
+const StatementMatcher CUDAKernelHandler::mvRedArrsDtoHostMatcher =
+    callExpr(
+        callee(functionDecl(hasName("mvReductArraysToHost"), parameterCountIs(1))),
+        hasAncestor(functionDecl(hasName("op_par_loop_skeleton"))))
+        .bind("mvRedToHost");
+
 //_________________________________CONSTRUCTORS________________________________
 CUDAKernelHandler::CUDAKernelHandler(
     std::map<std::string, clang::tooling::Replacements> *Replace,
@@ -173,6 +187,27 @@ void CUDAKernelHandler::run(const MatchFinder::MatchResult &Result) {
               const OPArg &arg = loop.getArg(i);
               if (arg.isGBL && arg.accs == OP2::OP_READ)
                 return "NO_REPL";
+            }
+            return "";
+          }))
+    return; // if successfully handled return
+  if (!fixEndReplHandler<DeclStmt, DeclStmt, 0, 43>(
+          Result, Replace, "maxblocks_decl", [this]() {
+            const ParLoop &loop = this->application.getParLoops()[loopIdx];
+            for (size_t i = 0; i < loop.getNumArgs(); ++i) {
+              const OPArg &arg = loop.getArg(i);
+              if (arg.isReduction())
+                return "NO_REPL";
+            }
+            return "";
+          }))
+    return; // if successfully handled return
+  if (!lineReplHandler<CallExpr, 2>(Result, Replace, "mvRedToHost", [this]() {
+            const ParLoop &loop = this->application.getParLoops()[loopIdx];
+            for (size_t i = 0; i < loop.getNumArgs(); ++i) {
+              const OPArg &arg = loop.getArg(i);
+              if (arg.isReduction())
+                return "mvReductArraysToHost(reduct.reduct_bytes);";
             }
             return "";
           }))

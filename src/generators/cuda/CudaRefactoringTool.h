@@ -57,10 +57,10 @@ public:
 
     Finder.addMatcher(SeqKernelHandler::userFuncMatcher, &cudaKernelHandler);
     Finder.addMatcher(SeqKernelHandler::funcCallMatcher,
-                      &cudaKernelHandler); // TODO update
+                      &cudaKernelHandler);
     Finder.addMatcher(CUDAKernelHandler::cudaFuncMatcher, &cudaKernelHandler);
     Finder.addMatcher(CUDAKernelHandler::cudaFuncCallMatcher,
-                      &cudaKernelHandler); // check shared
+                      &cudaKernelHandler);
     Finder.addMatcher(CUDAKernelHandler::setReductionArraysToArgsMatcher,
                       &cudaKernelHandler);
     Finder.addMatcher(CUDAKernelHandler::setConstantArraysToArgsMatcher,
@@ -84,6 +84,9 @@ public:
 
     // Delete Const if not needed
     Finder.addMatcher(CUDAKernelHandler::constantHandlingMatcher, &cudaKernelHandler);
+    // Reduct..
+    Finder.addMatcher(CUDAKernelHandler::reductHandlingMatcher, &cudaKernelHandler);
+    Finder.addMatcher(CUDAKernelHandler::mvRedArrsDtoHostMatcher, &cudaKernelHandler);
   }
 
   static constexpr const char *_postfix = "kernel";

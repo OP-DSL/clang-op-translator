@@ -60,6 +60,8 @@ public:
   static const matchers::StatementMatcher mapidxInitMatcher;
   static const matchers::StatementMatcher incrementWriteMatcher;
   static const matchers::StatementMatcher constantHandlingMatcher;
+  static const matchers::StatementMatcher reductHandlingMatcher;
+  static const matchers::StatementMatcher mvRedArrsDtoHostMatcher;
 
   virtual void run(const matchers::MatchFinder::MatchResult &Result) override;
 };
