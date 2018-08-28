@@ -51,6 +51,11 @@ void OP2RefactoringTool::generateKernelFiles() {
                             optimizationFlags, "skeleton_kernels.cu");
     generator.generateKernelFiles();
   }
+  if (opTarget == openmp4 || opTarget == all) {
+    OpenMP4Generator generator(application, commandLineArgs, Compilations,
+                            optimizationFlags, "skeleton_omp4kernels.cpp");
+    generator.generateKernelFiles();
+  }
 }
 
 int OP2RefactoringTool::generateOPFiles() {

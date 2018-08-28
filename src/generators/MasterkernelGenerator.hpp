@@ -6,6 +6,8 @@
 #include "generators/cuda/CUDAMasterKernelHandler.h"
 #include "generators/cuda/CudaRefactoringTool.h"
 #include "generators/openmp/OMPRefactoringTool.h"
+#include "generators/openmp4/OMP4MasterKernelHandler.h"
+#include "generators/openmp4/OMP4RefactoringTool.h"
 #include "generators/sequential/SeqRefactoringTool.h"
 #include "generators/vectorization/VecRefactoringTool.h"
 #include <algorithm>
@@ -137,6 +139,8 @@ typedef MasterkernelGenerator<OMPRefactoringTool> OpenMPGenerator;
 typedef MasterkernelGenerator<VecRefactoringTool> VectorizedGenerator;
 typedef MasterkernelGenerator<CUDARefactoringTool, CUDAMasterKernelHandler>
     CUDAGenerator;
+typedef MasterkernelGenerator<OMP4RefactoringTool, OMP4MasterKernelHandler>
+    OpenMP4Generator;
 } // namespace OP2
 
 #endif /* ifndef MASTERKERNELGENERATOR_HPP */

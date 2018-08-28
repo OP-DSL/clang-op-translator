@@ -16,7 +16,9 @@ static llvm::cl::opt<OP2::OP2Targets>
                  clEnumValN(OP2::seq, "seq", "Sequential"),
                  clEnumValN(OP2::openmp, "openmp", "OpenMP"),
                  clEnumValN(OP2::cuda, "cuda", "CUDA"),
-                 clEnumValN(OP2::vec, "vec", "Vectorization")));
+                 clEnumValN(OP2::vec, "vec", "Vectorization"),
+                 clEnumValN(OP2::openmp4, "openmp4", "OpenMP4")));
+
 static llvm::cl::opt<OP2::Staging> staging(
     "staging", llvm::cl::desc("Sets the staging and coloring type for cuda."),
     llvm::cl::init(OP2::OP_STAGE_ALL), llvm::cl::cat(Op2Category),
