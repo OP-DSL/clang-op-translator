@@ -31,6 +31,9 @@ if(LLVM_BUILD_MAIN_SRC_DIR)
   include_directories(${LLVM_BUILD_BINARY_DIR}/tools/clang/include)
 endif()
 
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 set(OP2_INSTALL_PATH "$ENV{OP2_INSTALL_PATH}")
 
 set(SKELETONS_DIR \"${CMAKE_CURRENT_SOURCE_DIR}/skeletons/\")
@@ -61,7 +64,13 @@ add_executable(${PROJECT_NAME}
   src/generators/vectorization/VecKernelHandler.cpp
   )
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -fno-exceptions -fno-rtti")
+add_executable(op-check
+  src/op-check.cpp
+  src/core/OPParLoopData.cpp
+  )
+
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-exceptions -fno-rtti")
 
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wall")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
@@ -69,6 +78,13 @@ set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
 target_link_libraries(${PROJECT_NAME} ${LIBRARY_LIST})
 
 target_link_libraries(${PROJECT_NAME}
+  LLVMTarget
+  LLVMOption # Support
+  )
+
+target_link_libraries(op-check ${LIBRARY_LIST})
+
+target_link_libraries(op-check
   LLVMTarget
   LLVMOption # Support
   )
