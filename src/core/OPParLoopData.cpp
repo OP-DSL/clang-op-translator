@@ -23,48 +23,29 @@ std::ostream &operator<<(std::ostream &os, const op_global_const &c) {
   return os;
 }
 
-//___________________________________OP_MAP___________________________________
-op_map::op_map(const op_set &from, const op_set &to, unsigned d, std::string s)
-    : from(from), to(to), dim(d), name(s) {}
-bool op_map::operator==(const op_map &m) const {
-  return from == m.from && to == m.to && dim == m.dim && name == m.name;
-}
-bool op_map::operator!=(const op_map &m) const { return !(*this == m); }
-llvm::raw_ostream &operator<<(llvm::raw_ostream &os, const op_map &m) {
-  if (m != op_map::no_map)
-    return os << "map:" << m.name << "::" << m.from << "-->" << m.to
-              << " dim: " << m.dim;
-  return os << "map:OP_ID";
-}
-const op_map op_map::no_map("", "", 0, "");
-
 //_________________________________USER_FUNC__________________________________
-UserFuncData::UserFuncData(const clang::FunctionDecl *funcD,
-                           const clang::SourceManager *sm)
-    : functionDecl(decl2str(funcD, sm)), funcName(funcD->getNameAsString()) {
-  isInlineSpecified = funcD->isInlineSpecified();
-  path = funcD->getLocStart().printToString(*sm);
-  path = path.substr(0, path.find(":"));
-  for (size_t i = 0; i < funcD->getNumParams(); ++i) {
-    paramNames.push_back(funcD->getParamDecl(i)->getNameAsString());
-  }
-}
+UserFuncData::UserFuncData(std::string _fDecl, std::string _fName,
+                           bool _isinline, std::string _path,
+                           std::vector<std::string> _paramNames)
+    : functionDecl(_fDecl), funcName(_fName), isInlineSpecified(_isinline),
+      path(_path), paramNames(_paramNames) {}
+
 std::string UserFuncData::getInlinedFuncDecl() const {
   return (isInlineSpecified ? "" : "inline ") + functionDecl;
 }
 
 //___________________________________OP_ARG___________________________________
-DummyOPArgv2::DummyOPArgv2(std::string dat, int _idx, const std::string &_map,
-                           size_t _dim, std::string _type, OP_accs_type _accs)
-    : opDat(dat), idx(_idx), opMap(_map), dim(_dim), type(_type), accs(_accs),
-      isGBL(false) {}
+OPArg::OPArg(int _argIdx, std::string dat, int _idx, const std::string &_map,
+             size_t _dim, std::string _type, OP_accs_type _accs)
+    : argIdx(_argIdx), opDat(dat), idx(_idx), opMap(_map), dim(_dim),
+      type(_type), accs(_accs), isGBL(false) {}
 
-DummyOPArgv2::DummyOPArgv2(std::string dat, size_t _dim, std::string _type,
-                           OP_accs_type _accs)
-    : opDat(dat), idx(0), opMap(""), dim(_dim), type(_type), accs(_accs),
-      isGBL(true) {}
+OPArg::OPArg(int _argIdx, std::string dat, size_t _dim, std::string _type,
+             OP_accs_type _accs)
+    : argIdx(_argIdx), opDat(dat), idx(0), opMap(""), dim(_dim), type(_type),
+      accs(_accs), isGBL(true) {}
 
-llvm::raw_ostream &operator<<(llvm::raw_ostream &os, const DummyOPArgv2 &arg) {
+llvm::raw_ostream &operator<<(llvm::raw_ostream &os, const OPArg &arg) {
   os << "op_arg" << (arg.isGBL ? "_gbl(" : "(dat: ") << arg.opDat << ", ";
   if (!arg.isGBL) {
     os << "idx: " << arg.idx << ", map: " << arg.opMap << ", ";
@@ -72,93 +53,33 @@ llvm::raw_ostream &operator<<(llvm::raw_ostream &os, const DummyOPArgv2 &arg) {
   return os << "dim: " << arg.dim << ", type: " << arg.type
             << ", accs: " << arg.accs << ")";
 }
-bool DummyOPArgv2::isDirect() const { return opMap == ""; }
+bool OPArg::isDirect() const { return opMap == ""; }
 
-std::string DummyOPArgv2::getArgCall(int argIdx, std::string mapStr) const {
-  std::string data = "(" + type + "*)arg" + std::to_string(argIdx) + ".data";
-  if (isGBL) {
-    return data;
-  }
-  return "&(" + data + ")[" + std::to_string(dim) + "*" + mapStr + "]";
-}
-
-bool DummyOPArgv2::isReduction() const {
+bool OPArg::isReduction() const {
   return isGBL && (accs == OP_INC || accs == OP_MAX || accs == OP_MIN);
 }
 
 //__________________________________PAR_LOOP__________________________________
 
-size_t DummyParLoop::numLoops = 0;
+ParLoop::ParLoop(UserFuncData _userFuncData, std::string _name,
+                 std::vector<OPArg> _args)
+    : loopId(-1), function(_userFuncData), name(_name), args(_args) {}
 
-DummyParLoop::DummyParLoop(const clang::FunctionDecl *_function,
-                           const clang::SourceManager *sm, std::string _name,
-                           std::vector<OPArg> _args)
-    : loopId(-1), function(_function, sm), name(_name), args(_args) {
-  std::map<std::string, int> datToInd;
-  std::map<std::string, std::map<int, int>> mapidxToInd;
-  std::map<std::string, int> map2ind;
-  int mapidxs = 0;
-  int nummaps = -1;
-  ninds = 0;
-  for (size_t i = 0; i < args.size(); ++i) {
-    OPArg &arg = args[i];
-    if (arg.isDirect() || arg.isGBL) {
-      dataIdxs.push_back(-1);
-      mapIdxs.push_back(-1);
-      arg2map.push_back(-1);
-    } else {
-      auto it = datToInd.find(arg.opDat);
-      if (it != datToInd.end()) {
-        dataIdxs.push_back(it->second);
-      } else {
-        dat2argIdxs.push_back(i);
-        dataIdxs.push_back(ninds);
-        datToInd[arg.opDat] = ninds;
-        ninds++;
-      }
-      auto mapIt = mapidxToInd.find(arg.opMap);
-      if (mapIt == mapidxToInd.end()) {
-        std::map<int, int> tmp;
-        mapIdxs.push_back(mapidxs);
-        map2argIdxs.push_back(i);
-        arg2map.push_back(++nummaps);
-        map2ind[arg.opMap] = nummaps;
-        tmp[arg.idx] = mapidxs++;
-        mapidxToInd[arg.opMap] = tmp;
-      } else {
-        arg2map.push_back(map2ind[arg.opMap]);
-        auto idxit = mapIt->second.find(arg.idx);
-        if (idxit == mapIt->second.end()) {
-          mapIdxs.push_back(mapidxs);
-          mapIt->second[arg.idx] = mapidxs++;
-        } else {
-          mapIdxs.push_back(idxit->second);
-        }
-      }
-    }
-  }
-}
-
-void DummyParLoop::generateID() {
+void ParLoop::generateID() {
   if (loopId == -1)
     loopId = numLoops++;
 }
 
-bool DummyParLoop::isDirect() const {
+bool ParLoop::isDirect() const {
   return std::all_of(args.begin(), args.end(),
                      [](const OPArg &a) { return a.isDirect(); });
 }
 
-std::string DummyParLoop::getName() const { return name; }
-std::string DummyParLoop::getFuncText() const { return function.functionDecl; }
+std::string ParLoop::getName() const { return name; }
 
-size_t DummyParLoop::getLoopID() const { return loopId; }
+size_t ParLoop::getLoopID() const { return loopId; }
 
-std::string DummyParLoop::getUserFuncInc() const {
-  return function.getInlinedFuncDecl();
-}
-
-std::string DummyParLoop::getParLoopDef() const {
+std::string ParLoop::getParLoopDef() const {
   std::string param = "void par_loop_" + name + "(const char *name, op_set set";
   llvm::raw_string_ostream os(param);
   for (size_t i = 2; i < args.size(); ++i) {
@@ -168,99 +89,17 @@ std::string DummyParLoop::getParLoopDef() const {
   return os.str();
 }
 
-size_t DummyParLoop::getNumArgs() const { return args.size(); }
+UserFuncData ParLoop::getUserFuncInfo() const { return function; }
 
-const OPArg &DummyParLoop::getArg(size_t ind) const { return args[ind]; }
+//________________________________OPAPPLICATION_______________________________
+void OPApplication::setName(std::string name) { applicationName = name; }
 
-std::string DummyParLoop::getFuncCall() const {
-  std::string funcCall = "";
-  llvm::raw_string_ostream ss(funcCall);
-  ss << function.funcName << "(";
-  for (size_t i = 0; i < args.size(); ++i) {
-    if (args[i].isDirect()) {
-      ss << args[i].getArgCall(i, "n");
-    } else {
-      ss << args[i].getArgCall(dat2argIdxs[dataIdxs[i]],
-                               ("map" + std::to_string(mapIdxs[i]) + "idx"));
-    }
-    ss << ",";
-  }
-  ss.str();
+std::vector<ParLoop> &OPApplication::getParLoops() { return loops; }
+const std::vector<ParLoop> &OPApplication::getParLoops() const { return loops; }
 
-  return funcCall.substr(0, funcCall.length() - 1) + ");";
-}
-
-std::string DummyParLoop::getMPIReduceCall() const {
-  std::string reduceCall = "";
-  llvm::raw_string_ostream ss(reduceCall);
-  for (size_t i = 0; i < args.size(); ++i) {
-    if (args[i].isReduction()) {
-      ss << "op_mpi_reduce(&arg" << i << ", (" << args[i].type << " *)arg" << i
-         << ".data);\n";
-    }
-  }
-  return ss.str();
-}
-
-std::string DummyParLoop::getTransferData() const {
-  std::string transfer = "";
-  llvm::raw_string_ostream ss(transfer);
-  for (size_t i = 0; i < args.size(); ++i) {
-    if (args[i].isGBL) {
-      continue;
-    }
-    ss << "OP_kernels[" << loopId << "].transfer += (float)set->size * arg" << i
-       << ".size";
-    if (args[i].accs != OP_READ) {
-      ss << " * 2.0f";
-    }
-    ss << ";\n";
-  }
-  return ss.str();
-}
-
-std::string DummyParLoop::getMapVarDecls() const {
-  std::string mapDecls = "";
-  llvm::raw_string_ostream ss(mapDecls);
-  std::vector<int> mapinds(args.size(), -1);
-  for (size_t i = 0; i < args.size(); ++i) {
-    if (args[i].isDirect() || args[i].isGBL) {
-      continue;
-    }
-    if (mapinds[mapIdxs[i]] == -1) {
-      mapinds[mapIdxs[i]] = i;
-      ss << "int map" << mapIdxs[i] << "idx = arg" << map2argIdxs[arg2map[i]]
-         << ".map_data[n * arg" << map2argIdxs[arg2map[i]] << ".map->dim + "
-         << args[i].idx << "];\n";
-    }
-  }
-  return ss.str();
-}
-
-UserFuncData DummyParLoop::getUserFuncInfo() const { return function; }
-
-void DummyParLoop::dumpFuncTextTo(std::string path) const {
-  std::ofstream os(path);
-  os << function.functionDecl;
-  os.close();
-}
-
-void OP2Application::setName(std::string name) { applicationName = name; }
-
-std::vector<ParLoop> &OP2Application::getParLoops() { return loops; }
-const std::vector<ParLoop> &OP2Application::getParLoops() const {
-  return loops;
-}
-
-bool OP2Application::addParLoop(ParLoop newLoop) {
-  // FIXME maybe set of loops would be better
+bool OPApplication::addParLoop(ParLoop newLoop) {
   for (const ParLoop &loop : loops) {
     if (newLoop.getName() == loop.getName()) {
-      assert(newLoop.getNumArgs() == loop.getNumArgs() &&
-             "Loops with the same name but different param numbers");
-      assert(newLoop.getUserFuncInfo().funcName ==
-                 loop.getUserFuncInfo().funcName &&
-             "Loops with the same name but different userfunctions");
       return false;
     }
   }

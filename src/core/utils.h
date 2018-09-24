@@ -8,6 +8,7 @@
 #include <clang/Frontend/CompilerInstance.h>
 #include <clang/Lex/Lexer.h>
 #include <clang/Tooling/CommonOptionsParser.h>
+#include <optional>
 
 namespace OP2 {
 
@@ -35,33 +36,14 @@ getCommandlineArgs(clang::tooling::CommonOptionsParser &parser) {
   return ToolCommandLine;
 }
 
-// Just for parsing integers inside op_arg_dat()
-inline int getIntValFromExpr(const clang::Expr *expr) {
-  // check for - in case of direct Kernels
-  if (const clang::UnaryOperator *idxOp =
-          llvm::dyn_cast<clang::UnaryOperator>(expr)) {
-    if (idxOp->getOpcode() == clang::UO_Minus) {
-      if (const clang::IntegerLiteral *operand =
-              llvm::dyn_cast<clang::IntegerLiteral>(idxOp->getSubExpr())) {
-        int val = operand->getValue().getLimitedValue(INT_MAX);
-        return -1 * val;
-      } else {
-        llvm::errs() << "Minus applied to Non-IntegerLiteral\n";
-      }
-    } else {
-      llvm::errs() << "Unexpected Unary OP\n";
-    }
-
-  } else if (const clang::IntegerLiteral *intLit =
-                 llvm::dyn_cast<clang::IntegerLiteral>(expr)) {
-    int val = intLit->getValue().getLimitedValue(INT_MAX);
-    if (val == INT_MAX) {
-      llvm::errs() << "IntegerLiteral exceeds INT_MAX\n";
-    }
-    return val;
+inline std::optional<int> tryToEvaluateICE(const clang::Expr *probablyICE,
+                                           const clang::ASTContext &Context,
+                                           clang::SourceLocation &sl) {
+  llvm::APSInt value;
+  if (!probablyICE->isIntegerConstantExpr(value, Context, &sl, false)) {
+    return {};
   }
-  assert(false && "Failed to get integer literal from expression.");
-  return INT_MAX;
+  return value.getExtValue();
 }
 
 template <typename T> inline const T *getExprAsDecl(const clang::Expr *expr) {
@@ -100,11 +82,12 @@ template <unsigned N>
 clang::DiagnosticBuilder reportDiagnostic(
     const clang::ASTContext &Context, const clang::Expr *expr,
     const char (&FormatString)[N],
-    clang::DiagnosticsEngine::Level level = clang::DiagnosticsEngine::Error) {
+    clang::DiagnosticsEngine::Level level = clang::DiagnosticsEngine::Error,
+    clang::SourceLocation *sl = nullptr) {
   clang::DiagnosticsEngine &DiagEngine = Context.getDiagnostics();
   auto DiagID = DiagEngine.getCustomDiagID(level, FormatString);
   auto SourceRange = expr->getSourceRange();
-  auto report = DiagEngine.Report(SourceRange.getBegin(), DiagID);
+  auto report = DiagEngine.Report(sl ? *sl : SourceRange.getBegin(), DiagID);
   report.AddSourceRange({SourceRange, true});
   return report;
 }
@@ -123,6 +106,9 @@ private:
   F matchFunction;
 
 public:
+  MatchMaker() : matchFunction() {}
+  template <typename... Param>
+  MatchMaker(Param... param) : matchFunction(param...) {}
   MatchMaker(F f) : matchFunction{f} {}
   virtual void
   run(const clang::ast_matchers::MatchFinder::MatchResult &Result) override {
