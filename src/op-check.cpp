@@ -1,6 +1,7 @@
 #include "op-check.hpp"
 #include "core/utils.h"
 #include "clang/Frontend/FrontendActions.h"
+#include "clang/Tooling/ArgumentsAdjusters.h"
 #include "clang/Tooling/CommonOptionsParser.h"
 #include "clang/Tooling/Refactoring.h"
 #include "clang/Tooling/Tooling.h"
@@ -19,5 +20,8 @@ int main(int argc, const char **argv) {
                                                     opCheckCategory);
 
   OP2::OPCheckTool Tool(OptionsParser);
+  Tool.appendArgumentsAdjuster(clang::tooling::getInsertArgumentAdjuster(
+      std::string("-isystem" + std::string(CLANG_SYSTEM_HEADERS) + "/include")
+          .c_str()));
   return Tool.setFinderAndRun();
 }

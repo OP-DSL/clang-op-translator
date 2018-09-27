@@ -31,6 +31,13 @@ if(LLVM_BUILD_MAIN_SRC_DIR)
   include_directories(${LLVM_BUILD_BINARY_DIR}/tools/clang/include)
 endif()
 
+#ugly way to find clang system headers.. it's not hardcoded and works if clang is installed.. but only on linux..
+execute_process(COMMAND bash -c "clang++ '-###' -c ${CMAKE_CURRENT_SOURCE_DIR}/src/op2.cpp 2>&1 | tr ' ' '\n'" 
+                COMMAND grep -A1 resource
+                COMMAND grep /  
+                OUTPUT_VARIABLE CLANG_SYSTEM_HEADERS)
+message(STATUS "clang system headers found in: ${CLANG_SYSTEM_HEADERS}")
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -41,8 +48,8 @@ set(SKELETONS_DIR \"${CMAKE_CURRENT_SOURCE_DIR}/skeletons/\")
 if(OP2_INSTALL_PATH)
   set(OP2_INC \"${OP2_INSTALL_PATH}/c/include/\")
 else()
-  message(STATUS "OP2_INSTALL_PATH not found. Use default: \"~/OP2-Common/op2/c/include/\"")
-  set(OP2_INC \"~/OP2-Common/op2/c/include/\")
+  message(STATUS "OP2_INSTALL_PATH not found. Use default: \"OP2-Clang/../OP2-Common/op2/c/include/\"")
+  set(OP2_INC \"${CMAKE_CURRENT_SOURCE_DIR}/../OP2-Common/op2/c/include/\")
 endif()
 
 link_directories(${LLVM_LIBRARY_DIRS})
@@ -50,6 +57,7 @@ add_definitions(${LLVM_DEFINITIONS})
 add_definitions(
   -DSKELETONS_DIR=${SKELETONS_DIR}
   -DOP2_INC=${OP2_INC}
+  -DCLANG_SYSTEM_HEADERS=${CLANG_SYSTEM_HEADERS}
   )
 
 add_executable(${PROJECT_NAME}
