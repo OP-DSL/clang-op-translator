@@ -12,6 +12,20 @@
 
 namespace OP2 {
 
+template <unsigned N>
+clang::DiagnosticBuilder reportDiagnostic(
+    const clang::ASTContext &Context, const clang::Expr *expr,
+    const char (&FormatString)[N],
+    clang::DiagnosticsEngine::Level level = clang::DiagnosticsEngine::Error,
+    clang::SourceLocation *sl = nullptr) {
+  clang::DiagnosticsEngine &DiagEngine = Context.getDiagnostics();
+  auto DiagID = DiagEngine.getCustomDiagID(level, FormatString);
+  auto SourceRange = expr->getSourceRange();
+  auto report = DiagEngine.Report(sl ? *sl : SourceRange.getBegin(), DiagID);
+  report.AddSourceRange({SourceRange, true});
+  return report;
+}
+
 inline std::string getSourceAsString(const clang::SourceRange d,
                                      const clang::SourceManager *sm) {
   clang::SourceLocation b(d.getBegin());
@@ -36,14 +50,20 @@ getCommandlineArgs(clang::tooling::CommonOptionsParser &parser) {
   return ToolCommandLine;
 }
 
-inline std::optional<int> tryToEvaluateICE(const clang::Expr *probablyICE,
-                                           const clang::ASTContext &Context,
-                                           clang::SourceLocation &sl) {
-  llvm::APSInt value;
-  if (!probablyICE->isIntegerConstantExpr(value, Context, &sl, false)) {
-    return {};
+inline void tryToEvaluateICE(
+    int &value, const clang::Expr *probablyICE,
+    const clang::ASTContext &Context, std::string what,
+    clang::DiagnosticsEngine::Level level = clang::DiagnosticsEngine::Error,
+    std::string extra = "") {
+  llvm::APSInt APvalue;
+  clang::SourceLocation sl = probablyICE->getBeginLoc();
+  if (!probablyICE->isIntegerConstantExpr(APvalue, Context, &sl, false)) {
+    reportDiagnostic(Context, probablyICE, "%0 is not a constant expression %1",
+                     level, &sl)
+        << what << extra;
+    return;
   }
-  return value.getExtValue();
+  value = APvalue.getExtValue();
 }
 
 template <typename T> inline const T *getExprAsDecl(const clang::Expr *expr) {
@@ -76,20 +96,6 @@ inline const clang::StringLiteral *getAsStringLiteral(const clang::Expr *expr) {
 
 inline bool isStringLiteral(const clang::Expr &expr) {
   return getAsStringLiteral(&expr);
-}
-
-template <unsigned N>
-clang::DiagnosticBuilder reportDiagnostic(
-    const clang::ASTContext &Context, const clang::Expr *expr,
-    const char (&FormatString)[N],
-    clang::DiagnosticsEngine::Level level = clang::DiagnosticsEngine::Error,
-    clang::SourceLocation *sl = nullptr) {
-  clang::DiagnosticsEngine &DiagEngine = Context.getDiagnostics();
-  auto DiagID = DiagEngine.getCustomDiagID(level, FormatString);
-  auto SourceRange = expr->getSourceRange();
-  auto report = DiagEngine.Report(sl ? *sl : SourceRange.getBegin(), DiagID);
-  report.AddSourceRange({SourceRange, true});
-  return report;
 }
 
 inline llvm::raw_ostream &debugs() {

@@ -56,6 +56,12 @@ public:
   }
 };
 
+/**
+ * @brief Utilitz to parse par_loops.
+ *
+ * Takes a reference of an \c OPApplication and fills it with the data about
+ * loops.
+ */
 class ParLoopParser {
 public:
   ParLoopParser(OPApplication &_app) : application(_app){};
@@ -84,48 +90,29 @@ public:
     std::string opDat = getSourceAsString(
         argCallExpr->getArg(0)->getSourceRange(), Result.SourceManager);
     size_t argIdx = 3 - (isGBL ? 2 : 0);
-    const clang::Expr *probablyICE =
-        argCallExpr->getArg(argIdx++)->IgnoreCasts();
-    clang::SourceLocation sl = probablyICE->getBeginLoc();
-    auto result = tryToEvaluateICE(probablyICE, *Result.Context, sl);
-    size_t dim = 0;
-    if (!result) {
-      reportDiagnostic(*Result.Context, probablyICE,
-                       "Dimension of op_arg is not a constant expression",
-                       clang::DiagnosticsEngine::Warning, &sl);
-    } else {
-      dim = *result;
-    }
+    int dim = 0;
+    tryToEvaluateICE(dim, argCallExpr->getArg(argIdx++)->IgnoreCasts(),
+                     *Result.Context, "dimension of op_arg",
+                     clang::DiagnosticsEngine::Warning,
+                     "this may prevent further optimizations");
+
     std::string type =
         getAsStringLiteral(argCallExpr->getArg(argIdx++))->getString().str();
-    OP_accs_type accs = OP2::OP_RW;
-    probablyICE = argCallExpr->getArg(argIdx)->IgnoreCasts();
-    result = tryToEvaluateICE(probablyICE, *Result.Context, sl);
-    if (!result) {
-      reportDiagnostic(
-          *Result.Context, probablyICE,
-          "Access descriptor of an op_arg is not constant expression",
-          clang::DiagnosticsEngine::Error, &sl);
-    } else {
-      accs = OP_accs_type(*result);
-    }
+    int temp = 0;
+    tryToEvaluateICE(temp, argCallExpr->getArg(argIdx++)->IgnoreCasts(),
+                     *Result.Context, "access descriptor of op_arg");
+    OP_accs_type accs = OP_accs_type(temp);
+
     if (isGBL) {
       return OPArg(idx, opDat, dim, type, accs);
     }
 
     int mapidx = -2;
     std::string opMap = "";
-    probablyICE = argCallExpr->getArg(1)->IgnoreCasts();
-    result = tryToEvaluateICE(probablyICE, *Result.Context, sl);
-    if (!result) {
-      reportDiagnostic(
-          *Result.Context, probablyICE,
-          "Mapping index is not a constant expression inside an op_arg",
-          clang::DiagnosticsEngine::Error, &sl);
-    } else {
-      mapidx = *result;
-    }
-    if (mapidx != -1 && result) {
+    tryToEvaluateICE(mapidx, argCallExpr->getArg(1)->IgnoreCasts(),
+                     *Result.Context, "mapping index of op_arg");
+
+    if (mapidx != -1 && mapidx != -2) {
       opMap = getExprAsDecl<clang::VarDecl>(argCallExpr->getArg(2))
                   ->getNameAsString();
     }
@@ -164,7 +151,7 @@ public:
 
     if (!fDecl) {
       reportDiagnostic(*Result.Context, parLoopCall->getArg(0),
-                       "Must be a function pointer");
+                       "must be a function pointer");
       return;
     } else if (!fDecl->hasBody()) {
       reportDiagnostic(
@@ -183,7 +170,8 @@ public:
   }
 
 private:
-  OPApplication &application;
+  OPApplication
+      &application; /**< The application where we collect the data about loops*/
 };
 
 } // namespace OP2
