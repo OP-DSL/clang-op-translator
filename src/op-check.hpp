@@ -18,12 +18,32 @@ namespace OP2 {
  */
 class OPCheckTool : public clang::tooling::ClangTool {
 private:
-  OPApplication application;
+  OPApplication &application; // TODO think about making this a unique_ptr if we
+                              // need only the checks
 
 public:
-  OPCheckTool(clang::tooling::CommonOptionsParser &optionsParser)
+  OPCheckTool(clang::tooling::CommonOptionsParser &optionsParser,
+              OPApplication &app)
       : ClangTool(optionsParser.getCompilations(),
-                  optionsParser.getSourcePathList()) {}
+                  optionsParser.getSourcePathList()),
+        application(app) {
+    std::string applicationName = optionsParser.getSourcePathList()[0];
+    size_t basename_start = applicationName.rfind("/"),
+           basename_end = applicationName.rfind(".");
+    if (basename_start == std::string::npos) {
+      basename_start = 0;
+    } else {
+      basename_start++;
+    }
+    if (basename_end == std::string::npos || basename_end < basename_start)
+      llvm::errs() << "Invalid applicationName: " << applicationName << "\n";
+    applicationName =
+        applicationName.substr(basename_start, basename_end - basename_start);
+    application.setName(applicationName);
+    application.applicationFiles =
+        optionsParser.getSourcePathList(); // TODO absolute paths --
+                                           // beginsourcefile action or sg.
+  }
 
   int setFinderAndRun() {
     using namespace clang;
@@ -31,8 +51,8 @@ public:
     clang::ast_matchers::MatchFinder finder;
     MatchMaker<CheckSingleCallOperation> m("op_init or ops_init");
     MatchMaker<CheckSingleCallOperation> m2("op_exit or ops_exit");
-    auto parLoopParser =
-        make_matcher<ParLoopParser>(ParLoopParser(application));
+    auto parLoopParser = make_matcher(ParLoopParser(application));
+    auto constRegister = make_matcher(OPConstRegister(application));
     finder.addMatcher(
         callExpr(callee(functionDecl(hasName("op_init")))).bind("callExpr"),
         &m);
@@ -48,6 +68,15 @@ public:
     finder.addMatcher(
         callExpr(callee(functionDecl(hasName("op_par_loop")))).bind("par_loop"),
         &parLoopParser);
+    finder.addMatcher(callExpr(callee(functionDecl(hasName("ops_par_loop"))))
+                          .bind("par_loop"),
+                      &parLoopParser);
+    finder.addMatcher(callExpr(callee(functionDecl(hasName("op_decl_const"))))
+                          .bind("decl_const"),
+                      &constRegister);
+    finder.addMatcher(callExpr(callee(functionDecl(hasName("ops_decl_const"))))
+                          .bind("decl_const"),
+                      &constRegister);
     return run(clang::tooling::newFrontendActionFactory(&finder).get());
   }
 };

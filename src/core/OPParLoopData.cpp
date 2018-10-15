@@ -35,35 +35,40 @@ std::string UserFuncData::getInlinedFuncDecl() const {
 }
 
 //___________________________________OP_ARG___________________________________
-OPArg::OPArg(int _argIdx, std::string dat, int _idx, const std::string &_map,
-             size_t _dim, std::string _type, OP_accs_type _accs)
-    : argIdx(_argIdx), opDat(dat), idx(_idx), opMap(_map), dim(_dim),
-      type(_type), accs(_accs), isGBL(false) {}
+OPArg::OPArg(size_t idx, std::string datName, size_t datDim, std::string type,
+             OP_accs_type accs, OPArg::OPArgKind kind, int mapIdx,
+             std::string mapName, bool opt)
+    : argIdx(idx), opDat(datName), dim(datDim), type(type), accs(accs),
+      kind(kind), mapIdx(mapIdx), opMap(mapName), optional(opt) {}
 
-OPArg::OPArg(int _argIdx, std::string dat, size_t _dim, std::string _type,
-             OP_accs_type _accs)
-    : argIdx(_argIdx), opDat(dat), idx(0), opMap(""), dim(_dim), type(_type),
-      accs(_accs), isGBL(true) {}
+OPArg::OPArg(size_t idx)
+    : argIdx(idx), opDat(""), dim(1ul), type(""), accs(OP_READ),
+      kind(OPArg::OP_IDX), mapIdx(-1), opMap(""), optional(false) {}
 
 llvm::raw_ostream &operator<<(llvm::raw_ostream &os, const OPArg &arg) {
-  os << "op_arg" << (arg.isGBL ? "_gbl(" : "(dat: ") << arg.opDat << ", ";
-  if (!arg.isGBL) {
-    os << "idx: " << arg.idx << ", map: " << arg.opMap << ", ";
+  // TODO update or remove
+
+  os << "arg: " << arg.kind;
+  if (arg.kind == OPArg::OP_IDX)
+    return os;
+  os << " " << arg.opDat << ", dim: " << arg.dim << ", " << arg.type << ", "
+     << arg.accs;
+  if (arg.kind == OPArg::OPArgKind::OP_DAT) {
+    os << ", idx: " << arg.mapIdx << ", map: " << arg.opMap
+       << (arg.optional ? ", opt" : "");
   }
-  return os << "dim: " << arg.dim << ", type: " << arg.type
-            << ", accs: " << arg.accs << ")";
+  return os;
 }
 bool OPArg::isDirect() const { return opMap == ""; }
 
-bool OPArg::isReduction() const {
-  return isGBL && (accs == OP_INC || accs == OP_MAX || accs == OP_MIN);
-}
+bool OPArg::isReduction() const { return OPArgKind::OP_REDUCE == kind; }
 
 //__________________________________PAR_LOOP__________________________________
 
 ParLoop::ParLoop(UserFuncData _userFuncData, std::string _name,
-                 std::vector<OPArg> _args)
-    : loopId(-1), function(_userFuncData), name(_name), args(_args) {}
+                 std::vector<OPArg> _args, OPLoopKind kind)
+    : loopId(-1), function(_userFuncData), name(_name), args(_args),
+      loopKind(kind) {}
 
 void ParLoop::generateID() {
   if (loopId == -1)
@@ -90,6 +95,14 @@ std::string ParLoop::getParLoopDef() const {
 }
 
 UserFuncData ParLoop::getUserFuncInfo() const { return function; }
+
+void ParLoop::prettyPrint(llvm::raw_ostream &o) const {
+  o << loopId << " " << loopKind << " par_loop " << name << '\n';
+  o << function.funcName << ": " << function.path << '\n';
+  for (const auto &arg : args) {
+    o << arg << '\n';
+  }
+}
 
 //________________________________OPAPPLICATION_______________________________
 void OPApplication::setName(std::string name) { applicationName = name; }
