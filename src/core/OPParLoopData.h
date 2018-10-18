@@ -123,6 +123,7 @@ public:
   size_t getLoopID() const;
   UserFuncData getUserFuncInfo() const;
   void prettyPrint(llvm::raw_ostream &) const;
+  OPLoopKind getKind() const;
 };
 
 /**

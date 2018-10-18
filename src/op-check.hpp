@@ -16,17 +16,18 @@ namespace OP2 {
  * This tool perform basic checks on OP2 or OPS application files and create the
  * OPApplication object for code generation passes.
  */
-class OPCheckTool : public clang::tooling::ClangTool {
+class CheckTool : public clang::tooling::ClangTool {
 private:
   OPApplication &application; // TODO think about making this a unique_ptr if we
                               // need only the checks
 
 public:
-  OPCheckTool(clang::tooling::CommonOptionsParser &optionsParser,
+  CheckTool(clang::tooling::CommonOptionsParser &optionsParser,
               OPApplication &app)
       : ClangTool(optionsParser.getCompilations(),
                   optionsParser.getSourcePathList()),
         application(app) {
+    //Initialize some data on application.
     std::string applicationName = optionsParser.getSourcePathList()[0];
     size_t basename_start = applicationName.rfind("/"),
            basename_end = applicationName.rfind(".");
@@ -43,6 +44,10 @@ public:
     application.applicationFiles =
         optionsParser.getSourcePathList(); // TODO absolute paths --
                                            // beginsourcefile action or sg.
+    // Add clang system headers to command line
+    appendArgumentsAdjuster(clang::tooling::getInsertArgumentAdjuster(
+        std::string("-isystem" + std::string(CLANG_SYSTEM_HEADERS) + "/include")
+            .c_str()));
   }
 
   int setFinderAndRun() {

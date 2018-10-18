@@ -20,10 +20,7 @@ int main(int argc, const char **argv) {
                                                     opCheckCategory);
   OP2::OPApplication application;
 
-  OP2::OPCheckTool Tool(OptionsParser, application);
-  Tool.appendArgumentsAdjuster(clang::tooling::getInsertArgumentAdjuster(
-      std::string("-isystem" + std::string(CLANG_SYSTEM_HEADERS) + "/include")
-          .c_str()));
+  OP2::CheckTool Tool(OptionsParser, application);
   if (int err = Tool.setFinderAndRun()) {
     return err;
   }

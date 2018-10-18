@@ -1,20 +1,20 @@
 ############################################################
-#   base
+#base
 ############################################################
 
 cmake_minimum_required (VERSION 3.4)
 
 ############################################################
-#   setting Project informations
+#setting Project informations
 ############################################################
 
 set(PROJECT_NAME op2-clang)
 
 set(LIBRARY_LIST clangFrontend  clangSerialization clangDriver clangParse clangSema)
-set(LIBRARY_LIST ${LIBRARY_LIST} clangAnalysis clangEdit clangAST clangLex clangBasic clangTooling clangToolingCore clangFormat clangRewrite clangASTMatchers)
+set(LIBRARY_LIST ${LIBRARY_LIST} clangAnalysis clangEdit clangAST clangLex clangBasic clangTooling clangToolingCore clangFormat clangRewrite clangASTMatchers clangToolingInclusions)
 
 ############################################################
-#   generate makefiles
+#generate makefiles
 ############################################################
 
 project(${PROJECT_NAME})
@@ -31,7 +31,7 @@ if(LLVM_BUILD_MAIN_SRC_DIR)
   include_directories(${LLVM_BUILD_BINARY_DIR}/tools/clang/include)
 endif()
 
-#ugly way to find clang system headers.. it's not hardcoded and works if clang is installed.. but only on linux..
+#ugly way to find clang system headers..it's not hardcoded and works if clang is installed.. but only on linux..
 execute_process(COMMAND bash -c "clang++ '-###' -c ${CMAKE_CURRENT_SOURCE_DIR}/src/op2.cpp 2>&1 | tr ' ' '\n'" 
                 COMMAND grep -A1 resource
                 COMMAND grep /  
@@ -62,16 +62,12 @@ add_definitions(
 
 add_executable(${PROJECT_NAME}
   src/op2.cpp
-  src/ParLoopHandler.cpp
-  src/OP2RefactoringTool.cpp
   src/core/OPParLoopData.cpp
-  src/generators/common/BaseKernelHandler.cpp
-  src/generators/cuda/CudaKernelHandler.cpp
-  src/generators/sequential/SeqKernelHandler.cpp
-  src/generators/openmp/OMPKernelHandler.cpp
-  src/generators/vectorization/VecKernelHandler.cpp
+  src/AppFileTransformations.cpp
+  src/AppFileRefactoringTool.cpp
   )
 
+#src / OPAppFileRefactoringTool.cpp
 add_executable(op-check
   src/op-check.cpp
   src/core/OPParLoopData.cpp
@@ -96,4 +92,3 @@ target_link_libraries(op-check
   LLVMTarget
   LLVMOption # Support
   )
-

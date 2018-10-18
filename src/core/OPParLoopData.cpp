@@ -87,8 +87,8 @@ size_t ParLoop::getLoopID() const { return loopId; }
 std::string ParLoop::getParLoopDef() const {
   std::string param = "void par_loop_" + name + "(const char *name, op_set set";
   llvm::raw_string_ostream os(param);
-  for (size_t i = 2; i < args.size(); ++i) {
-    os << ", op_arg arg" << i - 2;
+  for (size_t i = 0; i < args.size(); ++i) {
+    os << ", op_arg arg" << i;
   }
   os << ")";
   return os.str();
@@ -103,6 +103,8 @@ void ParLoop::prettyPrint(llvm::raw_ostream &o) const {
     o << arg << '\n';
   }
 }
+
+OPLoopKind ParLoop::getKind() const { return loopKind; }
 
 //________________________________OPAPPLICATION_______________________________
 void OPApplication::setName(std::string name) { applicationName = name; }
