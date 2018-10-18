@@ -67,7 +67,6 @@ add_executable(${PROJECT_NAME}
   src/AppFileRefactoringTool.cpp
   )
 
-#src / OPAppFileRefactoringTool.cpp
 add_executable(op-check
   src/op-check.cpp
   src/core/OPParLoopData.cpp
