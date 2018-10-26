@@ -28,19 +28,25 @@ class CheckSingleCallOperation {
 
 public:
   CheckSingleCallOperation(const CheckSingleCallOperation &) = delete;
-  CheckSingleCallOperation(std::string name) : functionName(name) {}
+  CheckSingleCallOperation(const CheckSingleCallOperation &&) = delete;
+  CheckSingleCallOperation &
+  operator=(const CheckSingleCallOperation &) = delete;
+  CheckSingleCallOperation &
+  operator=(const CheckSingleCallOperation &&) = delete;
+
+  explicit CheckSingleCallOperation(std::string name)
+      : functionName(std::move(name)) {}
 
   void operator()(const clang::ast_matchers::MatchFinder::MatchResult &Result) {
-    using namespace clang;
-    if (const CallExpr *initCall =
-            Result.Nodes.getNodeAs<CallExpr>("callExpr")) {
-      const SourceManager *sm = Result.SourceManager;
-      SourceLocation sl = initCall->getBeginLoc();
-      if (Locations.size()) {
-        DiagnosticsEngine &DE = sm->getDiagnostics();
+    if (const auto *initCall =
+            Result.Nodes.getNodeAs<clang::CallExpr>("callExpr")) {
+      const clang::SourceManager *sm = Result.SourceManager;
+      clang::SourceLocation sl = initCall->getBeginLoc();
+      if (!Locations.empty()) {
+        clang::DiagnosticsEngine &DE = sm->getDiagnostics();
         auto diagBuilder = DE.Report(
             sl, DE.getCustomDiagID(
-                    DiagnosticsEngine::Warning,
+                    clang::DiagnosticsEngine::Warning,
                     "Multiple call for %0 function found. First call: %1."));
         diagBuilder.AddString(initCall->getDirectCallee()->getName());
         diagBuilder.AddString(Locations[0]);
@@ -51,7 +57,7 @@ public:
   }
 
   ~CheckSingleCallOperation() {
-    if (Locations.size() == 0) {
+    if (Locations.empty()) {
       llvm::errs() << "Warning: No " << functionName << " call found.\n";
     }
   }
@@ -71,7 +77,7 @@ class ParLoopParser {
   OPArg
   parseOPArg(const clang::Expr *argExpr, const int idx,
              const clang::ast_matchers::MatchFinder::MatchResult &Result) {
-    const clang::Stmt *argStmt = llvm::dyn_cast<clang::Stmt>(argExpr);
+    const auto *argStmt = llvm::dyn_cast<clang::Stmt>(argExpr);
     // ugly solution to get the op_arg_** callExpr from from AST..
     while (!llvm::isa<clang::CallExpr>(argStmt)) {
       unsigned num_childs = 0;
@@ -82,8 +88,7 @@ class ParLoopParser {
       }
       assert(num_childs == 1);
     }
-    const clang::CallExpr *argCallExpr =
-        llvm::dyn_cast<clang::CallExpr>(argStmt);
+    const auto *argCallExpr = llvm::dyn_cast<clang::CallExpr>(argStmt);
     std::string fname =
         llvm::dyn_cast<clang::NamedDecl>(argCallExpr->getCalleeDecl())
             ->getNameAsString();
@@ -136,12 +141,12 @@ class ParLoopParser {
     int temp = 0;
     tryToEvaluateICE(temp, argCallExpr->getArg(accs_Idx)->IgnoreCasts(),
                      *Result.Context, "access descriptor of op_arg");
-    OP_accs_type accs = OP_accs_type(temp);
+    auto accs = OP_accs_type(temp);
 
     if (kind == OPArg::OP_GBL || kind == OPArg::OP_REDUCE) {
-      if (accs == OP_INC || accs == OP_MAX || accs == OP_MIN)
+      if (accs == OP_INC || accs == OP_MAX || accs == OP_MIN) {
         kind = OPArg::OP_REDUCE;
-      else if (kind == OPArg::OP_REDUCE) {
+      } else if (kind == OPArg::OP_REDUCE) {
         clang::SourceLocation sl = argCallExpr->getArg(accs_Idx)->getBeginLoc();
         reportDiagnostic(*Result.Context, argCallExpr,
                          "reduction variables must be accessed with OP_MAX, "
@@ -157,7 +162,7 @@ class ParLoopParser {
                        *Result.Context, "mapping index of op_arg");
     }
     // get op_map or ops_stencil varname
-    std::string opMap = "";
+    std::string opMap;
     if (mapidx != -1 && mapOrStencil_Idx != -1) {
       opMap =
           getExprAsDecl<clang::VarDecl>(argCallExpr->getArg(mapOrStencil_Idx))
@@ -173,7 +178,7 @@ class ParLoopParser {
 
     std::string path =
         funcD->getBeginLoc().printToString(*Result.SourceManager);
-    path = path.substr(0, path.find(":"));
+    path = path.substr(0, path.find(':'));
     std::vector<std::string> paramNames;
     for (size_t i = 0; i < funcD->getNumParams(); ++i) {
       paramNames.push_back(funcD->getParamDecl(i)->getNameAsString());
@@ -185,11 +190,11 @@ class ParLoopParser {
   }
 
 public:
-  ParLoopParser(OPApplication &_app) : application(_app){};
+  explicit ParLoopParser(OPApplication &_app) : application(_app){};
 
   void operator()(const clang::ast_matchers::MatchFinder::MatchResult &Result) {
     // inital checks and daignostics
-    const clang::CallExpr *parLoopCall =
+    const auto *parLoopCall =
         Result.Nodes.getNodeAs<clang::CallExpr>("par_loop");
     OPLoopKind kind =
         parLoopCall->getDirectCallee()->getName() == "ops_par_loop"
@@ -200,14 +205,15 @@ public:
       reportDiagnostic(*Result.Context, parLoopCall,
                        "not enough arguments to op_par_loop");
     }
-    const clang::FunctionDecl *fDecl =
+    const auto *fDecl =
         getExprAsDecl<clang::FunctionDecl>(parLoopCall->getArg(0));
 
-    if (!fDecl) {
+    if (nullptr == fDecl) {
       reportDiagnostic(*Result.Context, parLoopCall->getArg(0),
                        "must be a function pointer");
       return;
-    } else if (!fDecl->hasBody()) {
+    }
+    if (!fDecl->hasBody()) {
       reportDiagnostic(
           *Result.Context, parLoopCall->getArg(0),
           "body must be available at the point of an op_par_loop call");
@@ -240,16 +246,17 @@ private:
  */
 class OPConstRegister {
 public:
-  OPConstRegister(OPApplication &app) : application(app) {}
+  explicit OPConstRegister(OPApplication &app) : application(app) {}
 
   void operator()(const clang::ast_matchers::MatchFinder::MatchResult &Result) {
-    const clang::CallExpr *callExpr =
+    const auto *callExpr =
         Result.Nodes.getNodeAs<clang::CallExpr>("decl_const");
     // ops_decl_const has one more argument (the first is name)
-    int arg_offset = callExpr->getDirectCallee()->getName() == "ops_decl_const";
+    int arg_offset = static_cast<int>(callExpr->getDirectCallee()->getName() ==
+                                      "ops_decl_const");
 
     int dim = 0;
-    // TODO dimension is constexpr?
+    // TODO(bgd54): dimension is constexpr?
     tryToEvaluateICE(dim, callExpr->getArg(0 + arg_offset)->IgnoreCasts(),
                      *Result.Context,
                      "dimension of global constant in a decl_const call");

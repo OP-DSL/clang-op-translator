@@ -7,12 +7,13 @@ AppFileRefactoringTool::getOutputFileName(const clang::FileEntry *Entry) const {
   llvm::outs() << "Rewrite buffer for file: " << Entry->getName() << "\n";
 
   std::string filename = Entry->getName().str();
-  size_t basename_start = filename.rfind("/") + 1,
-         basename_end = filename.rfind(".");
+  size_t basename_start = filename.rfind('/') + 1,
+         basename_end = filename.rfind('.');
   if (basename_start == std::string::npos)
     basename_start = 0;
-  if (basename_end == std::string::npos || basename_end < basename_start)
+  if (basename_end == std::string::npos || basename_end < basename_start) {
     llvm::errs() << "Invalid filename: " << Entry->getName() << "\n";
+  }
   filename = filename.substr(basename_start, basename_end - basename_start) +
              "_op.cpp";
   return filename;
@@ -24,6 +25,8 @@ int AppFileRefactoringTool::generateOPFiles() {
   ParLoopDeclarator callback(*this);
   auto loopHandler =
       make_matcher(ParloopCallReplaceOperation(application, callback, *this));
+  auto declConstHandler =
+      make_matcher(OPConstDeclarationReplaceOperation(*this));
 
   Finder.addMatcher(
       callExpr(callee(functionDecl(hasName("op_par_loop")))).bind("par_loop"),
@@ -31,7 +34,12 @@ int AppFileRefactoringTool::generateOPFiles() {
   Finder.addMatcher(
       callExpr(callee(functionDecl(hasName("ops_par_loop")))).bind("par_loop"),
       &loopHandler);
-
+  Finder.addMatcher(callExpr(callee(functionDecl(hasName("ops_decl_const"))))
+                        .bind("decl_const"),
+                    &declConstHandler);
+  Finder.addMatcher(callExpr(callee(functionDecl(hasName("op_decl_const"))))
+                        .bind("decl_const"),
+                    &declConstHandler);
   return run(
       clang::tooling::newFrontendActionFactory(&Finder, &callback).get());
 }

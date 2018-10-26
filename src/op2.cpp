@@ -32,8 +32,7 @@ static llvm::cl::opt<bool>
         llvm::cl::init(false), llvm::cl::cat(Op2Category));
 
 int main(int argc, const char **argv) {
-  using namespace clang::tooling;
-  using namespace clang::ast_matchers;
+  using clang::tooling::CommonOptionsParser;
   // Initialize the tool
   CommonOptionsParser OptionsParser(argc, argv, Op2Category);
 

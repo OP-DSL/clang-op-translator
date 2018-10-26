@@ -52,9 +52,9 @@ getCommandlineArgs(clang::tooling::CommonOptionsParser &parser) {
 
 inline void tryToEvaluateICE(
     int &value, const clang::Expr *probablyICE,
-    const clang::ASTContext &Context, std::string what,
+    const clang::ASTContext &Context, const std::string &what,
     clang::DiagnosticsEngine::Level level = clang::DiagnosticsEngine::Error,
-    std::string extra = "") {
+    const std::string &extra = "") {
   llvm::APSInt APvalue;
   clang::SourceLocation sl = probablyICE->getBeginLoc();
   if (!probablyICE->isIntegerConstantExpr(APvalue, Context, &sl, false)) {
@@ -67,15 +67,15 @@ inline void tryToEvaluateICE(
 }
 
 template <typename T> inline const T *getExprAsDecl(const clang::Expr *expr) {
-  if (const clang::DeclRefExpr *declRefExpr =
+  if (const auto *declRefExpr =
           llvm::dyn_cast<clang::DeclRefExpr>(expr->IgnoreCasts())) {
-    const T *decl = llvm::dyn_cast<T>(declRefExpr->getFoundDecl());
+    const auto *decl = llvm::dyn_cast<T>(declRefExpr->getFoundDecl());
     assert(decl);
     return decl;
   }
-  if (const clang::DeclRefExpr *declRefExpr =
-          llvm::dyn_cast<clang::DeclRefExpr>(*(expr->child_begin()))) {
-    const T *decl = llvm::dyn_cast<T>(declRefExpr->getFoundDecl());
+  if (const auto *declRefExpr = llvm::dyn_cast<clang::DeclRefExpr>(
+          expr->child_begin()->IgnoreImplicit())) {
+    const auto *decl = llvm::dyn_cast<T>(declRefExpr->getFoundDecl());
     assert(decl);
     return decl;
   }
@@ -89,13 +89,13 @@ inline const clang::StringLiteral *getAsStringLiteral(const clang::Expr *expr) {
     return str;
 
   auto cast = llvm::dyn_cast<clang::CastExpr>(expr);
-  if (!cast)
+  if (nullptr == cast)
     return nullptr;
   return llvm::dyn_cast<clang::StringLiteral>(cast->getSubExpr());
 }
 
 inline bool isStringLiteral(const clang::Expr &expr) {
-  return getAsStringLiteral(&expr);
+  return getAsStringLiteral(&expr) != nullptr;
 }
 
 inline llvm::raw_ostream &debugs() {
@@ -114,8 +114,8 @@ private:
 public:
   MatchMaker() : matchFunction() {}
   template <typename... Param>
-  MatchMaker(Param... param) : matchFunction(param...) {}
-  MatchMaker(F f) : matchFunction{f} {}
+  explicit MatchMaker(Param... param) : matchFunction(param...) {}
+  explicit MatchMaker(F f) : matchFunction{f} {}
   virtual void
   run(const clang::ast_matchers::MatchFinder::MatchResult &Result) override {
     matchFunction(Result);
@@ -137,7 +137,7 @@ const T *findParent(const clang::Stmt &stmt, clang::ASTContext &context) {
     return t;
   }
 
-  const clang::Stmt *pStmt = vec[0].get<clang::Stmt>();
+  const auto *pStmt = vec[0].get<clang::Stmt>();
   if (pStmt) {
     return findParent<T>(*pStmt, context);
   }

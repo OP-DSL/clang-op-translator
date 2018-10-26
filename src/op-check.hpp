@@ -18,31 +18,32 @@ namespace OP2 {
  */
 class CheckTool : public clang::tooling::ClangTool {
 private:
-  OPApplication &application; // TODO think about making this a unique_ptr if we
-                              // need only the checks
+  OPApplication &application; // TODO(bgd54): think about making this a
+                              // unique_ptr if we need only the checks
 
 public:
   CheckTool(clang::tooling::CommonOptionsParser &optionsParser,
-              OPApplication &app)
+            OPApplication &app)
       : ClangTool(optionsParser.getCompilations(),
                   optionsParser.getSourcePathList()),
         application(app) {
-    //Initialize some data on application.
+    // Initialize some data on application.
     std::string applicationName = optionsParser.getSourcePathList()[0];
-    size_t basename_start = applicationName.rfind("/"),
-           basename_end = applicationName.rfind(".");
+    size_t basename_start = applicationName.rfind('/'),
+           basename_end = applicationName.rfind('.');
     if (basename_start == std::string::npos) {
       basename_start = 0;
     } else {
       basename_start++;
     }
-    if (basename_end == std::string::npos || basename_end < basename_start)
+    if (basename_end == std::string::npos || basename_end < basename_start) {
       llvm::errs() << "Invalid applicationName: " << applicationName << "\n";
+    }
     applicationName =
         applicationName.substr(basename_start, basename_end - basename_start);
     application.setName(applicationName);
     application.applicationFiles =
-        optionsParser.getSourcePathList(); // TODO absolute paths --
+        optionsParser.getSourcePathList(); // TODO(bgd54): absolute paths --
                                            // beginsourcefile action or sg.
     // Add clang system headers to command line
     appendArgumentsAdjuster(clang::tooling::getInsertArgumentAdjuster(
@@ -51,8 +52,7 @@ public:
   }
 
   int setFinderAndRun() {
-    using namespace clang;
-    using namespace ast_matchers;
+    using namespace clang::ast_matchers;
     clang::ast_matchers::MatchFinder finder;
     MatchMaker<CheckSingleCallOperation> m("op_init or ops_init");
     MatchMaker<CheckSingleCallOperation> m2("op_exit or ops_exit");

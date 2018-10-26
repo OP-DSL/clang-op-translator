@@ -35,6 +35,7 @@ endif()
 execute_process(COMMAND bash -c "clang++ '-###' -c ${CMAKE_CURRENT_SOURCE_DIR}/src/op2.cpp 2>&1 | tr ' ' '\n'" 
                 COMMAND grep -A1 resource
                 COMMAND grep /  
+                COMMAND tr -d '\n'
                 OUTPUT_VARIABLE CLANG_SYSTEM_HEADERS)
 message(STATUS "clang system headers found in: ${CLANG_SYSTEM_HEADERS}")
 

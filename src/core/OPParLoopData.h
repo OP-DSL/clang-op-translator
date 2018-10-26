@@ -17,7 +17,7 @@ namespace OP2 {
 struct op_global_const {
   std::string type, name;
   unsigned size;
-  op_global_const(std::string, std::string, unsigned);
+  op_global_const(std::string T, std::string name, unsigned S);
   bool operator<(const op_global_const &) const;
 };
 llvm::raw_ostream &operator<<(llvm::raw_ostream &, const op_global_const &);
@@ -57,8 +57,8 @@ struct UserFuncData {
   bool isInlineSpecified;   /**< true if the parsed funcDecl is has inline */
   std::string path; /**< Path to the file where the function is defined */
   std::vector<std::string> paramNames; /**< Names of the function arguments */
-  UserFuncData(std::string, std::string, bool, std::string,
-               std::vector<std::string>);
+  UserFuncData(std::string _fDecl, std::string _fName, bool _isinline,
+               std::string _path, std::vector<std::string> _paramNames);
   std::string getInlinedFuncDecl() const;
 };
 
@@ -85,7 +85,7 @@ struct OPArg {
   OPArg(size_t idx, std::string datName, size_t datDim, std::string type,
         OP_accs_type accs, OPArgKind kind, int mapIdx = -1,
         std::string mapName = "", bool opt = false);
-  OPArg(size_t idx);
+  explicit OPArg(const size_t &idx);
   bool isDirect() const;
   bool isReduction() const;
 
@@ -114,7 +114,8 @@ class ParLoop {
                           ops_par_loop) */
 
 public:
-  ParLoop(UserFuncData, std::string, std::vector<OPArg>, OPLoopKind kind = OP2);
+  ParLoop(UserFuncData _userFuncData, std::string _name,
+          std::vector<OPArg> _args, OPLoopKind kind = OP2);
 
   void generateID();
   bool isDirect() const;
@@ -141,7 +142,11 @@ struct OPApplication {
   std::string applicationName;
 
   OPApplication() = default;
+  ~OPApplication() = default;
   OPApplication(const OPApplication &) = delete;
+  OPApplication(const OPApplication &&) = delete;
+  OPApplication operator=(const OPApplication &) = delete;
+  OPApplication operator=(const OPApplication &&) = delete;
 
   void setName(std::string);
   std::vector<ParLoop> &getParLoops();

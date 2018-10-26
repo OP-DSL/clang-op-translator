@@ -5,7 +5,7 @@
 namespace OP2 {
 //__________________________________OP_CONST__________________________________
 op_global_const::op_global_const(std::string T, std::string name, unsigned S)
-    : type(T), name(name), size(S) {}
+    : type(std::move(T)), name(std::move(name)), size(S) {}
 
 bool op_global_const::operator<(const op_global_const &c) const {
   return name < c.name;
@@ -27,8 +27,9 @@ std::ostream &operator<<(std::ostream &os, const op_global_const &c) {
 UserFuncData::UserFuncData(std::string _fDecl, std::string _fName,
                            bool _isinline, std::string _path,
                            std::vector<std::string> _paramNames)
-    : functionDecl(_fDecl), funcName(_fName), isInlineSpecified(_isinline),
-      path(_path), paramNames(_paramNames) {}
+    : functionDecl(std::move(_fDecl)), funcName(std::move(_fName)),
+      isInlineSpecified(_isinline), path(std::move(_path)),
+      paramNames(std::move(_paramNames)) {}
 
 std::string UserFuncData::getInlinedFuncDecl() const {
   return (isInlineSpecified ? "" : "inline ") + functionDecl;
@@ -38,15 +39,16 @@ std::string UserFuncData::getInlinedFuncDecl() const {
 OPArg::OPArg(size_t idx, std::string datName, size_t datDim, std::string type,
              OP_accs_type accs, OPArg::OPArgKind kind, int mapIdx,
              std::string mapName, bool opt)
-    : argIdx(idx), opDat(datName), dim(datDim), type(type), accs(accs),
-      kind(kind), mapIdx(mapIdx), opMap(mapName), optional(opt) {}
+    : argIdx(idx), opDat(std::move(datName)), dim(datDim),
+      type(std::move(type)), accs(accs), kind(kind), mapIdx(mapIdx),
+      opMap(std::move(mapName)), optional(opt) {}
 
-OPArg::OPArg(size_t idx)
+OPArg::OPArg(const size_t &idx)
     : argIdx(idx), opDat(""), dim(1ul), type(""), accs(OP_READ),
       kind(OPArg::OP_IDX), mapIdx(-1), opMap(""), optional(false) {}
 
 llvm::raw_ostream &operator<<(llvm::raw_ostream &os, const OPArg &arg) {
-  // TODO update or remove
+  // TODO(bgd54): update or remove
 
   os << "arg: " << arg.kind;
   if (arg.kind == OPArg::OP_IDX)
@@ -59,7 +61,7 @@ llvm::raw_ostream &operator<<(llvm::raw_ostream &os, const OPArg &arg) {
   }
   return os;
 }
-bool OPArg::isDirect() const { return opMap == ""; }
+bool OPArg::isDirect() const { return opMap.empty(); }
 
 bool OPArg::isReduction() const { return OPArgKind::OP_REDUCE == kind; }
 
@@ -67,8 +69,8 @@ bool OPArg::isReduction() const { return OPArgKind::OP_REDUCE == kind; }
 
 ParLoop::ParLoop(UserFuncData _userFuncData, std::string _name,
                  std::vector<OPArg> _args, OPLoopKind kind)
-    : loopId(-1), function(_userFuncData), name(_name), args(_args),
-      loopKind(kind) {}
+    : loopId(-1), function(std::move(_userFuncData)), name(std::move(_name)),
+      args(std::move(_args)), loopKind(kind) {}
 
 void ParLoop::generateID() {
   if (loopId == -1)
@@ -107,7 +109,9 @@ void ParLoop::prettyPrint(llvm::raw_ostream &o) const {
 OPLoopKind ParLoop::getKind() const { return loopKind; }
 
 //________________________________OPAPPLICATION_______________________________
-void OPApplication::setName(std::string name) { applicationName = name; }
+void OPApplication::setName(std::string name) {
+  applicationName = std::move(name);
+}
 
 std::vector<ParLoop> &OPApplication::getParLoops() { return loops; }
 const std::vector<ParLoop> &OPApplication::getParLoops() const { return loops; }

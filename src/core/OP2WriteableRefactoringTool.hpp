@@ -20,13 +20,13 @@ public:
   virtual std::string
   getOutputFileName(const clang::FileEntry *Entry) const = 0;
 
-  OP2WriteableRefactoringTool(
+  explicit OP2WriteableRefactoringTool(
       clang::tooling::CommonOptionsParser &optionsParser)
       : clang::tooling::RefactoringTool(optionsParser.getCompilations(),
                                         optionsParser.getSourcePathList()) {}
   OP2WriteableRefactoringTool(
       const clang::tooling::CompilationDatabase &Compilations,
-      const std::vector<std::string> Sources)
+      const std::vector<std::string> &Sources)
       : clang::tooling::RefactoringTool(Compilations, Sources) {}
 
   /// @brief Create the output files based on the replacements.
@@ -85,16 +85,23 @@ public:
     }
   }
 
-  void addReplacementTo(std::string fileName, clang::tooling::Replacement repl,
-                        std::string diagMessage) {
+  void addReplacementTo(const std::string &fileName,
+                        const clang::tooling::Replacement &repl,
+                        const std::string &diagMessage) {
     llvm::Error err = getReplacements()[fileName].add(repl);
-    if (err) { // TODO proper error checking
+    if (err) { // TODO(bgd54): proper error checking
       llvm::outs() << "Some Error occured during adding replacement for "
                    << diagMessage << "\n";
     }
   }
 
   virtual ~OP2WriteableRefactoringTool() = default;
+  OP2WriteableRefactoringTool(const OP2WriteableRefactoringTool &) = delete;
+  OP2WriteableRefactoringTool(const OP2WriteableRefactoringTool &&) = delete;
+  OP2WriteableRefactoringTool &
+  operator=(const OP2WriteableRefactoringTool &) = delete;
+  OP2WriteableRefactoringTool &
+  operator=(const OP2WriteableRefactoringTool &&) = delete;
 };
 
 } // namespace OP2

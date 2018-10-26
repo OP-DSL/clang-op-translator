@@ -9,13 +9,13 @@ ParLoopDeclarator::ParLoopDeclarator(AppFileRefactoringTool &tool)
     : tool(tool) {}
 
 bool ParLoopDeclarator::handleBeginSource(clang::CompilerInstance &CI) {
-  CI.getPreprocessor().addPPCallbacks(std::unique_ptr<IncludeFinderPPCallback>(
-      new IncludeFinderPPCallback(&CI, this)));
+  CI.getPreprocessor().addPPCallbacks(
+      std::make_unique<IncludeFinderPPCallback>(&CI, this));
   return true;
 }
 
 void ParLoopDeclarator::handleEndSource() {
-  assert(fileName != "" && replRange != clang::SourceRange() && SM);
+  assert(!fileName.empty() && replRange != clang::SourceRange() && SM);
   clang::tooling::Replacement repl(
       *SM, clang::CharSourceRange(replRange, false), functionDeclarations);
   tool.addReplacementTo(fileName, repl, "par_loop predeclarations");
@@ -24,15 +24,15 @@ void ParLoopDeclarator::handleEndSource() {
   fileName = "";
 }
 
-void ParLoopDeclarator::addFunction(std::string funcDeclaration) {
+void ParLoopDeclarator::addFunction(const std::string &funcDeclaration) {
   if (functionDeclarations.find(funcDeclaration) == std::string::npos)
     functionDeclarations += funcDeclaration;
 }
 void ParLoopDeclarator::setCurrentFile(std::string fName, clang::SourceRange sr,
                                        clang::SourceManager *SM,
-                                       std::string matchFileName) {
-  if (fileName == "") {
-    fileName = fName;
+                                       const std::string &matchFileName) {
+  if (fileName.empty()) {
+    fileName = std::move(fName);
     replRange = sr;
     this->SM = SM;
     if (matchFileName == "op2_seq.h") {
@@ -51,10 +51,10 @@ ParLoopDeclarator::IncludeFinderPPCallback::IncludeFinderPPCallback(
     : CI(CI), callback(callback) {}
 
 void ParLoopDeclarator::IncludeFinderPPCallback::InclusionDirective(
-    clang::SourceLocation HashLoc, const clang::Token &, StringRef fileName,
-    bool, clang::CharSourceRange FilenameRange, const clang::FileEntry *,
-    StringRef, StringRef, const clang::Module *,
-    clang::SrcMgr::CharacteristicKind) {
+    clang::SourceLocation HashLoc, const clang::Token &,
+    clang::StringRef fileName, bool, clang::CharSourceRange FilenameRange,
+    const clang::FileEntry *, clang::StringRef, clang::StringRef,
+    const clang::Module *, clang::SrcMgr::CharacteristicKind) {
   if ((fileName == "op_seq.h" || fileName == "ops_seq.h") &&
       CI->getSourceManager().isInMainFile(HashLoc)) {
     callback->setCurrentFile(
@@ -72,9 +72,8 @@ ParloopCallReplaceOperation::ParloopCallReplaceOperation(
 
 void ParloopCallReplaceOperation::
 operator()(const matchers::MatchFinder::MatchResult &Result) const {
-  const clang::CallExpr *parLoopCall =
-      Result.Nodes.getNodeAs<clang::CallExpr>("par_loop");
-  const clang::FunctionDecl *fDecl =
+  const auto *parLoopCall = Result.Nodes.getNodeAs<clang::CallExpr>("par_loop");
+  const auto *fDecl =
       getExprAsDecl<clang::FunctionDecl>(parLoopCall->getArg(0));
   std::string fname = fDecl->getNameAsString();
   auto loop = std::find_if(
@@ -96,6 +95,36 @@ operator()(const matchers::MatchFinder::MatchResult &Result) const {
     tool.addReplacementTo(SM->getFilename(parLoopCall->getBeginLoc()), func_Rep,
                           "func_call");
   }
+}
+
+//________________________OPCONSTDECLAREREPLACEOPERATION_______________________
+
+OPConstDeclarationReplaceOperation::OPConstDeclarationReplaceOperation(
+    AppFileRefactoringTool &_tool)
+    : tool(_tool) {}
+
+void OPConstDeclarationReplaceOperation::
+operator()(const matchers::MatchFinder::MatchResult &Result) const {
+  const auto *declConstCall =
+      Result.Nodes.getNodeAs<clang::CallExpr>("decl_const");
+  const auto *fDecl = declConstCall->getDirectCallee();
+
+  std::string replS = fDecl->getNameAsString() + "2(";
+  if (declConstCall->getNumArgs() == 3) {
+    // dim, type, var -- missing name in first arg
+    replS += '"' +
+             getExprAsDecl<clang::VarDecl>(declConstCall->getArg(2))
+                 ->getNameAsString() +
+             "\",";
+  }
+
+  clang::SourceRange replRange(declConstCall->getBeginLoc(),
+                               declConstCall->getArg(0)->getBeginLoc());
+  clang::SourceManager *SM = Result.SourceManager;
+  clang::tooling::Replacement repl(
+      *SM, clang::CharSourceRange(replRange, false), replS);
+  tool.addReplacementTo(SM->getFilename(declConstCall->getBeginLoc()), repl,
+                        "func_call");
 }
 
 } // namespace OP2
