@@ -1,10 +1,11 @@
 #ifndef OPPARLOOP_H
 #define OPPARLOOP_H
+#include "clang_op_translator_core.h"
 #include "clang/AST/Decl.h"
 #include <set>
 #include <vector>
 
-namespace OP2 {
+namespace op_dsl {
 
 /**
  * @brief Struct for olding information about global constants defined using
@@ -36,17 +37,6 @@ inline llvm::raw_ostream &operator<<(llvm::raw_ostream &os,
 }
 
 /**
- * @brief Enum to determine the type of a par_loop
- */
-enum OPLoopKind { OP2 = 0, OPS = 1 };
-
-inline llvm::raw_ostream &operator<<(llvm::raw_ostream &o,
-                                     const OPLoopKind &kind) {
-  constexpr const char *OPLoopKind_labels[2] = {"OP2", "OPS"};
-  return o << OPLoopKind_labels[kind];
-}
-
-/**
  * @brief representation of the elementary function passed to a par_loop call
  *
  * Collects all data about the user given elementary operation of the par_loop
@@ -55,10 +45,9 @@ struct UserFuncData {
   std::string functionDecl; /**< The source of the elementary operation */
   std::string funcName;     /**< The function name from the funcDecl */
   bool isInlineSpecified;   /**< true if the parsed funcDecl is has inline */
-  std::string path; /**< Path to the file where the function is defined */
   std::vector<std::string> paramNames; /**< Names of the function arguments */
   UserFuncData(std::string _fDecl, std::string _fName, bool _isinline,
-               std::string _path, std::vector<std::string> _paramNames);
+               std::vector<std::string> _paramNames);
   std::string getInlinedFuncDecl() const;
 };
 
@@ -110,12 +99,10 @@ class ParLoop {
   UserFuncData function;  /**< Helds the information about the user function. */
   const std::string name; /**< Name of the user_function. This name is unique.*/
   std::vector<OPArg> args; /**< Loop arguments. */
-  OPLoopKind loopKind; /**< Store the type of the loop (wheter it is an op or an
-                          ops_par_loop) */
 
 public:
   ParLoop(UserFuncData _userFuncData, std::string _name,
-          std::vector<OPArg> _args, OPLoopKind kind = OP2);
+          std::vector<OPArg> _args);
 
   void generateID();
   bool isDirect() const;
@@ -124,7 +111,7 @@ public:
   size_t getLoopID() const;
   UserFuncData getUserFuncInfo() const;
   void prettyPrint(llvm::raw_ostream &) const;
-  OPLoopKind getKind() const;
+  const std::vector<OPArg>& getArgs() const;
 };
 
 /**
@@ -154,6 +141,6 @@ struct OPApplication {
   bool addParLoop(ParLoop);
 };
 
-} // namespace OP2
+} // namespace op_dsl
 
 #endif /* ifndef OPPARLOOP_H */

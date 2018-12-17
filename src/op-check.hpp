@@ -8,7 +8,7 @@
 #include "clang/Tooling/Tooling.h"
 #include <functional>
 
-namespace OP2 {
+namespace op_dsl {
 
 /**
  * @brief Utility to run basic check on OP2 and OPS application files.
@@ -86,5 +86,5 @@ public:
   }
 };
 
-} // namespace OP2
+} // namespace op_dsl
 #endif /* OP_CHECK_HPP */

@@ -1,7 +1,7 @@
 #include "AppFileRefactoringTool.hpp"
 #include "AppFileTransformations.hpp"
 #include "core/utils.h"
-namespace OP2 {
+namespace op_dsl {
 std::string
 AppFileRefactoringTool::getOutputFileName(const clang::FileEntry *Entry) const {
   llvm::outs() << "Rewrite buffer for file: " << Entry->getName() << "\n";
@@ -46,11 +46,11 @@ int AppFileRefactoringTool::generateOPFiles() {
 
 AppFileRefactoringTool::AppFileRefactoringTool(
     clang::tooling::CommonOptionsParser &optionsParser, OPApplication &app)
-    : OP2WriteableRefactoringTool(optionsParser), application(app) {
+    : OPWriteableRefactoringTool(optionsParser), application(app) {
   // Add clang system headers to command line
   appendArgumentsAdjuster(clang::tooling::getInsertArgumentAdjuster(
       std::string("-isystem" + std::string(CLANG_SYSTEM_HEADERS) + "/include")
           .c_str()));
 }
 
-} // namespace OP2
+} // namespace op_dsl

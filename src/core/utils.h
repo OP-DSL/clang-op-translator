@@ -1,5 +1,7 @@
 #ifndef UTILS_H_INCLUDED
 #define UTILS_H_INCLUDED
+#include "clang/Frontend/TextDiagnosticPrinter.h"
+#include "clang/Rewrite/Core/Rewriter.h"
 #include <cassert>
 #include <clang/AST/ASTContext.h>
 #include <clang/AST/Expr.h>
@@ -8,9 +10,9 @@
 #include <clang/Frontend/CompilerInstance.h>
 #include <clang/Lex/Lexer.h>
 #include <clang/Tooling/CommonOptionsParser.h>
-#include <optional>
+#include <clang/Tooling/Refactoring.h>
 
-namespace OP2 {
+namespace op_dsl {
 
 template <unsigned N>
 clang::DiagnosticBuilder reportDiagnostic(
@@ -116,7 +118,8 @@ public:
   template <typename... Param>
   explicit MatchMaker(Param... param) : matchFunction(param...) {}
   explicit MatchMaker(F f) : matchFunction{f} {}
-  virtual void
+  virtual ~MatchMaker() = default;
+  void
   run(const clang::ast_matchers::MatchFinder::MatchResult &Result) override {
     matchFunction(Result);
   }
@@ -145,5 +148,35 @@ const T *findParent(const clang::Stmt &stmt, clang::ASTContext &context) {
   return nullptr;
 }
 
-} // namespace OP2
+template <typename FileNameGenerator>
+inline void writeReplacementsTo(const FileNameGenerator &generator,
+                                clang::tooling::RefactoringTool *tool) {
+  // Set up the Rewriter (For this we need a SourceManager)
+  llvm::IntrusiveRefCntPtr<clang::DiagnosticOptions> DiagOpts =
+      new clang::DiagnosticOptions();
+  clang::DiagnosticsEngine Diagnostics(
+      llvm::IntrusiveRefCntPtr<clang::DiagnosticIDs>(
+          new clang::DiagnosticIDs()),
+      &*DiagOpts, new clang::TextDiagnosticPrinter(llvm::errs(), &*DiagOpts),
+      true);
+  clang::SourceManager Sources(Diagnostics, tool->getFiles());
+
+  // Apply all replacements to a rewriter.
+  clang::Rewriter Rewrite(Sources, clang::LangOptions());
+  formatAndApplyAllReplacements(tool->getReplacements(), Rewrite, "LLVM");
+
+  // Query the rewriter for all the files it has rewritten, dumping their new
+  // contents to output files.
+  for (clang::Rewriter::buffer_iterator I = Rewrite.buffer_begin(),
+                                        E = Rewrite.buffer_end();
+       I != E; ++I) {
+    std::string filename = generator(Sources.getFileEntryForID(I->first));
+    std::error_code ec;
+    llvm::raw_fd_ostream outfile{llvm::StringRef(filename), ec,
+                                 llvm::sys::fs::F_Text};
+    I->second.write(outfile);
+  }
+}
+
+} // namespace op_dsl
 #endif // end of header guard

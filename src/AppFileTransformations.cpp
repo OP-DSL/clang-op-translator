@@ -3,7 +3,7 @@
 #include "core/utils.h"
 #include <clang/Frontend/CompilerInstance.h>
 
-namespace OP2 {
+namespace op_dsl {
 //_____________________________PARLOOPDECLARATOR_______________________________
 ParLoopDeclarator::ParLoopDeclarator(AppFileRefactoringTool &tool)
     : tool(tool) {}
@@ -81,11 +81,8 @@ operator()(const matchers::MatchFinder::MatchResult &Result) const {
       [&fname](const auto &loop) { return loop.getName() == fname; });
   if (loop != app.getParLoops().end()) {
     parLoopDeclarator.addFunction(loop->getParLoopDef() + ";\n\n");
+    std::string start = parLoopCall->getDirectCallee()->getName();
 
-    std::string start = "op_par_loop";
-    if (loop->getKind() == OPS) {
-      start = "ops_par_loop";
-    }
     clang::SourceRange replRange(parLoopCall->getBeginLoc(),
                                  parLoopCall->getArg(1)->getBeginLoc());
     clang::SourceManager *SM = Result.SourceManager;
@@ -94,7 +91,7 @@ operator()(const matchers::MatchFinder::MatchResult &Result) const {
         start + "_" + fname + "(");
     tool.addReplacementTo(SM->getFilename(parLoopCall->getBeginLoc()), func_Rep,
                           "func_call");
-  }
+  } // TODO else error??
 }
 
 //________________________OPCONSTDECLAREREPLACEOPERATION_______________________
@@ -127,4 +124,4 @@ operator()(const matchers::MatchFinder::MatchResult &Result) const {
                         "func_call");
 }
 
-} // namespace OP2
+} // namespace op_dsl

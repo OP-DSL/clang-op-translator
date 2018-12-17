@@ -5,7 +5,7 @@
 #include "clang/ASTMatchers/ASTMatchFinder.h"
 #include <vector>
 
-namespace OP2 {
+namespace op_dsl {
 
 /**
  * @brief Utility to check wheter a function called once.
@@ -186,7 +186,7 @@ class ParLoopParser {
 
     return UserFuncData(decl2str(funcD, Result.SourceManager),
                         funcD->getNameAsString(), funcD->isInlineSpecified(),
-                        path, paramNames);
+                        paramNames);
   }
 
 public:
@@ -196,10 +196,9 @@ public:
     // inital checks and daignostics
     const auto *parLoopCall =
         Result.Nodes.getNodeAs<clang::CallExpr>("par_loop");
-    OPLoopKind kind =
-        parLoopCall->getDirectCallee()->getName() == "ops_par_loop"
-            ? OPLoopKind::OPS
-            : OPLoopKind::OP2;
+    DSL kind = parLoopCall->getDirectCallee()->getName() == "ops_par_loop"
+                   ? DSL::OPS
+                   : DSL::OP2;
     if (parLoopCall->getNumArgs() < 3 ||
         (kind == OPS && parLoopCall->getNumArgs() < 5)) {
       reportDiagnostic(*Result.Context, parLoopCall,
@@ -227,8 +226,7 @@ public:
     // end of argument parsing. Parse user function:
     UserFuncData userFuncData = parseUserFunc(fDecl, Result);
     // end of user function parsing. Add loop to application.
-    application.addParLoop(
-        ParLoop(userFuncData, userFuncData.funcName, args, kind));
+    application.addParLoop(ParLoop(userFuncData, userFuncData.funcName, args));
   }
 
 private:
@@ -280,5 +278,5 @@ private:
                                  about constants*/
 };
 
-} // namespace OP2
+} // namespace op_dsl
 #endif /* ifndef CHECKTRANSFORMATIONS_HPP */

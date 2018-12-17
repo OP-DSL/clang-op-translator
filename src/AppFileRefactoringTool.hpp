@@ -1,11 +1,11 @@
 #ifndef OPAPPFILEREFACTORINGTOOL_HPP
 #define OPAPPFILEREFACTORINGTOOL_HPP
-#include "core/OP2WriteableRefactoringTool.hpp"
 #include "core/OPParLoopData.h"
+#include "core/OPWriteableRefactoringTool.hpp"
 #include <clang/ASTMatchers/ASTMatchFinder.h>
 #include <clang/ASTMatchers/ASTMatchers.h>
 
-namespace OP2 {
+namespace op_dsl {
 
 /**
  * @brief Utility to transform the apllication files of an OP2 or OPS
@@ -16,7 +16,7 @@ namespace OP2 {
  * declarations. Then with writeOutReplacements the generates the modified
  * application files (xxx_op.cpp xxx_ops.cpp).
  */
-class AppFileRefactoringTool final : public OP2WriteableRefactoringTool {
+class AppFileRefactoringTool final : public OPWriteableRefactoringTool {
 public:
   AppFileRefactoringTool(clang::tooling::CommonOptionsParser &optionsParser,
                          OPApplication &app);
@@ -33,5 +33,5 @@ private:
   OPApplication &application;
 };
 
-} // namespace OP2
+} // namespace op_dsl
 #endif /* OPAPPFILEREFACTORINGTOOL_HPP */

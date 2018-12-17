@@ -8,7 +8,7 @@ cmake_minimum_required (VERSION 3.4)
 #setting Project informations
 ############################################################
 
-set(PROJECT_NAME op2-clang)
+set(PROJECT_NAME clang-op-translator)
 
 set(LIBRARY_LIST clangFrontend  clangSerialization clangDriver clangParse clangSema)
 set(LIBRARY_LIST ${LIBRARY_LIST} clangAnalysis clangEdit clangAST clangLex clangBasic clangTooling clangToolingCore clangFormat clangRewrite clangASTMatchers clangToolingInclusions)
@@ -43,6 +43,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(OP2_INSTALL_PATH "$ENV{OP2_INSTALL_PATH}")
+set(OPS_INSTALL_PATH "$ENV{OPS_INSTALL_PATH}")
 
 set(SKELETONS_DIR \"${CMAKE_CURRENT_SOURCE_DIR}/skeletons/\")
 
@@ -92,3 +93,16 @@ target_link_libraries(op-check
   LLVMTarget
   LLVMOption # Support
   )
+
+#tests
+set(OP_TEST_DIR "$ENV{OP_TEST_PATH}")
+
+if(OP_TEST_DIR)
+  message(STATUS "Test foun in ${OP_TEST_DIR}, enable testing")
+
+  #Turn on Ctest
+  enable_testing()
+
+  add_test(${PROJECT_NAME} ${PROJECT_NAME} ${OP_TEST_DIR}/OPS/test1.cpp -dsl=ops -optarget=seq -- -I${OPS_INSTALL_PATH}/c/include)
+
+endif()

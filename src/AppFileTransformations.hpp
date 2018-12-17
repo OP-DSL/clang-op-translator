@@ -4,7 +4,7 @@
 #include <clang/ASTMatchers/ASTMatchFinder.h>
 #include <clang/Tooling/Refactoring.h>
 
-namespace OP2 {
+namespace op_dsl {
 namespace matchers = clang::ast_matchers;
 
 class AppFileRefactoringTool;
@@ -90,5 +90,5 @@ private:
   AppFileRefactoringTool &tool;
 };
 
-} // namespace OP2
+} // namespace op_dsl
 #endif /* ifndef APPLICATIONFILETRANSFORMATIONS_HPP */
