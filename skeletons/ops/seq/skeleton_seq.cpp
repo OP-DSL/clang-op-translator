@@ -2,7 +2,7 @@
 
 void kernel() {}
 
-void ops_par_loop_advec_cell_kernel3_xdir(char const *name, ops_block block,
+void par_loop_skeleton(char const *name, ops_block block,
                                           int dim, int *range, ops_arg arg0) {
   const unsigned num_args = 1;
 

@@ -26,6 +26,7 @@ protected:
   const OPApplication &app;
   const OPOptimizations &opt;
   clang::tooling::CommonOptionsParser &optionsParser;
+  const DSL dsl;
 
   void addBasicOperations(const size_t &loopIdx,
                           clang::tooling::RefactoringTool *tool,
@@ -43,6 +44,14 @@ protected:
     matchers.push_back(std::move(
         MMCallback(varDecl(hasName("num_args")).bind(DeclNumArgOperation::key),
                    std::move(callback))));
+
+    callback.reset(new MatchMaker<ParLoopDeclOperation>(ParLoopDeclOperation(
+        app.getParLoops()[loopIdx], opt, &tool->getReplacements(), dsl)));
+    matchers.push_back(
+        std::move(MMCallback(functionDecl(hasName("par_loop_skeleton"),
+                                          hasBody(compoundStmt().bind("END")))
+                                 .bind(ParLoopDeclOperation::key),
+                             std::move(callback))));
   }
 
   std::string getOutputFileName(const clang::FileEntry *,
@@ -91,10 +100,11 @@ protected:
 
 public:
   LoopGenerator(const OPApplication &app, const OPOptimizations &opt,
+                const DSL &dsl,
                 clang::tooling::CommonOptionsParser &optionsParser) noexcept
-      : app(app), opt(opt), optionsParser(optionsParser) {}
+      : app(app), opt(opt), optionsParser(optionsParser), dsl(dsl) {}
 
-  [[nodiscard]] int generate() /* const */ {
+  [[nodiscard]] int generate() const {
     for (size_t loopIdx = 0; loopIdx < app.getParLoops().size(); ++loopIdx) {
       if (int err = generateLoop(loopIdx)) {
         return err;

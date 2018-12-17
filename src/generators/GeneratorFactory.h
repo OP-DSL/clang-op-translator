@@ -31,7 +31,7 @@ public:
   op_dsl::Generator createSequentialGenerator() override {
     return Generator(
         std::make_unique<const GlobalsHeaderGenerator>(app, DSL::OP2),
-        std::make_unique<LoopGenerator>(app, opt, optionsParser));
+        std::make_unique<LoopGenerator>(app, opt, DSL::OP2, optionsParser));
   }
   // op_dsl::Generator createOpenMPGenerator() override{}
 };
@@ -48,7 +48,7 @@ public:
   op_dsl::Generator createSequentialGenerator() override {
     return Generator(
         std::make_unique<const GlobalsHeaderGenerator>(app, DSL::OPS),
-        std::make_unique<LoopGenerator>(app, opt, optionsParser));
+        std::make_unique<LoopGenerator>(app, opt, DSL::OPS, optionsParser));
   }
   // op_dsl::Generator createOpenMPGenerator() override{}
 };

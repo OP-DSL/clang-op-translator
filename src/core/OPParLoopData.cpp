@@ -85,10 +85,10 @@ std::string ParLoop::getName() const { return name; }
 size_t ParLoop::getLoopID() const { return loopId; }
 
 std::string ParLoop::getParLoopDef() const {
-  std::string param = "void par_loop_" + name + "(const char *name, op_set set";
+  std::string param = "void DSL_par_loop_" + name + "(const char *name, PARAMS";
   llvm::raw_string_ostream os(param);
   for (size_t i = 0; i < args.size(); ++i) {
-    os << ", op_arg arg" << i;
+    os << ", ARG arg" << i;
   }
   os << ")";
   return os.str();
