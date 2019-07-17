@@ -43,7 +43,7 @@ UserFuncData::UserFuncData(const clang::FunctionDecl *funcD,
                            const clang::SourceManager *sm)
     : functionDecl(decl2str(funcD, sm)), funcName(funcD->getNameAsString()) {
   isInlineSpecified = funcD->isInlineSpecified();
-  path = funcD->getLocStart().printToString(*sm);
+  path = funcD->getBeginLoc().printToString(*sm);
   path = path.substr(0, path.find(":"));
   for (size_t i = 0; i < funcD->getNumParams(); ++i) {
     paramNames.push_back(funcD->getParamDecl(i)->getNameAsString());

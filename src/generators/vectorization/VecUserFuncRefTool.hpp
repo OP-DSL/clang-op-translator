@@ -25,7 +25,7 @@ class VecUserFuncHandler
       return 1;
     clang::SourceManager *sm = Result.SourceManager;
     // FIXME filename always /tmp/loop.h
-    std::string filename = sm->getFilename(match->getLocStart());
+    std::string filename = sm->getFilename(match->getBeginLoc());
     std::string localdefs, addlocals;
     for (const size_t &i : redIndexes) {
       const OPArg &arg = loop.getArg(i);
@@ -50,7 +50,7 @@ class VecUserFuncHandler
     }
     tooling::Replacement repl2(
         *Result.SourceManager,
-        match->getBody()->getLocStart().getLocWithOffset(1), 0, localdefs);
+        match->getBody()->getBeginLoc().getLocWithOffset(1), 0, localdefs);
     if (llvm::Error err = (*Replace)[filename].add(repl2)) {
       // TODO diagnostics..
       llvm::errs() << "Replacement for key: "
@@ -60,9 +60,9 @@ class VecUserFuncHandler
     }
     if (VEC) {
       SourceRange replRange(
-          match->getLocStart().getLocWithOffset(
+          match->getBeginLoc().getLocWithOffset(
               ("inline void " + loop.getUserFuncInfo().funcName).length()),
-          match->getBody()->getLocStart().getLocWithOffset(-1));
+          match->getBody()->getBeginLoc().getLocWithOffset(-1));
       std::string funcSignature = "_vec(";
       llvm::raw_string_ostream os(funcSignature);
       for (size_t i = 0; i < loop.getNumArgs(); ++i) {
@@ -100,7 +100,7 @@ class VecUserFuncHandler
     clang::SourceManager *sm = Result.SourceManager;
     // FIXME filename always /tmp/loop.h
     clang::SourceLocation end =
-        sm->getSpellingLoc(match->getLocEnd()).getLocWithOffset(1);
+        sm->getSpellingLoc(match->getEndLoc()).getLocWithOffset(1);
     for (const clang::SourceLocation &sl :
          alreadyDone[key]) { // TODO find better solution
       if (end == sl) {
@@ -109,7 +109,7 @@ class VecUserFuncHandler
     }
     alreadyDone[key].push_back(end);
     std::string filename =
-        sm->getFilename(sm->getSpellingLoc(match->getLocStart()));
+        sm->getFilename(sm->getSpellingLoc(match->getBeginLoc()));
 
     tooling::Replacement repl(*Result.SourceManager, end, 0, "[idx]");
     if (llvm::Error err = (*Replace)[filename].add(repl)) {

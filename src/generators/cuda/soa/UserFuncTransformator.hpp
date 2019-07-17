@@ -33,11 +33,11 @@ public:
         if (!match)
           continue;
         clang::SourceManager *sm = Result.SourceManager;
-        clang::SourceLocation end = sm->getSpellingLoc(match->getLocEnd());
+        clang::SourceLocation end = sm->getSpellingLoc(match->getEndLoc());
         std::string filename =
-            sm->getFilename(sm->getSpellingLoc(match->getLocStart()));
+            sm->getFilename(sm->getSpellingLoc(match->getBeginLoc()));
         clang::SourceLocation idxBegin =
-            sm->getSpellingLoc(match->getIdx()->getLocStart());
+            sm->getSpellingLoc(match->getIdx()->getBeginLoc());
 
         tooling::Replacement repl(*Result.SourceManager, idxBegin, 0, "(");
         if (llvm::Error err = (*Replace)[filename].add(repl)) {

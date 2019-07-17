@@ -120,12 +120,12 @@ int BaseKernelHandler::handleParLoopDecl(
   if (!function)
     return 1; // We shouldn't handle this match
   clang::SourceManager *sm = Result.SourceManager;
-  std::string filename = sm->getFilename(function->getLocStart());
+  std::string filename = sm->getFilename(function->getBeginLoc());
   // replace skeleton to the name of the loop
   size_t nameoffset = std::string("void op_par_loop_").length();
   size_t length = std::string("skeleton").length();
   clang::tooling::Replacement funcNameRep(
-      *sm, function->getLocStart().getLocWithOffset(nameoffset), length,
+      *sm, function->getBeginLoc().getLocWithOffset(nameoffset), length,
       loop.getName());
   if (llvm::Error err = (*Replace)[filename].add(funcNameRep)) {
     // TODO diagnostics..
@@ -142,7 +142,7 @@ int BaseKernelHandler::handleParLoopDecl(
     clang::tooling::Replacement funcArgRep(
         *sm,
         function->getParamDecl(function->getNumParams() - 1)
-            ->getLocEnd()
+            ->getEndLoc()
             .getLocWithOffset(4 /*FIXME hardcoded length of arg0*/),
         0, os.str());
     if (llvm::Error err = (*Replace)[filename].add(funcArgRep)) {
@@ -194,7 +194,7 @@ int BaseKernelHandler::handleOPKernels(const MatchFinder::MatchResult &Result) {
 
   clang::SourceManager *sm = Result.SourceManager;
   std::string filename =
-      sm->getFilename(kernelsSubscriptExpr->getLocStart());
+      sm->getFilename(kernelsSubscriptExpr->getBeginLoc());
 
   if (Result.Nodes.getNodeAs<clang::MemberExpr>("opk_member_expr")
           ->getMemberDecl()
@@ -204,9 +204,9 @@ int BaseKernelHandler::handleOPKernels(const MatchFinder::MatchResult &Result) {
     if (llvm::dyn_cast<clang::IntegerLiteral>(
             bop->getRHS()->IgnoreImpCasts())) {
       clang::SourceRange replRange(
-          bop->getLocStart(),
-          bop->getLocEnd().getLocWithOffset(3)); // TODO proper end
-      // clang::arcmt::trans::findSemiAfterLocation(bop->getLocEnd(),
+          bop->getBeginLoc(),
+          bop->getEndLoc().getLocWithOffset(3)); // TODO proper end
+      // clang::arcmt::trans::findSemiAfterLocation(bop->getEndLoc(),
       // *Result.Context));
       clang::tooling::Replacement repl(*sm,
                                        clang::CharSourceRange(replRange, false),
@@ -219,7 +219,7 @@ int BaseKernelHandler::handleOPKernels(const MatchFinder::MatchResult &Result) {
     }
   }
   clang::tooling::Replacement repl(
-      *sm, kernelsSubscriptExpr->getIdx()->getLocStart(), 1,
+      *sm, kernelsSubscriptExpr->getIdx()->getBeginLoc(), 1,
       std::to_string(loop.getLoopID()));
   if (llvm::Error err = (*Replace)[filename].add(repl)) {
     // TODO diagnostics..
@@ -239,9 +239,9 @@ int BaseKernelHandler::handleMPIWaitAllIfStmt(
     return 0;
 
   SourceManager *sm = Result.SourceManager;
-  std::string filename = sm->getFilename(ifStmt->getLocStart());
-  SourceRange replRange(ifStmt->getLocStart(),
-                        ifStmt->getLocEnd().getLocWithOffset(1));
+  std::string filename = sm->getFilename(ifStmt->getBeginLoc());
+  SourceRange replRange(ifStmt->getBeginLoc(),
+                        ifStmt->getEndLoc().getLocWithOffset(1));
   /*FIXME magic number for semicolon pos*/
 
   tooling::Replacement repl(*sm, CharSourceRange(replRange, false), "");

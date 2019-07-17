@@ -55,7 +55,7 @@ public:
           getOutputFileName(Sources.getFileEntryForID(I->first));
       std::error_code ec;
       llvm::raw_fd_ostream outfile{llvm::StringRef(filename), ec,
-                                   llvm::sys::fs::F_Text | llvm::sys::fs::F_RW};
+                                   llvm::sys::fs::F_Text };
 
       I->second.write(outfile);
     }

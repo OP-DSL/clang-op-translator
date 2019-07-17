@@ -32,10 +32,10 @@ int lineReplHandler(const clang::ast_matchers::MatchFinder::MatchResult &Result,
   if (debug)
     llvm::outs() << Key << "\n";
   clang::SourceManager *sm = Result.SourceManager;
-  std::string filename = sm->getFilename(sm->getFileLoc(match->getLocStart()));
+  std::string filename = sm->getFilename(sm->getFileLoc(match->getBeginLoc()));
   SourceRange replRange(
-      sm->getFileLoc(match->getLocStart()),
-      sm->getFileLoc(match->getLocEnd()).getLocWithOffset(Offset));
+      sm->getFileLoc(match->getBeginLoc()),
+      sm->getFileLoc(match->getEndLoc()).getLocWithOffset(Offset));
   std::string replacement = ReplacementGenerator();
 
   tooling::Replacement repl(*sm, CharSourceRange(replRange, false),
@@ -64,11 +64,11 @@ int fixLengthReplHandler(
   if (debug)
     llvm::outs() << Key << "\n";
   clang::SourceManager *sm = Result.SourceManager;
-  std::string filename = sm->getFilename(sm->getFileLoc(match->getLocStart()));
+  std::string filename = sm->getFilename(sm->getFileLoc(match->getBeginLoc()));
   std::string replacement = ReplacementGenerator();
 
   tooling::Replacement repl(
-      *sm, sm->getFileLoc(match->getLocStart()).getLocWithOffset(Offset),
+      *sm, sm->getFileLoc(match->getBeginLoc()).getLocWithOffset(Offset),
       length, replacement);
   if (llvm::Error err = (*Replace)[filename].add(repl)) {
     // TODO diagnostics..
@@ -93,10 +93,10 @@ int fixEndReplHandler(
   if (debug)
     llvm::outs() << Key << "\n";
   clang::SourceManager *sm = Result.SourceManager;
-  std::string filename = sm->getFilename(sm->getFileLoc(match->getLocStart()));
+  std::string filename = sm->getFilename(sm->getFileLoc(match->getBeginLoc()));
   SourceRange replRange(
-      sm->getFileLoc(match->getLocStart()).getLocWithOffset(StartOffset),
-      sm->getFileLoc(endMatch->getLocStart()).getLocWithOffset(EndOffset));
+      sm->getFileLoc(match->getBeginLoc()).getLocWithOffset(StartOffset),
+      sm->getFileLoc(endMatch->getBeginLoc()).getLocWithOffset(EndOffset));
   std::string replacement = ReplacementGenerator();
 
   if (replacement != "NO_REPL") {

@@ -48,9 +48,9 @@ OPParLoopDeclarator::IncludeFinderPPCallback::IncludeFinderPPCallback(
     clang::CompilerInstance *CI, OPParLoopDeclarator *callback)
     : CI(CI), callback(callback) {}
 void OPParLoopDeclarator::IncludeFinderPPCallback::InclusionDirective(
-    clang::SourceLocation HashLoc, const clang::Token &, StringRef FileName,
+    clang::SourceLocation HashLoc, const clang::Token &, clang::StringRef FileName,
     bool, clang::CharSourceRange FilenameRange, const clang::FileEntry *,
-    StringRef, StringRef, const clang::Module *) {
+    clang::StringRef, clang::StringRef, const clang::Module *) {
 
   if (FileName == "op_seq.h" && CI->getSourceManager().isInMainFile(HashLoc)) {
     callback->setCurrentFile(
@@ -118,7 +118,7 @@ void ParLoopHandler::parseFunctionDecl(const clang::CallExpr *parloopExpr,
   std::string name =
       getAsStringLiteral(parloopExpr->getArg(1))->getString().str();
   parLoopDataSS << "name: " << name
-                << "\nfunc: " << fDecl->getLocStart().printToString(*SM)
+                << "\nfunc: " << fDecl->getBeginLoc().printToString(*SM)
                 << "\niteration set: "
                 << getSourceAsString(parloopExpr->getArg(2)->getSourceRange(),
                                      SM)
@@ -171,14 +171,14 @@ void ParLoopHandler::run(const matchers::MatchFinder::MatchResult &Result) {
   }
 
   // Add replacement for func call
-  clang::SourceRange replRange(function->getLocStart().getLocWithOffset(11),
-                               function->getArg(1)->getLocStart());
+  clang::SourceRange replRange(function->getBeginLoc().getLocWithOffset(11),
+                               function->getArg(1)->getBeginLoc());
   clang::SourceManager *SM = Result.SourceManager;
   clang::tooling::Replacement func_Rep(*SM,
                                        clang::CharSourceRange(replRange, false),
                                        "_" + name->getString().str() + "(");
 
-  tool.addReplacementTo(SM->getFilename(function->getLocStart()),
+  tool.addReplacementTo(SM->getFilename(function->getBeginLoc()),
                         func_Rep, "func_call");
   // End adding Replacements
 

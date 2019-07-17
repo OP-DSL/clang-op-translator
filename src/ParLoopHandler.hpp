@@ -26,10 +26,10 @@ private:
 
     virtual void
     InclusionDirective(clang::SourceLocation HashLoc,
-                       const clang::Token &includeTok, StringRef FileName, bool,
+                       const clang::Token &includeTok, clang::StringRef FileName, bool,
                        clang::CharSourceRange FilenameRange,
-                       const clang::FileEntry *File, StringRef SearchPath,
-                       StringRef RelativePath, const clang::Module *Imported);
+                       const clang::FileEntry *File, clang::StringRef SearchPath,
+                       clang::StringRef RelativePath, const clang::Module *Imported);
   };
 
 public:
