@@ -11,7 +11,7 @@ cmake_minimum_required (VERSION 3.4)
 set(PROJECT_NAME op2-clang)
 
 set(LIBRARY_LIST clangFrontend  clangSerialization clangDriver clangParse clangSema)
-set(LIBRARY_LIST ${LIBRARY_LIST} clangAnalysis clangEdit clangAST clangLex clangBasic clangTooling clangToolingCore clangFormat clangRewrite clangASTMatchers)
+set(LIBRARY_LIST ${LIBRARY_LIST} clangAnalysis clangEdit clangAST clangLex clangBasic clangTooling clangToolingCore clangFormat clangToolingInclusions clangRewrite clangASTMatchers)
 
 ############################################################
 #   generate makefiles
