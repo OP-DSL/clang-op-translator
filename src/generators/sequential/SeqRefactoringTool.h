@@ -49,6 +49,9 @@ public:
   virtual ~SeqRefactoringTool() = default;
 };
 
+constexpr const char *SeqRefactoringTool::skeletons[1];
+constexpr const char *SeqRefactoringTool::commandlineParams[SeqRefactoringTool::numParams];
+
 } // namespace OP2
 
 #endif

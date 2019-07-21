@@ -63,6 +63,8 @@ public:
 const std::string OMPRefactoringTool::skeletons[2] = {
     "skeleton_direct_kernel.cpp", "skeleton_kernel.cpp"};
 
+constexpr const char *OMPRefactoringTool::commandlineParams[OMPRefactoringTool::numParams];
+
 } // namespace OP2
 
 #endif
