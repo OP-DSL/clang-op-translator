@@ -50,7 +50,7 @@ OPParLoopDeclarator::IncludeFinderPPCallback::IncludeFinderPPCallback(
 void OPParLoopDeclarator::IncludeFinderPPCallback::InclusionDirective(
     clang::SourceLocation HashLoc, const clang::Token &, clang::StringRef FileName,
     bool, clang::CharSourceRange FilenameRange, const clang::FileEntry *,
-    clang::StringRef, clang::StringRef, const clang::Module *) {
+    clang::StringRef, clang::StringRef, const clang::Module *, clang::SrcMgr::CharacteristicKind) {
 
   if (FileName == "op_seq.h" && CI->getSourceManager().isInMainFile(HashLoc)) {
     callback->setCurrentFile(
