@@ -29,7 +29,8 @@ private:
                        const clang::Token &includeTok, clang::StringRef FileName, bool,
                        clang::CharSourceRange FilenameRange,
                        const clang::FileEntry *File, clang::StringRef SearchPath,
-                       clang::StringRef RelativePath, const clang::Module *Imported);
+                       clang::StringRef RelativePath, const clang::Module *Imported,
+                       clang::SrcMgr::CharacteristicKind);
   };
 
 public:
