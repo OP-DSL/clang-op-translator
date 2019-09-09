@@ -25,7 +25,7 @@ void op_par_loop_skeleton(char const *name, op_set set, op_arg arg0) {
     printf("");
   }
 
-  op_mpi_halo_exchanges(set, nargs, args);
+  op_mpi_halo_exchanges_cuda(set, nargs, args);
 
   if (set->size > 0) {
 
@@ -40,8 +40,10 @@ void op_par_loop_skeleton(char const *name, op_set set, op_arg arg0) {
 
   // combine reduction data
   op_mpi_reduce(&arg0, (double *)arg0.data);
-  op_mpi_set_dirtybit(nargs, args);
+  op_mpi_set_dirtybit_cuda(nargs, args);
 
+
+  if (OP_diags>1) deviceSync();
   // update kernel record
   op_timers_core(&cpu_t2, &wall_t2);
   OP_kernels[0].name = name;
