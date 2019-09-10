@@ -23,8 +23,7 @@ protected:
   std::string handleFuncCall();
   std::string getmappedFunc();
   std::string handleOMPParLoop();
-
-  std::map<std::string,std::string> arg2data;
+  std::string DevicePointerDecl();
 
   const OP2Application &application;
   const size_t loopIdx;

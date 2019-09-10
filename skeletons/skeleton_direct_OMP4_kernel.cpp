@@ -28,6 +28,7 @@ void op_par_loop_skeleton(char const *name, op_set set, op_arg arg0) {
   op_mpi_halo_exchanges_cuda(set, nargs, args);
 
   if (set->size > 0) {
+    int *map_ = arg0.map_data_d;
 
 #pragma omp parallel for reduction(+ : arg0_l)
     for (int n = 0; n < set->size; n++) {

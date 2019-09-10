@@ -44,8 +44,7 @@ void op_par_loop_skeleton(char const *name, op_set set, op_arg arg0) {
 
   if (set->size > 0) {
     //Set up typed device pointers for OpenMP
-    int *map0 = arg0.map_data_d;
-    int map0size = arg0.map->dim * set_size1;
+    int *map_ = arg0.map_data_d;
 
     op_plan *Plan = op_plan_get_stage(name,set,part_size,nargs,args,ninds,inds,OP_COLOR2);
     ncolors = Plan->ncolors;

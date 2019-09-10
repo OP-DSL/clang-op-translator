@@ -40,8 +40,8 @@ const StatementMatcher OMP4KernelHandler::funcCallMatcher =
 
         
 const DeclarationMatcher OMP4KernelHandler::mapIdxDeclMatcher =
-    varDecl(hasName("map0idx"), hasAncestor(parLoopSkeletonCompStmtMatcher))
-        .bind("map_idx_decl");
+    varDecl(hasName("map_"), hasAncestor(parLoopSkeletonCompStmtMatcher))
+        .bind("map_decl");
 
 
 //_________________________________CONSTRUCTORS________________________________
@@ -55,7 +55,11 @@ void OMP4KernelHandler::run(const MatchFinder::MatchResult &Result) {
 
   if (!lineReplHandler<FunctionDecl, 1>(Result, Replace, "user_func_OMP4",  [this]() {
         return this->getmappedFunc();
-        /*return this->application.getParLoops()[loopIdx].getUserFuncInc();*/
+      }))
+    return; // if successfully handled return
+
+  if (!lineReplHandler<VarDecl, 1>(Result, Replace, "map_decl",  [this]() {
+        return this->DevicePointerDecl();
       }))
     return; // if successfully handled return
 
@@ -102,6 +106,7 @@ std::string OMP4KernelHandler::handleFuncCall() {
 std::string OMP4KernelHandler::getmappedFunc(){
   std::string mappedfunc = "";
   llvm::raw_string_ostream ss(mappedfunc);
+  std::map<std::string,std::string> arg2data;
   ss << "void " << loop.getName() << "_omp4_kernel(";
   if(!loop.isDirect()){
     ss << "int *map0, int map0size,";
@@ -120,7 +125,30 @@ std::string OMP4KernelHandler::getmappedFunc(){
   }
   ss << " int count, int num_teams, int nthread);";
   return ss.str();
+}
 
+std::string OMP4KernelHandler::DevicePointerDecl(){
+  std::string DPD = "";
+  llvm::raw_string_ostream ss(DPD);
+  std::map<std::string,std::string> arg2data;
+  if(!loop.isDirect()){
+    ss << "int *map0 = arg0.map_data_d;\n"; 
+    ss << "int map0size = arg0.map->dim * set_size1;\n";
+  }
+  for(size_t i = 0; i < loop.getNumArgs(); ++i){
+    if(arg2data[loop.getArg(i).opDat] != ""){
+      continue;
+    } else {
+      arg2data[loop.getArg(i).opDat] = "data" + std::to_string(i);
+    }
+
+    ss << loop.getArg(i).type << " *" << "data" << i << " = ";
+    ss << "(" << loop.getArg(i).type << "*)" <<"arg" << i << ".data_d;\n";
+
+    ss << "\tint " << "data" << i << "size" << " = getSetSizeFromOpArg((&arg" << i;
+    ss << ") * arg" << i << ".dat->dim;\n";
+  }
+  return ss.str();
 }
 
 std::string OMP4KernelHandler::handleRedLocalVarDecl() {
