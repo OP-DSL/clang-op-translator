@@ -6,7 +6,7 @@
 
 namespace OP2 {
 /// @brief Enum type for optarget commandline option.
-enum OP2Targets { all = 0, none, seq, openmp, vec, cuda };
+enum OP2Targets { all = 0, none, seq, openmp, openmp4, vec, cuda };
 /// @brief Enum type to set coloring type for cuda.
 enum Staging { OP_STAGE_ALL = 0, OP_COlOR2 };
 

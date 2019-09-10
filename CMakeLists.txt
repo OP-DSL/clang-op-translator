@@ -10,6 +10,10 @@ cmake_minimum_required (VERSION 3.4)
 
 set(PROJECT_NAME op2-clang)
 
+set(CMAKE_C_COMPILER clang)
+set(CMAKE_CXX_COMPILER clang++)
+set(CMAKE_CXX_STANDARD 14)
+
 set(LIBRARY_LIST clangFrontend  clangSerialization clangDriver clangParse clangSema)
 set(LIBRARY_LIST ${LIBRARY_LIST} clangAnalysis clangEdit clangAST clangLex clangBasic clangTooling clangToolingCore clangFormat clangToolingInclusions clangRewrite clangASTMatchers)
 
@@ -28,6 +32,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
 include_directories(${LLVM_INCLUDE_DIRS})
 if(LLVM_BUILD_MAIN_SRC_DIR)
   include_directories(${LLVM_BUILD_MAIN_SRC_DIR}/tools/clang/include)
+  include_directories(${LLVM_BUILD_MAIN_SRC_DIR}/../clang/include)
   include_directories(${LLVM_BUILD_BINARY_DIR}/tools/clang/include)
 endif()
 
@@ -58,6 +63,7 @@ add_executable(${PROJECT_NAME}
   src/generators/cuda/CudaKernelHandler.cpp
   src/generators/sequential/SeqKernelHandler.cpp
   src/generators/openmp/OMPKernelHandler.cpp
+  src/generators/openmp4/OMP4KernelHandler.cpp
   src/generators/vectorization/VecKernelHandler.cpp
   )
 

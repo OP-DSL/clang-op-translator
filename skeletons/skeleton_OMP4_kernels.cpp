@@ -3,8 +3,7 @@
 //
 
 // user function
-void skeleton(int *a, int b, int* col_reord, int set_size1, int start, int end, int part_size, int nthread) {}
-
+void skeleton_OMP4(double *a) {}
 // host stub function
 void op_par_loop_skeleton(char const *name, op_set set, op_arg arg0) {
 
@@ -60,23 +59,15 @@ void op_par_loop_skeleton(char const *name, op_set set, op_arg arg0) {
       int start = Plan->col_offsets[0][col];
       int end = Plan->col_offsets[0][col+1];
 
-      skeleton(
-        map0,
-        map0size,
-        col_reord,
-        set_size1,
-        start,
-        end,
-        part_size!=0?(end-start-1)/part_size+1:(end-start-1)/nthread,
-        nthread);
+      skeleton_OMP4(&((double *)arg0.data)[0]);
     }
     OP_kernels[0].transfer  += Plan->transfer;
     OP_kernels[0].transfer2 += Plan->transfer2;
   }
   *((double *)arg0.data) = arg0_l;
 
-  if (set_size == 0 || set_size == set->core_size) {
-    op_mpi_wait_all(nargs, args);
+  if (set_size == 0 || set_size == set->core_size || ncolors == 1) {
+    op_mpi_wait_all_cuda(nargs, args);
   }
   
   // combine reduction data

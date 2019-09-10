@@ -21,7 +21,13 @@ protected:
   std::string handleRedLocalVarDecl();
   std::string handlelocRedToArgAssignment();
   std::string handleFuncCall();
+  std::string getmappedFunc();
   std::string handleOMPParLoop();
+
+  std::map<std::string,std::string> arg2data;
+
+  const OP2Application &application;
+  const size_t loopIdx;
 
 public:
   /// @brief Construct a OMP4KernelHandler
@@ -31,7 +37,7 @@ public:
   ///
   /// @param loop The ParLoop that the file is currently generated.
   OMP4KernelHandler(std::map<std::string, clang::tooling::Replacements> *Replace,
-                   const ParLoop &loop);
+                   const ParLoop &loop, const OP2Application &application, const size_t loopIdx);
 
   // Static matchers handled by this class
   /// @brief Matcher for the declaration of local variables for OpenMP reduction
@@ -41,6 +47,14 @@ public:
   static const matchers::StatementMatcher locRedToArgMatcher;
   /// @brief Matcher that matches the omp parallel for pragma
   static const matchers::StatementMatcher ompParForMatcher;
+
+  /// @brief Matcher for the placeholder of the user function
+  static const matchers::DeclarationMatcher userFuncMatcher;
+  /// @brief Matcher for function kall in kernel
+  static const matchers::StatementMatcher funcCallMatcher;
+  /// @brief Matcher for the mapping declarations
+  static const matchers::DeclarationMatcher mapIdxDeclMatcher;
+
 
   virtual void run(const matchers::MatchFinder::MatchResult &Result) override;
 };

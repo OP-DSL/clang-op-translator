@@ -30,14 +30,35 @@ const StatementMatcher OMP4KernelHandler::ompParForMatcher =
     ompParallelForDirective().bind(
         "ompParForDir"); // FIXME check if it is in the main file.
 
+const DeclarationMatcher OMP4KernelHandler::userFuncMatcher =
+    functionDecl(hasName("skeleton_OMP4"), isDefinition(), parameterCountIs(1))
+        .bind("user_func_OMP4");
+
+const StatementMatcher OMP4KernelHandler::funcCallMatcher =
+    callExpr(callee(functionDecl(hasName("skeleton_OMP4"), parameterCountIs(1))))
+        .bind("func_call_OMP4");
+
+        
+const DeclarationMatcher OMP4KernelHandler::mapIdxDeclMatcher =
+    varDecl(hasName("map0idx"), hasAncestor(parLoopSkeletonCompStmtMatcher))
+        .bind("map_idx_decl");
+
+
 //_________________________________CONSTRUCTORS________________________________
 OMP4KernelHandler::OMP4KernelHandler(
     std::map<std::string, clang::tooling::Replacements> *Replace,
-    const ParLoop &loop)
-    : Replace(Replace), loop(loop) {}
+    const ParLoop &loop, const OP2Application &application, const size_t loopIdx)
+    : Replace(Replace), loop(loop), application(application), loopIdx(loopIdx) {}
 
 //________________________________GLOBAL_HANDLER_______________________________
 void OMP4KernelHandler::run(const MatchFinder::MatchResult &Result) {
+
+  if (!lineReplHandler<FunctionDecl, 1>(Result, Replace, "user_func_OMP4",  [this]() {
+        return this->getmappedFunc();
+        /*return this->application.getParLoops()[loopIdx].getUserFuncInc();*/
+      }))
+    return; // if successfully handled return
+
   if (!lineReplHandler<DeclStmt, 1>(
           Result, Replace, "local_reduction_variable",
           std::bind(&OMP4KernelHandler::handleRedLocalVarDecl, this)))
@@ -76,6 +97,30 @@ std::string OMP4KernelHandler::handleFuncCall() {
   }
   ss.str();
   return funcCall.substr(0, funcCall.length() - 1) + ");";
+}
+
+std::string OMP4KernelHandler::getmappedFunc(){
+  std::string mappedfunc = "";
+  llvm::raw_string_ostream ss(mappedfunc);
+  ss << "void " << loop.getName() << "_omp4_kernel(";
+  if(!loop.isDirect()){
+    ss << "int *map0, int map0size,";
+  }
+  for (size_t i = 0; i < loop.getNumArgs(); ++i) {
+    if(arg2data[loop.getArg(i).opDat] != ""){
+      continue;
+    } else {
+      arg2data[loop.getArg(i).opDat] = "data" + std::to_string(i);
+    }
+    ss << loop.getArg(i).type << " *" << "data" << i << ", ";
+    ss << "int " << "data" << i << "size ";
+    if(i != loop.getNumArgs() -1 ){
+      ss << ",";
+    }
+  }
+  ss << " int count, int num_teams, int nthread);";
+  return ss.str();
+
 }
 
 std::string OMP4KernelHandler::handleRedLocalVarDecl() {

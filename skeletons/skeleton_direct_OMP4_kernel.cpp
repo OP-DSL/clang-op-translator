@@ -3,7 +3,7 @@
 //
 
 // user function
-void skeleton(double *a) {}
+void skeleton_OMP4(double *a) {}
 
 // host stub function
 void op_par_loop_skeleton(char const *name, op_set set, op_arg arg0) {
@@ -33,7 +33,7 @@ void op_par_loop_skeleton(char const *name, op_set set, op_arg arg0) {
     for (int n = 0; n < set->size; n++) {
       int map0idx = arg0.map_data[n * arg0.map->dim + 0];
 
-      skeleton(&((double *)arg0.data)[4 * n]);
+      skeleton_OMP4(&((double *)arg0.data)[4 * n]);
     }
   }
   *((double *)arg0.data) = arg0_l;

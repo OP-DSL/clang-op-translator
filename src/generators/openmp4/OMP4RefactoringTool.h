@@ -16,10 +16,12 @@ class OMP4RefactoringTool : public OP2KernelGeneratorBase {
 
   /// @brief Handler for OpenMP kernel specific modifications.
   ///
-  OMPKernelHandler ompKernelHandler;
+  OMP4KernelHandler omp4KernelHandler;
   /// @brief Handler for modifications same as sequential case.
   ///
   SeqKernelHandler seqKernelHandler;
+
+
 
 public:
   /// @brief Construct a refactoring tool to generate the OpenMP kernel.
@@ -35,7 +37,7 @@ public:
                                {std::string(SKELETONS_DIR) +
                                 skeletons[!app.getParLoops()[idx].isDirect()]},
                                app, idx, OMP4RefactoringTool::_postfix, op),
-        ompKernelHandler(&getReplacements(), app.getParLoops()[idx]),
+        omp4KernelHandler(&getReplacements(), app.getParLoops()[idx], app, idx),
         seqKernelHandler(&getReplacements(), app, idx) {}
 
   /// @brief Adding OpenMP specific Matchers and handlers.
@@ -44,12 +46,13 @@ public:
   /// @param MatchFinder used by the RefactoringTool
   virtual void
   addGeneratorSpecificMatchers(clang::ast_matchers::MatchFinder &Finder) {
-    Finder.addMatcher(OMPKernelHandler::locRedVarMatcher, &ompKernelHandler);
-    Finder.addMatcher(OMPKernelHandler::locRedToArgMatcher, &ompKernelHandler);
-    Finder.addMatcher(OMPKernelHandler::ompParForMatcher, &ompKernelHandler);
-    Finder.addMatcher(SeqKernelHandler::userFuncMatcher, &seqKernelHandler);
-    Finder.addMatcher(SeqKernelHandler::funcCallMatcher, &ompKernelHandler);
-    Finder.addMatcher(SeqKernelHandler::mapIdxDeclMatcher, &seqKernelHandler);
+    Finder.addMatcher(OMPKernelHandler::locRedVarMatcher, &omp4KernelHandler);
+    Finder.addMatcher(OMPKernelHandler::locRedToArgMatcher, &omp4KernelHandler);
+    Finder.addMatcher(OMPKernelHandler::ompParForMatcher, &omp4KernelHandler);
+
+    Finder.addMatcher(OMP4KernelHandler::userFuncMatcher, &omp4KernelHandler);
+    Finder.addMatcher(OMP4KernelHandler::funcCallMatcher, &omp4KernelHandler);
+    Finder.addMatcher(OMP4KernelHandler::mapIdxDeclMatcher, &omp4KernelHandler);
   }
 
   static constexpr const char *_postfix = "kernel";
