@@ -3,7 +3,7 @@
 //
 
 // user function
-void skeleton(double *a, int b, int* col_reord, int set_size1, int set_size1, int start, int end, int part_size, int nthread) {}
+void skeleton(int *a, int b, int* col_reord, int set_size1, int start, int end, int part_size, int nthread) {}
 
 // host stub function
 void op_par_loop_skeleton(char const *name, op_set set, op_arg arg0) {
@@ -32,12 +32,6 @@ void op_par_loop_skeleton(char const *name, op_set set, op_arg arg0) {
   int part_size = OP_part_size;
 
   int set_size = op_mpi_halo_exchanges_cuda(set, nargs, args);
-
-  #ifdef OP_PART_SIZE_1
-    int part_size = OP_PART_SIZE_1;
-  #else
-    int part_size = OP_part_size;
-  #endif
 
 
   #ifdef OP_BLOCK_SIZE_1
