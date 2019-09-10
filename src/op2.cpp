@@ -15,6 +15,7 @@ static llvm::cl::opt<OP2::OP2Targets>
                  clEnumValN(OP2::none, "none", "Don't generate kernel files"),
                  clEnumValN(OP2::seq, "seq", "Sequential"),
                  clEnumValN(OP2::openmp, "openmp", "OpenMP"),
+                 clEnumValN(OP2::openmp4, "openmp4", "OpenMP4"),
                  clEnumValN(OP2::cuda, "cuda", "CUDA"),
                  clEnumValN(OP2::vec, "vec", "Vectorization")));
 static llvm::cl::opt<OP2::Staging> staging(

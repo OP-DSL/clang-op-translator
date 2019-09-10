@@ -1,17 +1,17 @@
-#ifndef OMPREFACTORINGTOOL_H
-#define OMPREFACTORINGTOOL_H
+#ifndef OMP4RefactoringTool_H
+#define OMP4RefactoringTool_H
 
 #include "core/OPParLoopData.h"
 #include "core/op2_clang_core.h"
 #include "generators/common/GeneratorBase.hpp"
-#include "generators/openmp/OMPKernelHandler.h"
+#include "generators/openmp4/OMP4KernelHandler.h"
 #include "generators/sequential/SeqKernelHandler.h"
 
 namespace OP2 {
 /// \brief Utility of generate OpenMP kernel based on ParLoop information.
 ///
 ///
-class OMPRefactoringTool : public OP2KernelGeneratorBase {
+class OMP4RefactoringTool : public OP2KernelGeneratorBase {
   static const std::string skeletons[2];
 
   /// @brief Handler for OpenMP kernel specific modifications.
@@ -29,12 +29,12 @@ public:
   /// @param loop The ParLoop containing informations about the op_par_loop.
   /// @param PCHContainerOps The PCHContainerOperation for loading and creating
   /// clang modules
-  OMPRefactoringTool(const clang::tooling::CompilationDatabase &Compilations,
+  OMP4RefactoringTool(const clang::tooling::CompilationDatabase &Compilations,
                      const OP2Application &app, size_t idx, OP2Optimizations op)
       : OP2KernelGeneratorBase(Compilations,
                                {std::string(SKELETONS_DIR) +
                                 skeletons[!app.getParLoops()[idx].isDirect()]},
-                               app, idx, OMPRefactoringTool::_postfix, op),
+                               app, idx, OMP4RefactoringTool::_postfix, op),
         ompKernelHandler(&getReplacements(), app.getParLoops()[idx]),
         seqKernelHandler(&getReplacements(), app, idx) {}
 
@@ -57,13 +57,13 @@ public:
   static constexpr unsigned numParams = 1;
   static constexpr const char *commandlineParams[numParams] = {"-fopenmp"};
 
-  virtual ~OMPRefactoringTool() = default;
+  virtual ~OMP4RefactoringTool() = default;
 };
 
-const std::string OMPRefactoringTool::skeletons[2] = {
-    "skeleton_direct_kernel.cpp", "skeleton_kernel.cpp"};
+const std::string OMP4RefactoringTool::skeletons[2] = {
+    "skeleton_direct_OMP4_kernel.cpp", "skeleton_OMP4_kernels.cpp"};
 
-constexpr const char *OMPRefactoringTool::commandlineParams[OMPRefactoringTool::numParams];
+constexpr const char *OMP4RefactoringTool::commandlineParams[OMP4RefactoringTool::numParams];
 
 } // namespace OP2
 

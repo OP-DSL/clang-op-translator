@@ -1,4 +1,4 @@
-#include "OMPKernelHandler.h"
+#include "OMP4KernelHandler.h"
 #include "generators/common/ASTMatchersExtension.h"
 #include "generators/common/handler.hpp"
 #include "clang/AST/StmtOpenMP.h"
@@ -14,48 +14,48 @@ using namespace clang::ast_matchers;
 using namespace clang;
 //___________________________________MATCHERS__________________________________
 
-const StatementMatcher OMPKernelHandler::locRedVarMatcher =
+const StatementMatcher OMP4KernelHandler::locRedVarMatcher =
     declStmt(containsDeclaration(0, varDecl(hasName("arg0_l"))),
              hasParent(parLoopSkeletonCompStmtMatcher))
         .bind("local_reduction_variable");
 
-const StatementMatcher OMPKernelHandler::locRedToArgMatcher =
+const StatementMatcher OMP4KernelHandler::locRedToArgMatcher =
     binaryOperator(
         hasOperatorName("="),
         hasRHS(ignoringImpCasts(declRefExpr(to(varDecl(hasName("arg0_l")))))),
         hasParent(parLoopSkeletonCompStmtMatcher))
         .bind("loc_red_to_arg_assignment");
 
-const StatementMatcher OMPKernelHandler::ompParForMatcher =
+const StatementMatcher OMP4KernelHandler::ompParForMatcher =
     ompParallelForDirective().bind(
         "ompParForDir"); // FIXME check if it is in the main file.
 
 //_________________________________CONSTRUCTORS________________________________
-OMPKernelHandler::OMPKernelHandler(
+OMP4KernelHandler::OMP4KernelHandler(
     std::map<std::string, clang::tooling::Replacements> *Replace,
     const ParLoop &loop)
     : Replace(Replace), loop(loop) {}
 
 //________________________________GLOBAL_HANDLER_______________________________
-void OMPKernelHandler::run(const MatchFinder::MatchResult &Result) {
+void OMP4KernelHandler::run(const MatchFinder::MatchResult &Result) {
   if (!lineReplHandler<DeclStmt, 1>(
           Result, Replace, "local_reduction_variable",
-          std::bind(&OMPKernelHandler::handleRedLocalVarDecl, this)))
+          std::bind(&OMP4KernelHandler::handleRedLocalVarDecl, this)))
     return;
-  if (!HANDLER(CallExpr, 2, "func_call", OMPKernelHandler::handleFuncCall))
+  if (!HANDLER(CallExpr, 2, "func_call", OMP4KernelHandler::handleFuncCall))
     return; // if successfully handled return
   if (!lineReplHandler<BinaryOperator, 7>(
           Result, Replace, "loc_red_to_arg_assignment",
-          std::bind(&OMPKernelHandler::handlelocRedToArgAssignment, this)))
+          std::bind(&OMP4KernelHandler::handlelocRedToArgAssignment, this)))
     return; // if successfully handled return
   if (!HANDLER(OMPParallelForDirective, 0, "ompParForDir",
-               OMPKernelHandler::handleOMPParLoop)) {
+               OMP4KernelHandler::handleOMPParLoop)) {
     return;
   }
 }
 //___________________________________HANDLERS__________________________________
 
-std::string OMPKernelHandler::handleFuncCall() {
+std::string OMP4KernelHandler::handleFuncCall() {
   std::string funcCall = "";
   llvm::raw_string_ostream ss(funcCall);
   ss << loop.getUserFuncInfo().funcName << "(";
@@ -78,7 +78,7 @@ std::string OMPKernelHandler::handleFuncCall() {
   return funcCall.substr(0, funcCall.length() - 1) + ");";
 }
 
-std::string OMPKernelHandler::handleRedLocalVarDecl() {
+std::string OMP4KernelHandler::handleRedLocalVarDecl() {
   std::string s;
   llvm::raw_string_ostream os(s);
   for (size_t ind = 0; ind < loop.getNumArgs(); ++ind) {
@@ -91,7 +91,7 @@ std::string OMPKernelHandler::handleRedLocalVarDecl() {
   return os.str();
 }
 
-std::string OMPKernelHandler::handlelocRedToArgAssignment() {
+std::string OMP4KernelHandler::handlelocRedToArgAssignment() {
   std::string s;
   llvm::raw_string_ostream os(s);
   for (size_t ind = 0; ind < loop.getNumArgs(); ++ind) {
@@ -104,7 +104,7 @@ std::string OMPKernelHandler::handlelocRedToArgAssignment() {
   return os.str();
 }
 
-std::string OMPKernelHandler::handleOMPParLoop() {
+std::string OMP4KernelHandler::handleOMPParLoop() {
   std::string plusReds, minReds, maxReds;
   llvm::raw_string_ostream os(plusReds);
   llvm::raw_string_ostream osMin(minReds);

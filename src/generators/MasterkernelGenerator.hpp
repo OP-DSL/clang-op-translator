@@ -6,6 +6,7 @@
 #include "generators/cuda/CUDAMasterKernelHandler.h"
 #include "generators/cuda/CudaRefactoringTool.h"
 #include "generators/openmp/OMPRefactoringTool.h"
+#include "generators/openmp4/OMP4RefactoringTool.h"
 #include "generators/sequential/SeqRefactoringTool.h"
 #include "generators/vectorization/VecRefactoringTool.h"
 #include <algorithm>
@@ -134,6 +135,7 @@ public:
 
 typedef MasterkernelGenerator<SeqRefactoringTool> SeqGenerator;
 typedef MasterkernelGenerator<OMPRefactoringTool> OpenMPGenerator;
+typedef MasterkernelGenerator<OMP4RefactoringTool> OpenMP4Generator;
 typedef MasterkernelGenerator<VecRefactoringTool> VectorizedGenerator;
 typedef MasterkernelGenerator<CUDARefactoringTool, CUDAMasterKernelHandler>
     CUDAGenerator;

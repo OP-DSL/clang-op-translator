@@ -41,6 +41,11 @@ void OP2RefactoringTool::generateKernelFiles() {
                               optimizationFlags);
     generator.generateKernelFiles();
   }
+  if (opTarget == openmp4 || opTarget == all) {
+    OpenMP4Generator generator(application, commandLineArgs, Compilations,
+                              optimizationFlags);
+    generator.generateKernelFiles();
+  }
   if (opTarget == vec || opTarget == all) {
     VectorizedGenerator generator(application, commandLineArgs, Compilations,
                                   optimizationFlags, "skeleton_veckernels.cpp");

@@ -1,5 +1,5 @@
-#ifndef OMPKERNELHANDLER_H
-#define OMPKERNELHANDLER_H
+#ifndef OMP4KernelHandler_H
+#define OMP4KernelHandler_H
 #include "core/OPParLoopData.h"
 #include "clang/ASTMatchers/ASTMatchFinder.h"
 #include "clang/Tooling/Refactoring.h"
@@ -13,7 +13,7 @@ namespace matchers = clang::ast_matchers;
 /// Callback for perform the modifications for OpenMP kernels on
 /// op_par_loop_skeleton e.g. replace dummy skeleton function to user function,
 /// chang the function call for user function
-class OMPKernelHandler : public matchers::MatchFinder::MatchCallback {
+class OMP4KernelHandler : public matchers::MatchFinder::MatchCallback {
 protected:
   std::map<std::string, clang::tooling::Replacements> *Replace;
   const ParLoop &loop;
@@ -24,13 +24,13 @@ protected:
   std::string handleOMPParLoop();
 
 public:
-  /// @brief Construct a OMPKernelHandler
+  /// @brief Construct a OMP4KernelHandler
   ///
   /// @param Replace Replacements map from the RefactoringTool where
   /// Replacements should added.
   ///
   /// @param loop The ParLoop that the file is currently generated.
-  OMPKernelHandler(std::map<std::string, clang::tooling::Replacements> *Replace,
+  OMP4KernelHandler(std::map<std::string, clang::tooling::Replacements> *Replace,
                    const ParLoop &loop);
 
   // Static matchers handled by this class
@@ -47,4 +47,4 @@ public:
 
 } // end of namespace OP2
 
-#endif /* ifndef OMPKERNELHANDLER_H  */
+#endif /* ifndef OMP4KernelHandler_H  */
