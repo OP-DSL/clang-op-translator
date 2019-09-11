@@ -40,8 +40,8 @@ const StatementMatcher OMP4KernelHandler::funcCallMatcher =
 
         
 const DeclarationMatcher OMP4KernelHandler::mapIdxDeclMatcher =
-    varDecl(hasName("map_"), hasAncestor(parLoopSkeletonCompStmtMatcher))
-        .bind("map_decl");
+    varDecl(hasName("mapStart"), hasAncestor(parLoopSkeletonCompStmtMatcher))
+        .bind("mapStart_decl");
 
 
 //_________________________________CONSTRUCTORS________________________________
@@ -58,7 +58,7 @@ void OMP4KernelHandler::run(const MatchFinder::MatchResult &Result) {
       }))
     return; // if successfully handled return
 
-  if (!lineReplHandler<VarDecl, 1>(Result, Replace, "map_decl",  [this]() {
+  if (!lineReplHandler<VarDecl, 9>(Result, Replace, "mapStart_decl",  [this]() {
         return this->DevicePointerDecl();
       }))
     return; // if successfully handled return
@@ -67,7 +67,7 @@ void OMP4KernelHandler::run(const MatchFinder::MatchResult &Result) {
           Result, Replace, "local_reduction_variable",
           std::bind(&OMP4KernelHandler::handleRedLocalVarDecl, this)))
     return;
-  if (!HANDLER(CallExpr, 2, "func_call", OMP4KernelHandler::handleFuncCall))
+  if (!HANDLER(CallExpr, 2, "func_call_OMP4", OMP4KernelHandler::handleFuncCall))
     return; // if successfully handled return
   if (!lineReplHandler<BinaryOperator, 7>(
           Result, Replace, "loc_red_to_arg_assignment",
@@ -83,24 +83,26 @@ void OMP4KernelHandler::run(const MatchFinder::MatchResult &Result) {
 std::string OMP4KernelHandler::handleFuncCall() {
   std::string funcCall = "";
   llvm::raw_string_ostream ss(funcCall);
-  ss << loop.getUserFuncInfo().funcName << "(";
-  for (size_t i = 0; i < loop.getNumArgs(); ++i) {
-    if (!loop.getArg(i).isReduction()) {
-      if (loop.getArg(i).isDirect()) {
-        ss << loop.getArg(i).getArgCall(i, "n");
-      } else {
-
-        ss << loop.getArg(i).getArgCall(
-            loop.dat2argIdxs[loop.dataIdxs[i]],
-            ("map" + std::to_string(loop.mapIdxs[i]) + "idx"));
-      }
-      ss << ",";
-    } else {
-      ss << "&arg" << i << "_l,";
-    }
+  std::map<std::string,std::string> arg2data;
+  ss << loop.getName() << "_omp4_kernel(";
+  if(!loop.isDirect()){
+    ss << "map0, map0size,";
   }
-  ss.str();
-  return funcCall.substr(0, funcCall.length() - 1) + ");";
+  for (size_t i = 0; i < loop.getNumArgs(); ++i) {
+    if(arg2data[loop.getArg(i).opDat] != ""){
+      continue;
+    } else {
+      arg2data[loop.getArg(i).opDat] = "data" + std::to_string(i);
+    }
+    ss  << "data" << i << ", ";
+    ss << "data" << i << "size, ";
+  }
+  if(loop.isDirect()){
+    ss << "set_size, part_size != 0 ? (set->size - 1) / part_size + 1: (set->size - 1) / nthread, nthread);";
+  } else {
+    ss << "col_reord, set_size1, start, end, part_size != 0 ? (end - start - 1) / part_size + 1: (end - start - 1) / nthread, nthread);";
+  }
+  return ss.str();
 }
 
 std::string OMP4KernelHandler::getmappedFunc(){
@@ -118,12 +120,14 @@ std::string OMP4KernelHandler::getmappedFunc(){
       arg2data[loop.getArg(i).opDat] = "data" + std::to_string(i);
     }
     ss << loop.getArg(i).type << " *" << "data" << i << ", ";
-    ss << "int " << "data" << i << "size ";
-    if(i != loop.getNumArgs() -1 ){
-      ss << ",";
-    }
+    ss << "int " << "data" << i << "size, ";
+
   }
-  ss << " int count, int num_teams, int nthread);";
+  if(!loop.isDirect()){
+    ss << "int *col_reord, int set_size1, int start, int end, int num_teams, int nthread);";
+  } else {
+    ss << "int count, int num_teams, int nthread);";
+  }
   return ss.str();
 }
 
@@ -133,7 +137,7 @@ std::string OMP4KernelHandler::DevicePointerDecl(){
   std::map<std::string,std::string> arg2data;
   if(!loop.isDirect()){
     ss << "int *map0 = arg0.map_data_d;\n"; 
-    ss << "int map0size = arg0.map->dim * set_size1;\n";
+    ss << "int map0size = arg0.map->dim * set_size1;\n\n";
   }
   for(size_t i = 0; i < loop.getNumArgs(); ++i){
     if(arg2data[loop.getArg(i).opDat] != ""){
@@ -145,8 +149,8 @@ std::string OMP4KernelHandler::DevicePointerDecl(){
     ss << loop.getArg(i).type << " *" << "data" << i << " = ";
     ss << "(" << loop.getArg(i).type << "*)" <<"arg" << i << ".data_d;\n";
 
-    ss << "\tint " << "data" << i << "size" << " = getSetSizeFromOpArg((&arg" << i;
-    ss << ") * arg" << i << ".dat->dim;\n";
+    ss << "int " << "data" << i << "size" << " = getSetSizeFromOpArg(&arg" << i;
+    ss << ") * arg" << i << ".dat->dim;\n\n";
   }
   return ss.str();
 }

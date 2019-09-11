@@ -28,8 +28,6 @@ void op_par_loop_skeleton(char const *name, op_set set, op_arg arg0) {
   op_mpi_halo_exchanges(set, nargs, args);
 
   if (set->size > 0) {
-
-#pragma omp parallel for reduction(+ : arg0_l)
     for (int n = 0; n < set->size; n++) {
       int map0idx = arg0.map_data[n * arg0.map->dim + 0];
 

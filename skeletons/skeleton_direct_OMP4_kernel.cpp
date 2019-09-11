@@ -18,7 +18,7 @@ void op_par_loop_skeleton(char const *name, op_set set, op_arg arg0) {
   op_timing_realloc(0);
   op_timers_core(&cpu_t1, &wall_t1);
 
-  // local variables for reduction
+
   double arg0_l = *(double *)arg0.data;
 
   if (OP_diags > 2) {
@@ -27,15 +27,23 @@ void op_par_loop_skeleton(char const *name, op_set set, op_arg arg0) {
 
   op_mpi_halo_exchanges_cuda(set, nargs, args);
 
+  #ifdef OP_PART_SIZE_1
+    int part_size = OP_PART_SIZE_1;
+  #else
+    int part_size = OP_part_size;
+  #endif
+  #ifdef OP_BLOCK_SIZE_1
+    int nthread = OP_BLOCK_SIZE_1;
+  #else
+    int nthread = OP_block_size;
+  #endif
+
   if (set->size > 0) {
-    int *map_ = arg0.map_data_d;
 
-#pragma omp parallel for reduction(+ : arg0_l)
-    for (int n = 0; n < set->size; n++) {
-      int map0idx = arg0.map_data[n * arg0.map->dim + 0];
+    //Set up typed device pointers for OpenMP
 
-      skeleton_OMP4(&((double *)arg0.data)[4 * n]);
-    }
+    int *mapStart;
+    skeleton_OMP4(&((double *)arg0.data)[4 * 0]);
   }
   *((double *)arg0.data) = arg0_l;
 

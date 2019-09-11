@@ -20,7 +20,7 @@ void op_par_loop_skeleton(char const *name, op_set set, op_arg arg0) {
   int ninds = 1;
   int inds[1] = {0};
 
-  // local variables for reduction
+ 
   double arg0_l = *(double *)arg0.data;
 
   if (OP_diags > 2) {
@@ -28,11 +28,14 @@ void op_par_loop_skeleton(char const *name, op_set set, op_arg arg0) {
   }
 
   // get plan
-  int part_size = OP_part_size;
-
   int set_size = op_mpi_halo_exchanges_cuda(set, nargs, args);
 
 
+  #ifdef OP_PART_SIZE_1
+    int part_size = OP_PART_SIZE_1;
+  #else
+    int part_size = OP_part_size;
+  #endif
   #ifdef OP_BLOCK_SIZE_1
     int nthread = OP_BLOCK_SIZE_1;
   #else
@@ -43,8 +46,9 @@ void op_par_loop_skeleton(char const *name, op_set set, op_arg arg0) {
   int set_size1 = set->size + set->exec_size;
 
   if (set->size > 0) {
+
     //Set up typed device pointers for OpenMP
-    int *map_ = arg0.map_data_d;
+    int *mapStart;
 
     op_plan *Plan = op_plan_get_stage(name,set,part_size,nargs,args,ninds,inds,OP_COLOR2);
     ncolors = Plan->ncolors;
