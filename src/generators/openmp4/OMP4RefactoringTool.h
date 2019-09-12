@@ -37,7 +37,7 @@ public:
                                {std::string(SKELETONS_DIR) +
                                 skeletons[!app.getParLoops()[idx].isDirect()]},
                                app, idx, OMP4RefactoringTool::_postfix, op),
-        omp4KernelHandler(&getReplacements(), app.getParLoops()[idx], app, idx),
+        omp4KernelHandler(Compilations, &getReplacements(), app.getParLoops()[idx], app, idx),
         seqKernelHandler(&getReplacements(), app, idx) {}
 
   /// @brief Adding OpenMP specific Matchers and handlers.

@@ -26,6 +26,7 @@ protected:
   std::string DevicePointerDecl();
 
   const OP2Application &application;
+  const clang::tooling::CompilationDatabase &Compilations;
   const size_t loopIdx;
 
 public:
@@ -35,7 +36,7 @@ public:
   /// Replacements should added.
   ///
   /// @param loop The ParLoop that the file is currently generated.
-  OMP4KernelHandler(std::map<std::string, clang::tooling::Replacements> *Replace,
+  OMP4KernelHandler(const clang::tooling::CompilationDatabase &Compilations, std::map<std::string, clang::tooling::Replacements> *Replace,
                    const ParLoop &loop, const OP2Application &application, const size_t loopIdx);
 
   // Static matchers handled by this class

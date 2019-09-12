@@ -63,14 +63,14 @@ public:
 
 class UserFuncTransformator : public OP2WriteableRefactoringTool {
   const ParLoop &loop;
-  OP2Optimizations op2Flags;
+  /*OP2Optimizations op2Flags;*/
 
 public:
   UserFuncTransformator(const clang::tooling::CompilationDatabase &Compilations,
-                        const ParLoop &_loop, const OP2Optimizations &flags,
+                        const ParLoop &_loop, /*const OP2Optimizations &flags,*/
                         std::vector<std::string> path = {"/tmp/loop.cu"})
-      : OP2WriteableRefactoringTool(Compilations, path), loop(_loop),
-        op2Flags(flags) {}
+      : OP2WriteableRefactoringTool(Compilations, path), loop(_loop)/*,
+        op2Flags(flags)*/ {}
 
   std::string run() {
 
@@ -83,7 +83,7 @@ public:
       // Only need strides for nonglobal data with dim > 1 and don't need stride
       // for indirect increments with 2 level coloring
       if (arg.dim > 1 && ((arg.isDirect() && !arg.isGBL) ||
-                          (!arg.isDirect() && (op2Flags.staging != OP_STAGE_ALL ||
+                          (!arg.isDirect() && (/*op2Flags.staging != OP_STAGE_ALL ||*/
                                                arg.accs != OP_INC)))) {
         std::string name = loop.getUserFuncInfo().paramNames[i];
         Finder.addMatcher(
