@@ -57,16 +57,16 @@ void OMP4KernelHandler::run(const MatchFinder::MatchResult &Result) {
   if (!lineReplHandler<FunctionDecl, 1>(Result, Replace, "user_func_OMP4",  [this]() {
         const ParLoop &loop = this->application.getParLoops()[loopIdx];
         std::string hostFuncText = loop.getUserFuncInc();
-        //if (op2Flags.SOA) {
-          loop.dumpFuncTextTo("/tmp/loop.cu");
-          std::string SOAresult =
-              UserFuncTransformator(Compilations, loop/*, op2Flags*/).run();
-          if (SOAresult != "")
-            hostFuncText = SOAresult;
-        //}
+        std::vector<std::string> path = {"/tmp/omp4.cpp"};
+        loop.dumpFuncTextTo(path[0]);
+
+        std::string SOAresult =
+            UserFuncTransformator(Compilations, loop, path).run();
+        if (SOAresult != "")
+          hostFuncText = SOAresult;
         return "__device__ void " + loop.getName() + "_gpu" +
                hostFuncText.substr(hostFuncText.find("("));
-        //return this->getmappedFunc();
+        // return this->getmappedFunc();
       }))
     return; // if successfully handled return
 
