@@ -27,6 +27,7 @@ protected:
 
   const OP2Application &application;
   const clang::tooling::CompilationDatabase &Compilations;
+  std::vector <std::string> const_list;
   const size_t loopIdx;
 
 public:

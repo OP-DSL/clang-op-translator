@@ -38,7 +38,19 @@ public:
       	if(itr_list == const_list.end())
      		const_list.push_back(it->name);
     }
-  }
+
+    // getting function argument names
+	std::string key = loop.getUserFuncInfo().funcName + "_accs";
+    const clang::FunctionDecl *match =
+        Result.Nodes.getNodeAs<clang::FunctionDecl>(key);
+    if (!match)
+      return;
+
+  	for (int i = 0; i < match->getNumParams(); i++){
+  		std::string TypeS;
+        llvm::raw_string_ostream s(TypeS);
+        s << match->parameters()[i]->getQualifiedNameAsString();
+  	}
 };
 
 class OMP4UserFuncTransformator : public OP2WriteableRefactoringTool {
@@ -67,12 +79,13 @@ public:
                 .bind(it->name + "_accs"), &handler);
     }
 
+    // matcher to function argument
+    Finder.functionDecl(functionDecl(hasName(loop.getUserFuncInfo().funcName))
+                .bind(loop.getUserFuncInfo().funcName + "_accs"), &handler);
+
     if (int Result = OP2WriteableRefactoringTool::run(
             clang::tooling::newFrontendActionFactory(&Finder).get())) {
       llvm::outs() << "Error " << Result << "\n";
-    }
-    for(auto it_list = const_list.begin(); it_list < const_list.end(); it_list++){
-    	llvm::outs() << *it_list << "\n";
     }
 
 

@@ -55,10 +55,11 @@ OMP4KernelHandler::OMP4KernelHandler(const clang::tooling::CompilationDatabase &
 void OMP4KernelHandler::run(const MatchFinder::MatchResult &Result) {
 
   if (!lineReplHandler<FunctionDecl, 1>(Result, Replace, "user_func_OMP4",  [this]() {
+        std::string retStr="";
         const ParLoop &loop = this->application.getParLoops()[loopIdx];
         std::string hostFuncText = loop.getUserFuncInc();
         std::vector<std::string> path = {"/tmp/omp4.cpp"};
-        std::vector <std::string> const_list;
+        
 
         loop.dumpFuncTextTo(path[0]);
 
@@ -66,9 +67,8 @@ void OMP4KernelHandler::run(const MatchFinder::MatchResult &Result) {
             OMP4UserFuncTransformator(Compilations, loop, application, const_list, path).run();
         if (SOAresult != "")
           hostFuncText = SOAresult;
-        return "__device__ void " + loop.getName() + "_gpu" +
-               hostFuncText.substr(hostFuncText.find("("));
-        // return this->getmappedFunc();
+        retStr = hostFuncText.substr(hostFuncText.find("{")) + "}\n}\n";
+        return this->getmappedFunc() +  retStr;
       }))
     return; // if successfully handled return
 
@@ -138,9 +138,81 @@ std::string OMP4KernelHandler::getmappedFunc(){
 
   }
   if(!loop.isDirect()){
-    ss << "int *col_reord, int set_size1, int start, int end, int num_teams, int nthread);";
+    arg2data.clear();
+    ss << "int *col_reord, int set_size1, int start, int end, int num_teams, int nthread) {\n";
+    ss << "#pragma omp target teams num_teams(num_teams) thread_limit(nthread)  \n";
+    ss << "#pragma omp map(to: ";
+    for (size_t i = 0; i < loop.getNumArgs(); ++i){
+      if(arg2data[loop.getArg(i).opDat] != ""){
+        continue;
+      } else {
+        arg2data[loop.getArg(i).opDat] = "data" + std::to_string(i);
+      }
+      ss << arg2data[loop.getArg(i).opDat] << "[0 : " << arg2data[loop.getArg(i).opDat];
+      ss << "size]";
+      if(i != loop.getNumArgs() -1 ){
+        ss << ", ";
+      }
+    }
+    ss << ")";
+    if(const_list.size() != 0)
+      ss << "\n #pragma omp map(to : ";
+    for(auto it = const_list.begin() + 1; it < const_list.end(); it++){
+        ss << *it;
+        for (auto it_g = application.constants.begin(); it_g != application.constants.end(); it_g++){
+          if(it_g->name == *it){
+            ss << "[0:" << it_g->size -1<< "]"; 
+          }
+        }
+        if(it != const_list.end() - 1){
+          ss << ", ";
+        }
+    }
+    ss << ")\n";
+    ss << "#pragma omp distribute parallel for schedule(static, 1)\n";
+    ss << "for ( int e=start; e<end; e++ ){\n";
+    ss << "int n_op = col_reord[e];\n";
+    // for (size_t i = 0; i < loop.getNumArgs(); ++i) {
+    //   ss << "int map" << i << "idx = map0[n_op + set_size1 + " << i << "\n";
+    // }
+    // ss << loop.getArg(i).type << " *" << "data" << i << ", ";
+    // ss << "int " << "data" << i << "size, ";
+
   } else {
-    ss << "int count, int num_teams, int nthread);";
+    ss << ",  int count, int num_teams, int nthread) {\n";    
+    ss << "#pragma omp target teams num_teams(num_teams) thread_limit(nthread)  \n";
+    ss << "#pragma omp map(";
+    for (size_t i = 0; i < loop.getNumArgs(); ++i){
+      ss << "to : " << arg2data[loop.getArg(i).opDat] << "[0 : " << arg2data[loop.getArg(i).opDat];
+      ss << "size]";
+      if(i != loop.getNumArgs() -1 ){
+        ss << ", ";
+      }
+    }
+
+    ss << ")";
+    if(const_list.size() != 0)
+      ss << "\n #pragma omp map(to : ";
+    for(auto it = const_list.begin() + 1; it < const_list.end(); it++){
+        ss << *it;
+        for (auto it_g = application.constants.begin(); it_g != application.constants.end(); it_g++){
+          if(it_g->name == *it){
+            ss << "[0:" << it_g->size -1<< "]"; 
+          }
+        }
+        if(it != const_list.end() - 1){
+          ss << ", ";
+        }
+    }
+    ss << ")\n";
+    
+    ss << "\n#pragma omp distribute parallel for schedule(static, 1)\n";
+    ss << "for ( int n_op=0; n_op<count; n_op++ ){\n";
+    ss << "//variable mapping\n";
+    for (size_t i = 0; i < loop.getNumArgs(); ++i){
+      ss << loop.getArg(i).type << " *" << loop.getArg(i).opDat;
+      ss << " = &" << arg2data[loop.getArg(i).opDat] << "[" << loop.getArg(i).idx << " * n_op];\n";
+    }
   }
   return ss.str();
 }
