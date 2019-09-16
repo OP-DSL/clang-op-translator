@@ -17,12 +17,13 @@ class OMP4TransformationHandler
   std::map<std::string, clang::tooling::Replacements> *Replace;
   const OP2Application &application;
   std::vector <std::string> &const_list;
+  std::vector <std::string> &kernel_arg_name;
 
 public:
   OMP4TransformationHandler(
       const ParLoop &_loop,
-      std::map<std::string, clang::tooling::Replacements> *Replace, const OP2Application &application, std::vector <std::string> &const_list)
-      : loop(_loop), Replace(Replace), application(application), const_list(const_list) {}
+      std::map<std::string, clang::tooling::Replacements> *Replace, const OP2Application &application, std::vector <std::string> &const_list, std::vector <std::string> &kernel_arg_name)
+      : loop(_loop), Replace(Replace), application(application), const_list(const_list), kernel_arg_name(kernel_arg_name) {}
   virtual void run(const MatchFinder::MatchResult &Result) override {
 
     for (auto it=application.constants.begin(); it != application.constants.end(); ++it) {
@@ -47,30 +48,30 @@ public:
       return;
 
   	for (int i = 0; i < match->getNumParams(); i++){
-  		std::string TypeS;
-        llvm::raw_string_ostream s(TypeS);
-        s << match->parameters()[i]->getQualifiedNameAsString();
+        kernel_arg_name.push_back(getSourceAsString(match->getParamDecl(i)->getSourceRange(), Result.SourceManager));
   	}
+  }
 };
 
 class OMP4UserFuncTransformator : public OP2WriteableRefactoringTool {
   const ParLoop &loop;
   const OP2Application &application;
   std::vector <std::string> &const_list;
+  std::vector <std::string> &kernel_arg_name;
   /*OP2Optimizations op2Flags;*/
 
 public:
   OMP4UserFuncTransformator(const clang::tooling::CompilationDatabase &Compilations,
-                        const ParLoop &_loop,  const OP2Application &application, std::vector <std::string> &const_list, 
-                        std::vector<std::string> path = {"/tmp/loop.cu"})
-      : OP2WriteableRefactoringTool(Compilations, path), loop(_loop), application(application), const_list(const_list) {}
+                        const ParLoop &_loop,  const OP2Application &application, std::vector <std::string> &const_list,
+                        std::vector <std::string> &kernel_arg_name, std::vector<std::string> path = {"/tmp/loop.cu"})
+      : OP2WriteableRefactoringTool(Compilations, path), loop(_loop), application(application), const_list(const_list), kernel_arg_name(kernel_arg_name) {}
 
 
   
   std::string run() {
 
     clang::ast_matchers::MatchFinder Finder;
-    OMP4TransformationHandler handler(loop, &getReplacements(), application, const_list);
+    OMP4TransformationHandler handler(loop, &getReplacements(), application, const_list, kernel_arg_name);
     for (auto it=application.constants.begin(); it != application.constants.end(); ++it){
       Finder.addMatcher(
             	declRefExpr(to(varDecl(hasName(it->name))), 
@@ -80,7 +81,7 @@ public:
     }
 
     // matcher to function argument
-    Finder.functionDecl(functionDecl(hasName(loop.getUserFuncInfo().funcName))
+    Finder.addMatcher(functionDecl(hasName(loop.getUserFuncInfo().funcName))
                 .bind(loop.getUserFuncInfo().funcName + "_accs"), &handler);
 
     if (int Result = OP2WriteableRefactoringTool::run(

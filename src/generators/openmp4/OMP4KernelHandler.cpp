@@ -64,7 +64,7 @@ void OMP4KernelHandler::run(const MatchFinder::MatchResult &Result) {
         loop.dumpFuncTextTo(path[0]);
 
         std::string SOAresult =
-            OMP4UserFuncTransformator(Compilations, loop, application, const_list, path).run();
+            OMP4UserFuncTransformator(Compilations, loop, application, const_list, kernel_arg_name, path).run();
         if (SOAresult != "")
           hostFuncText = SOAresult;
         retStr = hostFuncText.substr(hostFuncText.find("{")) + "}\n}\n";
@@ -205,12 +205,12 @@ std::string OMP4KernelHandler::getmappedFunc(){
         }
     }
     ss << ")\n";
-    
+
     ss << "\n#pragma omp distribute parallel for schedule(static, 1)\n";
     ss << "for ( int n_op=0; n_op<count; n_op++ ){\n";
     ss << "//variable mapping\n";
     for (size_t i = 0; i < loop.getNumArgs(); ++i){
-      ss << loop.getArg(i).type << " *" << loop.getArg(i).opDat;
+      ss << kernel_arg_name[i];
       ss << " = &" << arg2data[loop.getArg(i).opDat] << "[" << loop.getArg(i).idx << " * n_op];\n";
     }
   }
