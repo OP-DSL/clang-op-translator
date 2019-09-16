@@ -149,12 +149,10 @@ std::string OMP4KernelHandler::getmappedFunc(){
         arg2data[loop.getArg(i).opDat] = "data" + std::to_string(i);
       }
       ss << arg2data[loop.getArg(i).opDat] << "[0 : " << arg2data[loop.getArg(i).opDat];
-      ss << "size]";
-      if(i != loop.getNumArgs() -1 ){
-        ss << ", ";
-      }
+      ss << "size]), ";
     }
-    ss << ")";
+    ss << "map(to : col_reord[0 : set_size1], map0[0 : map0size])";
+    
     if(const_list.size() != 0)
       ss << "\n #pragma omp map(to : ";
     for(auto it = const_list.begin() + 1; it < const_list.end(); it++){
@@ -172,12 +170,22 @@ std::string OMP4KernelHandler::getmappedFunc(){
     ss << "#pragma omp distribute parallel for schedule(static, 1)\n";
     ss << "for ( int e=start; e<end; e++ ){\n";
     ss << "int n_op = col_reord[e];\n";
-    // for (size_t i = 0; i < loop.getNumArgs(); ++i) {
-    //   ss << "int map" << i << "idx = map0[n_op + set_size1 + " << i << "\n";
-    // }
-    // ss << loop.getArg(i).type << " *" << "data" << i << ", ";
-    // ss << "int " << "data" << i << "size, ";
 
+    for (size_t i = 0; i < loop.getNumArgs(); ++i) {
+      if(!loop.getArg(i).isDirect()){
+        ss << "int " << loop.getArg(i).opDat << "_map" << i << "idx = map0[n_op + set_size1 + " << loop.getArg(i).idx << "];\n";
+      }
+    }
+    ss << "//variable mapping\n";
+    for (size_t i = 0; i < loop.getNumArgs(); ++i){
+      if(!loop.getArg(i).isDirect()){
+        ss << kernel_arg_name[i];
+        ss << " = &" << arg2data[loop.getArg(i).opDat] << "[" << loop.getArg(i).dim << " * " <<  loop.getArg(i).opDat << "_map" << i << "idx];\n";
+      } else {
+        ss << kernel_arg_name[i];
+        ss << " = &" << arg2data[loop.getArg(i).opDat] << "[" << loop.getArg(i).dim << " * n_op];\n";
+      }
+    }
   } else {
     ss << ",  int count, int num_teams, int nthread) {\n";    
     ss << "#pragma omp target teams num_teams(num_teams) thread_limit(nthread)  \n";
@@ -211,7 +219,7 @@ std::string OMP4KernelHandler::getmappedFunc(){
     ss << "//variable mapping\n";
     for (size_t i = 0; i < loop.getNumArgs(); ++i){
       ss << kernel_arg_name[i];
-      ss << " = &" << arg2data[loop.getArg(i).opDat] << "[" << loop.getArg(i).idx << " * n_op];\n";
+      ss << " = &" << arg2data[loop.getArg(i).opDat] << "[" << loop.getArg(i).dim << " * n_op];\n";
     }
   }
   return ss.str();
