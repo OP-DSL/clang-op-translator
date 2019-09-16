@@ -112,7 +112,7 @@ std::string OMP4KernelHandler::handleFuncCall() {
     ss << "data" << i << "size, ";
   }
   if(loop.isDirect()){
-    ss << "set_size, part_size != 0 ? (set->size - 1) / part_size + 1: (set->size - 1) / nthread, nthread);";
+    ss << "set->size, part_size != 0 ? (set->size - 1) / part_size + 1: (set->size - 1) / nthread, nthread);";
   } else {
     ss << "col_reord, set_size1, start, end, part_size != 0 ? (end - start - 1) / part_size + 1: (end - start - 1) / nthread, nthread);";
   }
@@ -140,8 +140,8 @@ std::string OMP4KernelHandler::getmappedFunc(){
   if(!loop.isDirect()){
     arg2data.clear();
     ss << "int *col_reord, int set_size1, int start, int end, int num_teams, int nthread) {\n";
-    ss << "#pragma omp target teams num_teams(num_teams) thread_limit(nthread)  \n";
-    ss << "#pragma omp map(to: ";
+    ss << "#pragma omp target teams num_teams(num_teams) thread_limit(nthread) ";
+    ss << "map(to: ";
     for (size_t i = 0; i < loop.getNumArgs(); ++i){
       if(arg2data[loop.getArg(i).opDat] != ""){
         continue;
@@ -149,16 +149,16 @@ std::string OMP4KernelHandler::getmappedFunc(){
         arg2data[loop.getArg(i).opDat] = "data" + std::to_string(i);
       }
       ss << arg2data[loop.getArg(i).opDat] << "[0 : " << arg2data[loop.getArg(i).opDat];
-      ss << "size]), ";
+      ss << "size], ";
     }
-    ss << "map(to : col_reord[0 : set_size1], map0[0 : map0size])";
-    
+    ss << " col_reord[0 : set_size1], map0[0 : map0size])";
+
     if(const_list.size() != 0)
-      ss << "\n #pragma omp map(to : ";
+      ss << ", map(to : ";
     for(auto it = const_list.begin() + 1; it < const_list.end(); it++){
         ss << *it;
         for (auto it_g = application.constants.begin(); it_g != application.constants.end(); it_g++){
-          if(it_g->name == *it){
+          if(it_g->name == *it && it_g->size > 1){
             ss << "[0:" << it_g->size -1<< "]"; 
           }
         }
@@ -187,11 +187,11 @@ std::string OMP4KernelHandler::getmappedFunc(){
       }
     }
   } else {
-    ss << ",  int count, int num_teams, int nthread) {\n";    
-    ss << "#pragma omp target teams num_teams(num_teams) thread_limit(nthread)  \n";
-    ss << "#pragma omp map(";
+    ss << " int count, int num_teams, int nthread) {\n";    
+    ss << "#pragma omp target teams num_teams(num_teams) thread_limit(nthread) ";
+    ss << " map(to: ";
     for (size_t i = 0; i < loop.getNumArgs(); ++i){
-      ss << "to : " << arg2data[loop.getArg(i).opDat] << "[0 : " << arg2data[loop.getArg(i).opDat];
+      ss  << arg2data[loop.getArg(i).opDat] << "[0 : " << arg2data[loop.getArg(i).opDat];
       ss << "size]";
       if(i != loop.getNumArgs() -1 ){
         ss << ", ";
@@ -200,11 +200,11 @@ std::string OMP4KernelHandler::getmappedFunc(){
 
     ss << ")";
     if(const_list.size() != 0)
-      ss << "\n #pragma omp map(to : ";
+      ss << ", map(to : ";
     for(auto it = const_list.begin() + 1; it < const_list.end(); it++){
         ss << *it;
         for (auto it_g = application.constants.begin(); it_g != application.constants.end(); it_g++){
-          if(it_g->name == *it){
+          if(it_g->name == *it && it_g->size > 1){
             ss << "[0:" << it_g->size -1<< "]"; 
           }
         }
@@ -212,7 +212,8 @@ std::string OMP4KernelHandler::getmappedFunc(){
           ss << ", ";
         }
     }
-    ss << ")\n";
+    if(const_list.size() != 0)
+      ss << ")\n";
 
     ss << "\n#pragma omp distribute parallel for schedule(static, 1)\n";
     ss << "for ( int n_op=0; n_op<count; n_op++ ){\n";
