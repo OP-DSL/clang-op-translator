@@ -99,26 +99,26 @@ std::string OMP4KernelHandler::handleFuncCall() {
   llvm::raw_string_ostream ss(funcCall);
   std::map<std::string,std::string> arg2data;
   ss << loop.getName() << "_omp4_kernel(";
-  if(!loop.isDirect()){
-    ss << "map0, map0size,";
-  }
-  for (size_t i = 0; i < loop.getNumArgs(); ++i) {
-    if(arg2data[loop.getArg(i).opDat] != ""){
-      continue;
-    } else {
-      arg2data[loop.getArg(i).opDat] = "data" + std::to_string(i);
-    }
-    if(!loop.getArg(i).isGBL){
-      ss  << "data" << i << ", ";
-      ss  << "data" << i << "size, ";
-    } else {
-      ss << "&arg" << i << "_l, ";
-    }
+  for(size_t i = 0; i < loop.getNumArgs(); ++i){
+      if(!loop.getArg(i).isGBL){
+        if(!loop.getArg(i).isDirect() && arg2data[loop.getArg(i).opMap] == ""){
+          ss << "map" << i << ",\n"; 
+          ss << "map" << i << "size,\n";
+        }
+        if(arg2data[loop.getArg(i).opDat] == ""){
+          ss << "data" << i << ",\n";
+          ss << "data" << i << "size,\n";
+        }
+      } else {
+        ss << "&arg" << i << "_l,\n";
+      } 
+      arg2data[loop.getArg(i).opMap] = std::to_string(i);
+      arg2data[loop.getArg(i).opDat] = std::to_string(i);
   }
   if(loop.isDirect()){
-    ss << "set->size, part_size != 0 ? (set->size - 1) / part_size + 1: (set->size - 1) / nthread, nthread);";
+    ss << "set->size,\n part_size != 0 ? (set->size - 1) / part_size + 1: (set->size - 1) / nthread,\n nthread);";
   } else {
-    ss << "col_reord, set_size1, start, end, part_size != 0 ? (end - start - 1) / part_size + 1: (end - start - 1) / nthread, nthread);";
+    ss << "col_reord,\n set_size1,\n start,\n end,\n part_size != 0 ? (end - start - 1) / part_size + 1: (end - start - 1) / nthread,\n nthread);";
   }
   return ss.str();
 }
@@ -128,174 +128,213 @@ std::string OMP4KernelHandler::getmappedFunc(){
   llvm::raw_string_ostream ss(mappedfunc);
   std::map<std::string,std::string> arg2data;
   ss << "void " << loop.getName() << "_omp4_kernel(";
-  if(!loop.isDirect()){
-    ss << "int *map0, int map0size,";
-  }
-  for (size_t i = 0; i < loop.getNumArgs(); ++i) {
-    if(arg2data[loop.getArg(i).opDat] != ""){
-      continue;
-    } else {
-      arg2data[loop.getArg(i).opDat] = "data" + std::to_string(i);
-    }
-    if(!loop.getArg(i).isGBL){
-      ss << loop.getArg(i).type << " *" << "data" << i << ", ";
-      ss << "int " << "data" << i << "size, ";
-    } else {
-      ss << loop.getArg(i).type << " *arg" << i << ",";
-    }
-
-  }
-
-  if(!loop.isDirect()){
-    arg2data.clear();
-    ss << "int *col_reord, int set_size1, int start, int end, int num_teams, int nthread) {\n";
-
-    for (size_t i = 0; i < loop.getNumArgs(); ++i){
-      if(loop.getArg(i).isGBL){
-        ss << loop.getArg(i).type << " arg" << i << "_l = *arg" << i << ";\n";
-      }
-    }
-
-    ss << "#pragma omp target teams num_teams(num_teams) thread_limit(nthread) ";
-    ss << "map(to: ";
-    for (size_t i = 0; i < loop.getNumArgs(); ++i){
-      if(arg2data[loop.getArg(i).opDat] != ""){
-        continue;
+  for(size_t i = 0; i < loop.getNumArgs(); ++i){
+      if(!loop.getArg(i).isGBL){
+        if(!loop.getArg(i).isDirect() && arg2data[loop.getArg(i).opMap] == ""){
+          ss << "int *map" << i << ",\n"; 
+          ss << "int map" << i << "size,\n";
+        }
+        if(arg2data[loop.getArg(i).opDat] == ""){
+          ss << loop.getArg(i).type << " *" << "data" << i << ",\n";
+          ss << "int " << "data" << i << "size,\n";
+        }
       } else {
-        arg2data[loop.getArg(i).opDat] = "data" + std::to_string(i);
+        ss << loop.getArg(i).type << " *" << "arg"  << i << ", ";
       }
-      if(!loop.getArg(i).isGBL){
-        ss << arg2data[loop.getArg(i).opDat] << "[0 : " << arg2data[loop.getArg(i).opDat];
-        ss << "size], ";
-      }
-    }
-    ss << " col_reord[0 : set_size1], map0[0 : map0size])";
+      arg2data[loop.getArg(i).opMap] = std::to_string(i);
+      arg2data[loop.getArg(i).opDat] = std::to_string(i);
+  }
 
-    if(const_list.size() != 0){
-      ss << " map(to : ";
-      for(auto it = const_list.begin(); it < const_list.end(); it++){
-          ss << *it;
-          for (auto it_g = application.constants.begin(); it_g != application.constants.end(); it_g++){
-            if(it_g->name == *it && it_g->size > 1){
-              ss << "[0:" << it_g->size -1<< "]"; 
-            }
-          }
-          if(it != const_list.end() - 1){
-            ss << ", ";
-          }
-      }
-      ss << ") ";
-    }
-
-
-    for (size_t i = 0; i < loop.getNumArgs(); ++i){
-      if(loop.getArg(i).isGBL){
-        ss << " map(tofrom:"  << " arg" << i << "_l) reduction(";
-        if(loop.getArg(i).accs == 3)
-          ss << "+";
-        else if(loop.getArg(i).accs == 4)
-          ss << "min";
-        else if(loop.getArg(i).accs == 5)
-          ss << "max";
-
-        ss << ": " << " arg" << i << "_l)";
-      }
-    }
-
-    ss << "\n";
-    ss << "#pragma omp distribute parallel for schedule(static, 1)\n";
-    ss << "for ( int e=start; e<end; e++ ){\n";
-    ss << "int n_op = col_reord[e];\n";
-
-    for (size_t i = 0; i < loop.getNumArgs(); ++i) {
-      if(!loop.getArg(i).isDirect()){
-        ss << "int " << loop.getArg(i).opDat << "_map" << i << "idx = map0[n_op + set_size1 + " << loop.getArg(i).idx << "];\n";
-      }
-    }
-    ss << "//variable mapping\n";
-    for (size_t i = 0; i < loop.getNumArgs(); ++i){
-      ss << kernel_arg_name[i];
-      if(!loop.getArg(i).isDirect() && !loop.getArg(i).isGBL){
-        ss << " = &" << arg2data[loop.getArg(i).opDat] << "[" << loop.getArg(i).dim << " * " <<  loop.getArg(i).opDat << "_map" << i << "idx];\n";
-      } else if (!loop.getArg(i).isGBL) {
-        ss << " = &" << arg2data[loop.getArg(i).opDat] << "[" << loop.getArg(i).dim << " * n_op];\n";
-      }
-      else if(loop.getArg(i).isGBL){
-        ss << " = &arg" << i << "_l;\n";
-      }
-    }
-
-
-
-
-
+  if(!loop.isDirect()){
+    ss << "int *col_reord, int set_size1, int start, int end, int num_teams, int nthread) {\n";
   } else {
-    ss << " int count, int num_teams, int nthread) {\n";  
+    ss << " int count, int num_teams, int nthread) {\n";
+  }
 
-    for (size_t i = 0; i < loop.getNumArgs(); ++i){
-      if(loop.getArg(i).isGBL){
-        ss << loop.getArg(i).type << " arg" << i << "_l = *arg" << i << ";\n";
-      }
+  for (size_t i = 0; i < loop.getNumArgs(); ++i){
+    if(loop.getArg(i).isGBL){
+      ss << loop.getArg(i).type << " arg" << i << "_l = *arg" << i << ";\n";
     }
+  }
 
+  ss << "#pragma omp target teams num_teams(num_teams) thread_limit(nthread) ";
+  ss << "map(to: ";
 
-    ss << "#pragma omp target teams num_teams(num_teams) thread_limit(nthread) ";
-    ss << " map(to: ";
-    for (size_t i = 0, j = 0; i < loop.getNumArgs(); ++i){
-      if(!loop.getArg(i).isGBL){
-        if(j){
+  // int j =0, int k = 0;
+  arg2data.clear();
+  int  j = 0, k = 0;
+  for(size_t i = 0; i < loop.getNumArgs(); ++i){
+        if(!loop.getArg(i).isGBL){
+          if(!loop.getArg(i).isDirect() && arg2data[loop.getArg(i).opMap] == ""){
+            if(k|j) {ss << ", "; k = 0; j =0;}
+            ss << "map" << i << "[0:"; 
+            ss << "map" << i << "size]";
+            j++;
+          }
+          
+          if(arg2data[loop.getArg(i).opDat] == ""){
+            if(k|j) {ss << ", "; j = 0; j = 0;}
+            ss << "data" << i << "[0: ";
+            ss << "data" << i << "size] ";
+            k++;
+          }
+        } 
+        arg2data[loop.getArg(i).opMap] = std::to_string(i);
+        arg2data[loop.getArg(i).opDat] = std::to_string(i);
+  }
+
+  if(!loop.isDirect()){
+    ss << " ,col_reord[0 : set_size1]) ";
+  } else {
+    ss << ") ";
+  }
+
+  if(const_list.size() != 0){
+    ss << " map(to : ";
+    for(auto it = const_list.begin(); it < const_list.end(); it++){
+        ss << *it;
+        for (auto it_g = application.constants.begin(); it_g != application.constants.end(); it_g++){
+          if(it_g->name == *it && it_g->size > 1){
+            ss << "[0:" << it_g->size -1<< "]"; 
+          }
+        }
+        if(it != const_list.end() - 1){
           ss << ", ";
         }
-        j++;
-        ss  << arg2data[loop.getArg(i).opDat] << "[0 : " << arg2data[loop.getArg(i).opDat];
-        ss << "size]";
-      }
     }
+    ss << ") ";
+  }
 
-    ss << ")";
-    if(const_list.size() != 0){
-      ss << ", map(to : ";
-      for(auto it = const_list.begin(); it < const_list.end(); it++){
-          ss << *it;
-          for (auto it_g = application.constants.begin(); it_g != application.constants.end(); it_g++){
-            if(it_g->name == *it && it_g->size > 1){
-              ss << "[0:" << it_g->size -1<< "]"; 
-            }
-          }
-          if(it != const_list.end() - 1){
-            ss << ", ";
-          }
-      }
-      ss << ")";
-    }
+  for (size_t i = 0; i < loop.getNumArgs(); ++i){
+    if(loop.getArg(i).isGBL){
+      ss << " map(tofrom:"  << " arg" << i << "_l) reduction(";
+      if(loop.getArg(i).accs == 3)
+        ss << "+";
+      else if(loop.getArg(i).accs == 4)
+        ss << "min";
+      else if(loop.getArg(i).accs == 5)
+        ss << "max";
 
-    for (size_t i = 0; i < loop.getNumArgs(); ++i){
-      if(loop.getArg(i).isGBL){
-        ss << " map(tofrom:"  << " arg" << i << "_l) reduction(";
-        if(loop.getArg(i).accs == 3)
-          ss << "+";
-        else if(loop.getArg(i).accs == 4)
-          ss << "min";
-        else if(loop.getArg(i).accs == 5)
-          ss << "max";
-
-        ss << ": " << " arg" << i << "_l)";
-      }
-    }
-    ss << "\n";
-
-    ss << "\n#pragma omp distribute parallel for schedule(static, 1)\n";
-    ss << "for ( int n_op=0; n_op<count; n_op++ ){\n";
-    ss << "//variable mapping\n";
-    for (size_t i = 0; i < loop.getNumArgs(); ++i){
-      ss << kernel_arg_name[i];
-      if(!loop.getArg(i).isGBL){
-        ss << " = &" << arg2data[loop.getArg(i).opDat] << "[" << loop.getArg(i).dim << " * n_op];\n";
-      } else {
-        ss << " = &arg" << i << "_l;\n";
-      }
+      ss << ": " << " arg" << i << "_l)";
     }
   }
+
+  ss << "\n";
+  ss << "#pragma omp distribute parallel for schedule(static, 1)\n";
+
+  if(!loop.isDirect()){
+    ss << "for ( int e=start; e<end; e++ ){\n";
+    ss << "int n_op = col_reord[e];\n";
+  } else {
+    ss << "for ( int n_op=0; n_op<count; n_op++ ){\n";
+  }
+
+
+  arg2data.clear();
+  for(size_t i = 0; i < loop.getNumArgs(); ++i){
+      if(!loop.getArg(i).isGBL){
+        if(!loop.getArg(i).isDirect()){
+          if(arg2data[loop.getArg(i).opMap] == ""){
+            arg2data[loop.getArg(i).opMap] = "map" + std::to_string(i);
+            ss << "int " << loop.getArg(i).opDat << "_map" << i << "idx"  << "= map" << i << "[n_op + set_size1 * " <<  loop.getArg(i).idx << "];\n"; 
+          } else {
+            ss << "int " << loop.getArg(i).opDat  << "_map" << i << "idx" << " = " << arg2data[loop.getArg(i).opMap] << "[n_op + set_size1 * " <<  loop.getArg(i).idx << "];\n";
+          }
+          if(arg2data[loop.getArg(i).opDat]== "")
+            arg2data[loop.getArg(i).opDat] = "data" + std::to_string(i);
+        }
+    }
+  }
+
+
+
+  // for (size_t i = 0; i < loop.getNumArgs(); ++i) {
+  //   if(!loop.getArg(i).isDirect()){
+  //     ss << "int " << loop.getArg(i).opDat << "_map" << i << "idx = map0[n_op + set_size1 + " << loop.getArg(i).idx << "];\n";
+  //   }
+  // }
+
+
+  ss << "//variable mapping\n";
+  for (size_t i = 0; i < loop.getNumArgs(); ++i){
+    ss << kernel_arg_name[i];
+    if(!loop.getArg(i).isDirect() && !loop.getArg(i).isGBL){
+      ss << " = &" << arg2data[loop.getArg(i).opDat] << "[" << loop.getArg(i).dim << " * " <<  loop.getArg(i).opDat << "_map" << i << "idx];\n";
+    } else if (!loop.getArg(i).isGBL) {
+      ss << " = &" << "data" << i << "[" << loop.getArg(i).dim << " * n_op];\n";
+    }
+    else if(loop.getArg(i).isGBL){
+      ss << " = &arg" << i << "_l;\n";
+    }
+  }
+
+  // } else {
+  //   ss << " int count, int num_teams, int nthread) {\n";  
+
+  //   for (size_t i = 0; i < loop.getNumArgs(); ++i){
+  //     if(loop.getArg(i).isGBL){
+  //       ss << loop.getArg(i).type << " arg" << i << "_l = *arg" << i << ";\n";
+  //     }
+  //   }
+
+
+  //   ss << "#pragma omp target teams num_teams(num_teams) thread_limit(nthread) ";
+  //   ss << " map(to: ";
+  //   for (size_t i = 0, j = 0; i < loop.getNumArgs(); ++i){
+  //     if(!loop.getArg(i).isGBL){
+  //       if(j){
+  //         ss << ", ";
+  //       }
+  //       j++;
+  //       ss  << arg2data[loop.getArg(i).opDat] << "[0 : " << arg2data[loop.getArg(i).opDat];
+  //       ss << "size]";
+  //     }
+  //   }
+
+  //   ss << ")";
+  //   if(const_list.size() != 0){
+  //     ss << ", map(to : ";
+  //     for(auto it = const_list.begin(); it < const_list.end(); it++){
+  //         ss << *it;
+  //         for (auto it_g = application.constants.begin(); it_g != application.constants.end(); it_g++){
+  //           if(it_g->name == *it && it_g->size > 1){
+  //             ss << "[0:" << it_g->size -1<< "]"; 
+  //           }
+  //         }
+  //         if(it != const_list.end() - 1){
+  //           ss << ", ";
+  //         }
+  //     }
+  //     ss << ")";
+  //   }
+
+  //   for (size_t i = 0; i < loop.getNumArgs(); ++i){
+  //     if(loop.getArg(i).isGBL){
+  //       ss << " map(tofrom:"  << " arg" << i << "_l) reduction(";
+  //       if(loop.getArg(i).accs == 3)
+  //         ss << "+";
+  //       else if(loop.getArg(i).accs == 4)
+  //         ss << "min";
+  //       else if(loop.getArg(i).accs == 5)
+  //         ss << "max";
+
+  //       ss << ": " << " arg" << i << "_l)";
+  //     }
+  //   }
+  //   ss << "\n";
+
+  //   ss << "\n#pragma omp distribute parallel for schedule(static, 1)\n";
+  //   ss << "for ( int n_op=0; n_op<count; n_op++ ){\n";
+  //   ss << "//variable mapping\n";
+  //   for (size_t i = 0; i < loop.getNumArgs(); ++i){
+  //     ss << kernel_arg_name[i];
+  //     if(!loop.getArg(i).isGBL){
+  //       ss << " = &" << arg2data[loop.getArg(i).opDat] << "[" << loop.getArg(i).dim << " * n_op];\n";
+  //     } else {
+  //       ss << " = &arg" << i << "_l;\n";
+  //     }
+  //   }
+  // }
   return ss.str();
 }
 
@@ -303,23 +342,22 @@ std::string OMP4KernelHandler::DevicePointerDecl(){
   std::string DPD = "";
   llvm::raw_string_ostream ss(DPD);
   std::map<std::string,std::string> arg2data;
-  if(!loop.isDirect()){
-    ss << "int *map0 = arg0.map_data_d;\n"; 
-    ss << "int map0size = arg0.map->dim * set_size1;\n\n";
-  }
   for(size_t i = 0; i < loop.getNumArgs(); ++i){
-    if(arg2data[loop.getArg(i).opDat] != ""){
-      continue;
-    } else {
-      arg2data[loop.getArg(i).opDat] = "data" + std::to_string(i);
-    }
-    if(!loop.getArg(i).isGBL){
-      ss << loop.getArg(i).type << " *" << "data" << i << " = ";
-      ss << "(" << loop.getArg(i).type << "*)" <<"arg" << i << ".data_d;\n";
+      if(!loop.getArg(i).isGBL){
+        if(!loop.getArg(i).isDirect() && arg2data[loop.getArg(i).opMap] == ""){
+          ss << "int *map" << i << "= arg" << i << ".map_data_d;\n"; 
+          ss << "int map" << i << "size = arg" << i << ".map->dim * set_size1;\n\n";
+        }
+        if(arg2data[loop.getArg(i).opDat] == ""){
+          ss << loop.getArg(i).type << " *" << "data" << i << " = ";
+          ss << "(" << loop.getArg(i).type << "*)" <<"arg" << i << ".data_d;\n";
 
-      ss << "int " << "data" << i << "size" << " = getSetSizeFromOpArg(&arg" << i;
-      ss << ") * arg" << i << ".dat->dim;\n\n";
-    }
+          ss << "int " << "data" << i << "size" << " = getSetSizeFromOpArg(&arg" << i;
+          ss << ") * arg" << i << ".dat->dim;\n\n";
+        }
+      }
+      arg2data[loop.getArg(i).opMap] = std::to_string(i);
+      arg2data[loop.getArg(i).opDat] = std::to_string(i);
   }
   return ss.str();
 }
