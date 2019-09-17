@@ -24,6 +24,7 @@ protected:
   std::string getmappedFunc();
   std::string handleOMPParLoop();
   std::string DevicePointerDecl();
+  std::string AssignbackReduction();
 
   const OP2Application &application;
   const clang::tooling::CompilationDatabase &Compilations;

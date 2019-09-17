@@ -67,7 +67,7 @@ void OMP4KernelHandler::run(const MatchFinder::MatchResult &Result) {
             OMP4UserFuncTransformator(Compilations, loop, application, const_list, kernel_arg_name, path).run();
         if (SOAresult != "")
           hostFuncText = SOAresult;
-        retStr = hostFuncText.substr(hostFuncText.find("{")) + "}\n}\n";
+        retStr = hostFuncText.substr(hostFuncText.find("{")) + "}\n "+ this->AssignbackReduction() + "}\n";
         return this->getmappedFunc() +  retStr;
       }))
     return; // if successfully handled return
@@ -157,7 +157,8 @@ std::string OMP4KernelHandler::getmappedFunc(){
     }
   }
 
-  ss << "#pragma omp target teams num_teams(num_teams) thread_limit(nthread) ";
+  // ss << "#pragma omp distribute parallel for schedule(static, 1)\n";
+  ss << "#pragma omp target teams distribute parallel for schedule(static, 1) num_teams(num_teams) thread_limit(nthread) ";
   ss << "map(to: ";
 
   // int j =0, int k = 0;
@@ -220,8 +221,7 @@ std::string OMP4KernelHandler::getmappedFunc(){
   }
 
   ss << "\n";
-  ss << "#pragma omp distribute parallel for schedule(static, 1)\n";
-
+  
   if(!loop.isDirect()){
     ss << "for ( int e=start; e<end; e++ ){\n";
     ss << "int n_op = col_reord[e];\n";
@@ -268,73 +268,6 @@ std::string OMP4KernelHandler::getmappedFunc(){
     }
   }
 
-  // } else {
-  //   ss << " int count, int num_teams, int nthread) {\n";  
-
-  //   for (size_t i = 0; i < loop.getNumArgs(); ++i){
-  //     if(loop.getArg(i).isGBL){
-  //       ss << loop.getArg(i).type << " arg" << i << "_l = *arg" << i << ";\n";
-  //     }
-  //   }
-
-
-  //   ss << "#pragma omp target teams num_teams(num_teams) thread_limit(nthread) ";
-  //   ss << " map(to: ";
-  //   for (size_t i = 0, j = 0; i < loop.getNumArgs(); ++i){
-  //     if(!loop.getArg(i).isGBL){
-  //       if(j){
-  //         ss << ", ";
-  //       }
-  //       j++;
-  //       ss  << arg2data[loop.getArg(i).opDat] << "[0 : " << arg2data[loop.getArg(i).opDat];
-  //       ss << "size]";
-  //     }
-  //   }
-
-  //   ss << ")";
-  //   if(const_list.size() != 0){
-  //     ss << ", map(to : ";
-  //     for(auto it = const_list.begin(); it < const_list.end(); it++){
-  //         ss << *it;
-  //         for (auto it_g = application.constants.begin(); it_g != application.constants.end(); it_g++){
-  //           if(it_g->name == *it && it_g->size > 1){
-  //             ss << "[0:" << it_g->size -1<< "]"; 
-  //           }
-  //         }
-  //         if(it != const_list.end() - 1){
-  //           ss << ", ";
-  //         }
-  //     }
-  //     ss << ")";
-  //   }
-
-  //   for (size_t i = 0; i < loop.getNumArgs(); ++i){
-  //     if(loop.getArg(i).isGBL){
-  //       ss << " map(tofrom:"  << " arg" << i << "_l) reduction(";
-  //       if(loop.getArg(i).accs == 3)
-  //         ss << "+";
-  //       else if(loop.getArg(i).accs == 4)
-  //         ss << "min";
-  //       else if(loop.getArg(i).accs == 5)
-  //         ss << "max";
-
-  //       ss << ": " << " arg" << i << "_l)";
-  //     }
-  //   }
-  //   ss << "\n";
-
-  //   ss << "\n#pragma omp distribute parallel for schedule(static, 1)\n";
-  //   ss << "for ( int n_op=0; n_op<count; n_op++ ){\n";
-  //   ss << "//variable mapping\n";
-  //   for (size_t i = 0; i < loop.getNumArgs(); ++i){
-  //     ss << kernel_arg_name[i];
-  //     if(!loop.getArg(i).isGBL){
-  //       ss << " = &" << arg2data[loop.getArg(i).opDat] << "[" << loop.getArg(i).dim << " * n_op];\n";
-  //     } else {
-  //       ss << " = &arg" << i << "_l;\n";
-  //     }
-  //   }
-  // }
   return ss.str();
 }
 
@@ -370,6 +303,18 @@ std::string OMP4KernelHandler::handleRedLocalVarDecl() {
     if (arg.isReduction()) {
       os << arg.type << " arg" << ind << "_l = *(" + arg.type + " *)arg" << ind
          << ".data;\n";
+    }
+  }
+  return os.str();
+}
+
+std::string OMP4KernelHandler::AssignbackReduction() {
+  std::string s;
+  llvm::raw_string_ostream os(s);
+  for (size_t ind = 0; ind < loop.getNumArgs(); ++ind) {
+    const OPArg &arg = loop.getArg(ind);
+    if (arg.isReduction()) {
+      os << "*arg" << ind << "= " << "arg" << ind << "_l;\n";
     }
   }
   return os.str();
